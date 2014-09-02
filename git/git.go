@@ -1,0 +1,162 @@
+package git
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"os/exec"
+	"strings"
+)
+
+var ErrDirtyRepository = errors.New("the repository is dirty")
+
+func UpdateRemotes(remotes ...string) (stderr *bytes.Buffer, err error) {
+	argsList := append([]string{"remote", "update"}, remotes...)
+	_, stderr, err = Git(argsList...)
+	return
+}
+
+func Push(remote string, refs []string) (stderr *bytes.Buffer, err error) {
+	argsList := append([]string{"push"}, remote)
+	argsList = append(argsList, refs...)
+	_, stderr, err = Git(argsList...)
+	return
+}
+
+func Branch(args ...string) (stderr *bytes.Buffer, err error) {
+	argsList := append([]string{"branch"}, args...)
+	_, stderr, err = Git(argsList...)
+	return
+}
+
+// RefExists requires the whole ref path to be specified,
+// e.g. refs/remotes/origin/master.
+func RefExists(ref string) (exists bool, stderr *bytes.Buffer, err error) {
+	_, stderr, err = Git("show-ref", "--verify", "--quiet", ref)
+	if err != nil {
+		if stderr.Len() != 0 {
+			// Non-empty error output means that there was an error.
+			return
+		}
+		// Otherwise the ref does not exist.
+		err = nil
+		return
+	}
+	// No error means that the ref exists.
+	exists = true
+	return
+}
+
+func BranchExists(branch string, remote string) (exists bool, stderr *bytes.Buffer, err error) {
+	ref := "refs/heads/" + branch
+	exists, stderr, err = RefExists(ref)
+	if exists || err != nil {
+		return
+	}
+
+	if remote == "" {
+		return
+	}
+
+	ref = fmt.Sprintf("refs/remotes/%v/%v", remote, branch)
+	exists, stderr, err = RefExists(ref)
+	return
+}
+
+func Checkout(branch string) (stderr *bytes.Buffer, err error) {
+	_, stderr, err = Git("checkout", branch)
+	return
+}
+
+func ResetHard(branch, ref string) (stderr *bytes.Buffer, err error) {
+	stderr, err = Checkout(branch)
+	if err != nil {
+		return
+	}
+
+	_, stderr, err = Git("reset", "--hard", ref)
+	return
+}
+
+func ShowByBranch(branch, file string) (content, stderr *bytes.Buffer, err error) {
+	return Git("show", branch+":"+file)
+}
+
+func Tag(tag string) (stderr *bytes.Buffer, err error) {
+	_, stderr, err = Git("tag", tag)
+	return
+}
+
+func DeleteTag(tag string) (stderr *bytes.Buffer, err error) {
+	_, stderr, err = Git("tag", "-d", tag)
+	return
+}
+
+func Hexsha(ref string) (hexsha string, stderr *bytes.Buffer, err error) {
+	stdout, stderr, err := Git("show-ref", "--verify", ref)
+	if err != nil {
+		return
+	}
+
+	hexsha = string(bytes.TrimSpace(stdout.Bytes()))
+	hexsha = strings.Split(hexsha, " ")[0]
+	return
+}
+
+func EnsureBranchSynchronized(branch, remote string) (stderr *bytes.Buffer, err error) {
+	var (
+		localRef  = "refs/heads/" + branch
+		remoteRef = "refs/remotes/" + remote + "/" + branch
+	)
+	localHexsha, stderr, err := Hexsha(localRef)
+	if err != nil {
+		return
+	}
+	remoteHexsha, stderr, err := Hexsha(remoteRef)
+	if err != nil {
+		return
+	}
+
+	if localHexsha != remoteHexsha {
+		err = fmt.Errorf("branch %v is not in sync with %v", branch, remote)
+	}
+	return
+}
+
+func EnsureCleanWorkingTree() (status *bytes.Buffer, stderr *bytes.Buffer, err error) {
+	status, stderr, err = Git("status", "--porcelain")
+	if status.Len() != 0 {
+		err = ErrDirtyRepository
+	}
+	return
+}
+
+func CurrentBranch() (branch string, stderr *bytes.Buffer, err error) {
+	stdout, stderr, err := Git("rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		return
+	}
+
+	branch = string(bytes.TrimSpace(stdout.Bytes()))
+	return
+}
+
+func RepositoryRootAbsolutePath() (path string, stderr *bytes.Buffer, err error) {
+	stdout, stderr, err := Git("rev-parse", "--show-toplevel")
+	if err != nil {
+		return
+	}
+
+	path = string(bytes.TrimSpace(stdout.Bytes()))
+	return
+}
+
+func Git(args ...string) (stdout, stderr *bytes.Buffer, err error) {
+	stdout = new(bytes.Buffer)
+	stderr = new(bytes.Buffer)
+	cmd := exec.Command("git", args...)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	err = cmd.Run()
+	return
+}

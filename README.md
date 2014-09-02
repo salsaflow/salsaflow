@@ -1,4 +1,4 @@
-gitflow-ng
+git-trunk
 ==========
 
-Some software development process support tools
+Your ultimate Trunk Based Development (TBD) CLI utility.
