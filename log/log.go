@@ -1,6 +1,7 @@
 package log
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"sync/atomic"
@@ -51,23 +52,36 @@ func (l Logger) logln(v ...interface{}) {
 }
 
 func (l Logger) Run(msg string) {
-	l.logf("[RUN]  %v\n", msg)
+	l.logf("[RUN]      %v\n", msg)
 }
 
 func (l Logger) Skip(msg string) {
-	l.logf("[SKIP] %v\n", msg)
+	l.logf("[SKIP]     %v\n", msg)
 }
 
 func (l Logger) Go(msg string) {
-	l.logf("[GO]   %v\n", msg)
+	l.logf("[GO]       %v\n", msg)
 }
 
 func (l Logger) Ok(msg string) {
-	l.logf("[OK]   %v\n", msg)
+	l.logf("[OK]       %v\n", msg)
 }
 
 func (l Logger) Fail(msg string) {
-	l.logf("[FAIL] %v\n", msg)
+	l.logf("[FAIL]     %v\n", msg)
+}
+
+func (l Logger) FailWithContext(msg string, stderr *bytes.Buffer) {
+	l.Fail(msg)
+	if stderr != nil && stderr.Len() != 0 {
+		l.Println("<<<<< stderr")
+		l.Print(stderr)
+		l.Println(">>>>> stderr")
+	}
+}
+
+func (l Logger) Rollback(msg string) {
+	l.logf("[ROLLBACK] %v\n", msg)
 }
 
 func (l Logger) Print(v ...interface{}) {
@@ -115,6 +129,14 @@ func Ok(msg string) {
 
 func Fail(msg string) {
 	V(Info).Fail(msg)
+}
+
+func FailWithContext(msg string, stderr *bytes.Buffer) {
+	V(Info).FailWithContext(msg, stderr)
+}
+
+func Rollback(msg string) {
+	V(Info).Rollback(msg)
 }
 
 func Print(v ...interface{}) {

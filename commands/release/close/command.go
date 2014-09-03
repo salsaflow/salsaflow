@@ -51,12 +51,7 @@ func runMain() (err error) {
 	defer func() {
 		// Print error details.
 		if err != nil {
-			log.Fail(taskMsg)
-			if stderr != nil && stderr.Len() != 0 {
-				log.Println(">>>>> stderr")
-				log.Print(stderr)
-				log.Println("<<<<< stderr")
-			}
+			log.FailWithContext(taskMsg, stderr)
 		}
 
 		// Checkout the original branch.
@@ -108,7 +103,25 @@ func runMain() (err error) {
 	if err != nil {
 		return
 	}
-	// XXX: Rollback on failure later.
+	defer func() {
+		if err != nil {
+			// Re-create the release branch on the tag.
+			msg := "Recreate the release branch"
+			log.Rollback(msg)
+			out, ex := git.Branch(config.ReleaseBranch, tag)
+			if ex != nil {
+				log.FailWithContext(msg, out)
+				return
+			}
+			// Delete the release tag.
+			msg = "Delete the release tag"
+			log.Rollback(msg)
+			out, ex = git.DeleteTag(tag)
+			if ex != nil {
+				log.FailWithContext(msg, out)
+			}
+		}
+	}()
 
 	// Reset the client branch to point to the newly created tag.
 	taskMsg = "Reset the client branch to point to the release tag"

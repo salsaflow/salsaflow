@@ -65,12 +65,7 @@ func runMain() (err error) {
 	defer func() {
 		// Print error details.
 		if err != nil {
-			log.Fail(taskMsg)
-			if stderr != nil && stderr.Len() != 0 {
-				log.Println(">>>>> stderr")
-				log.Print(stderr)
-				log.Println("<<<<< stderr")
-			}
+			log.FailWithContext(taskMsg, stderr)
 		}
 
 		// Checkout the original branch.
