@@ -71,9 +71,9 @@ func runMain() (err error) {
 		// Checkout the original branch.
 		taskMsg = "Checkout the original branch"
 		log.Run(taskMsg)
-		_, ex := git.Checkout(currentBranch)
+		out, ex := git.Checkout(currentBranch)
 		if ex != nil {
-			log.Fail(taskMsg)
+			log.FailWithContext(taskMsg, out)
 			return
 		}
 	}()
