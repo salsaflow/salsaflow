@@ -48,8 +48,7 @@ func RefExists(ref string) (exists bool, stderr *bytes.Buffer, err error) {
 }
 
 func BranchExists(branch string, remote string) (exists bool, stderr *bytes.Buffer, err error) {
-	ref := "refs/heads/" + branch
-	exists, stderr, err = RefExists(ref)
+	exists, stderr, err = LocalBranchExists(branch)
 	if exists || err != nil {
 		return
 	}
@@ -57,10 +56,32 @@ func BranchExists(branch string, remote string) (exists bool, stderr *bytes.Buff
 	if remote == "" {
 		return
 	}
-
-	ref = fmt.Sprintf("refs/remotes/%v/%v", remote, branch)
-	exists, stderr, err = RefExists(ref)
+	exists, stderr, err = RemoteBranchExists(branch, remote)
 	return
+}
+
+func LocalBranchExists(branch string) (exists bool, stderr *bytes.Buffer, err error) {
+	ref := "refs/heads/" + branch
+	return RefExists(ref)
+}
+
+func RemoteBranchExists(branch string, remote string) (exists bool, stderr *bytes.Buffer, err error) {
+	ref := fmt.Sprintf("refs/remotes/%v/%v", remote, branch)
+	return RefExists(ref)
+}
+
+func CreateOrResetBranch(branch, target string) (stderr *bytes.Buffer, err error) {
+	exists, stderr, err := LocalBranchExists(branch)
+	if err != nil {
+		return
+	}
+
+	// Reset the branch in case it exists.
+	if exists {
+		return ResetKeep(branch, target)
+	}
+	// Otherwise create a new branch.
+	return Branch(branch, target)
 }
 
 func Checkout(branch string) (stderr *bytes.Buffer, err error) {
@@ -68,13 +89,13 @@ func Checkout(branch string) (stderr *bytes.Buffer, err error) {
 	return
 }
 
-func ResetHard(branch, ref string) (stderr *bytes.Buffer, err error) {
+func ResetKeep(branch, ref string) (stderr *bytes.Buffer, err error) {
 	stderr, err = Checkout(branch)
 	if err != nil {
 		return
 	}
 
-	_, stderr, err = Git("reset", "--hard", ref)
+	_, stderr, err = Git("reset", "--keep", ref)
 	return
 }
 
@@ -82,8 +103,9 @@ func ShowByBranch(branch, file string) (content, stderr *bytes.Buffer, err error
 	return Git("show", branch+":"+file)
 }
 
-func Tag(tag string) (stderr *bytes.Buffer, err error) {
-	_, stderr, err = Git("tag", tag)
+func Tag(args ...string) (stderr *bytes.Buffer, err error) {
+	argsList := append([]string{"tag"}, args...)
+	_, stderr, err = Git(argsList...)
 	return
 }
 

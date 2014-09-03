@@ -74,6 +74,10 @@ func (ver *Version) String() string {
 	return fmt.Sprintf("%v.%v.%v", ver.Major, ver.Minor, ver.Patch)
 }
 
+func (ver *Version) ReleaseTagString() string {
+	return "v" + ver.String()
+}
+
 func (ver *Version) CommitToBranch(branch string) (stderr *bytes.Buffer, err error) {
 	// Checkout the branch.
 	stderr, err = git.Checkout(branch)

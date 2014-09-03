@@ -5,4 +5,5 @@ const (
 
 	TrunkBranch   = "develop"
 	ReleaseBranch = "release"
+	ClientBranch  = "client"
 )
