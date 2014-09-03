@@ -137,15 +137,38 @@ func runMain() (err error) {
 	if err != nil {
 		return
 	}
+	defer func() {
+		if err != nil {
+			msg := "Create the release branch on top of the trunk branch"
+			log.Rollback(msg)
+			out, ex := git.Branch("-D", config.ReleaseBranch)
+			if ex != nil {
+				log.FailWithContext(msg, out)
+			}
+		}
+	}()
 
 	// Commit the future version string to the trunk branch.
-	taskMsg = fmt.Sprintf("Commit the future version string (%v) into the trunk branch",
-		futureVersion)
+	taskMsg = "Commit the future version string into the trunk branch"
 	log.Run(taskMsg)
+	origTrunk, stderr, err := git.Hexsha("refs/heads/" + config.TrunkBranch)
+	if err != nil {
+		return
+	}
 	stderr, err = futureVersion.CommitToBranch(config.TrunkBranch)
 	if err != nil {
 		return
 	}
+	defer func() {
+		if err != nil {
+			msg := "Commit the future version string into the trunk branch"
+			log.Rollback(msg)
+			out, ex := git.ResetKeep(config.TrunkBranch, origTrunk)
+			if ex != nil {
+				log.FailWithContext(msg, out)
+			}
+		}
+	}()
 
 	// Push trunk and release.
 	taskMsg = "Push the modified branches"

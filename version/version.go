@@ -18,7 +18,7 @@ import (
 
 const (
 	PackageFileName = "package.json"
-	VersionPattern  = "^([0-9]+)[.]([0-9]+)[.]([0-9]+)$"
+	VersionPattern  = "([0-9]+)[.]([0-9]+)[.]([0-9]+)"
 )
 
 type packageFile struct {
@@ -52,7 +52,7 @@ func ReadFromBranch(branch string) (ver *Version, stderr *bytes.Buffer, err erro
 }
 
 func (ver *Version) Zero() bool {
-	return ver.Major != 0 && ver.Minor != 0 && ver.Patch != 0
+	return ver.Major == 0 && ver.Minor == 0 && ver.Patch == 0
 }
 
 func (ver *Version) IncrementPatch() *Version {

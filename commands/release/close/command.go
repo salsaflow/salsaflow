@@ -94,6 +94,7 @@ func runMain() (err error) {
 	}
 
 	// Tag the release branch with its version string.
+	taskMsg = "Tag the release branch with its version string"
 	ver, stderr, err := version.ReadFromBranch(config.ReleaseBranch)
 	if err != nil {
 		return
@@ -105,18 +106,10 @@ func runMain() (err error) {
 	}
 	defer func() {
 		if err != nil {
-			// Re-create the release branch on the tag.
-			msg := "Recreate the release branch"
-			log.Rollback(msg)
-			out, ex := git.Branch(config.ReleaseBranch, tag)
-			if ex != nil {
-				log.FailWithContext(msg, out)
-				return
-			}
 			// Delete the release tag.
-			msg = "Delete the release tag"
+			msg := "Tag the release branch with its version string"
 			log.Rollback(msg)
-			out, ex = git.DeleteTag(tag)
+			out, ex := git.DeleteTag(tag)
 			if ex != nil {
 				log.FailWithContext(msg, out)
 			}
