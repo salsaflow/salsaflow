@@ -95,6 +95,7 @@ func runMain() (err error) {
 
 	// Tag the release branch with its version string.
 	taskMsg = "Tag the release branch with its version string"
+	log.Run(taskMsg)
 	ver, stderr, err := version.ReadFromBranch(config.ReleaseBranch)
 	if err != nil {
 		return
@@ -137,6 +138,7 @@ func runMain() (err error) {
 
 	// Push to create the tag, reset client and delete release in the remote repository.
 	taskMsg = "Push to create the tag, reset client and delete release"
+	log.Run(taskMsg)
 	toPush := []string{
 		"--tags",
 		":" + config.ReleaseBranch,
