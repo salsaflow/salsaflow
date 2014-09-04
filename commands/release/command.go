@@ -1,4 +1,4 @@
-package release
+package releaseCmd
 
 import (
 	"github.com/tchap/git-trunk/commands/release/close"
@@ -7,17 +7,15 @@ import (
 	"github.com/tchap/gocli"
 )
 
-var Command *gocli.Command
+var Command = &gocli.Command{
+	UsageLine: "release",
+	Short:     "various release-related actions",
+	Long: `
+  Perform various release-related actions. See the subcommands.
+	`,
+}
 
 func init() {
-	Command = &gocli.Command{
-		UsageLine: "release",
-		Short:     "various release actions",
-		Long: `
-  Perform various release-related actions. See the subcommands.
-		`,
-	}
-
 	Command.MustRegisterSubcommand(createCmd.Command)
 	Command.MustRegisterSubcommand(closeCmd.Command)
 }

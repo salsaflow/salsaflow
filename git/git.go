@@ -176,6 +176,7 @@ func RepositoryRootAbsolutePath() (path string, stderr *bytes.Buffer, err error)
 func Git(args ...string) (stdout, stderr *bytes.Buffer, err error) {
 	stdout = new(bytes.Buffer)
 	stderr = new(bytes.Buffer)
+	args = append([]string{"--no-pager"}, args...)
 	cmd := exec.Command("git", args...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr

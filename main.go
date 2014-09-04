@@ -6,6 +6,7 @@ import (
 
 	// Internal
 	"github.com/tchap/git-trunk/commands/release"
+	"github.com/tchap/git-trunk/commands/story"
 
 	// Other
 	"github.com/tchap/gocli"
@@ -24,7 +25,8 @@ func main() {
   Trunk Based Development. See the list of subcommands.`
 
 	// Register subcommands.
-	trunk.MustRegisterSubcommand(release.Command)
+	trunk.MustRegisterSubcommand(releaseCmd.Command)
+	trunk.MustRegisterSubcommand(storyCmd.Command)
 
 	// Run the application.
 	trunk.Run(os.Args[1:])
