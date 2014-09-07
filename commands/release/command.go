@@ -1,6 +1,7 @@
 package releaseCmd
 
 import (
+	"github.com/tchap/git-trunk/commands/release/changes"
 	"github.com/tchap/git-trunk/commands/release/close"
 	"github.com/tchap/git-trunk/commands/release/create"
 
@@ -16,6 +17,7 @@ var Command = &gocli.Command{
 }
 
 func init() {
-	Command.MustRegisterSubcommand(createCmd.Command)
+	Command.MustRegisterSubcommand(changesCmd.Command)
 	Command.MustRegisterSubcommand(closeCmd.Command)
+	Command.MustRegisterSubcommand(createCmd.Command)
 }

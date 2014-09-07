@@ -7,14 +7,18 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strconv"
 	"text/tabwriter"
 
 	// Internal
+	"github.com/tchap/git-trunk/config"
 	"github.com/tchap/git-trunk/flag"
 	"github.com/tchap/git-trunk/git"
 	"github.com/tchap/git-trunk/log"
+	"github.com/tchap/git-trunk/version"
 
 	// Other
+	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 	"github.com/tchap/gocli"
 )
 
@@ -22,20 +26,18 @@ var Command = &gocli.Command{
 	UsageLine: `
   changes [-porcelain]
           [-include_source=REGEXP ...]
-          [-exclude_source=REGEXP ...]
-          STORY`,
-	Short: "list the changes associated with the given story",
+          [-exclude_source=REGEXP ...]`,
+	Short: "list the changes associated with the current release",
 	Long: `
   List the change sets (the commits with the same change ID)
-  associated with the given story together with some interesting details,
+  associated with the current release together with some details,
   e.g. the commit SHA, the source ref and the commit title.
 
   -include_source and -exclude_source flags can be used to limit
-  what change sets are actually listed. When these flags are used,
-  every change set (the commits with the same change ID) is checked
-  and the whole set is printed iff there is a commit with the source
-  matching one of the include filters and there is no commit with
-  the source matching one of the exclude filters.
+  what change sets are listed. When these flags are used, every change set
+  is checked and the whole set is printed iff there is a commit with the source
+  matching one of the include filters and there is no commit with the source
+  matching one of the exclude filters.
 
   -porcelain flag will make the output more script-friendly,
   e.g. it will fill the change ID in every column.
@@ -55,50 +57,18 @@ func init() {
 	Command.Flags.Var(exclude, "exclude_source", "source ref to exclude")
 }
 
-func includeGroup(cg *changeGroup) bool {
-	includeMatches := false
-	if len(include.Values) != 0 {
-	IncludeLoop:
-		for _, commit := range cg.commits {
-			for _, pattern := range include.Values {
-				if pattern.MatchString(commit.Source) {
-					includeMatches = true
-					break IncludeLoop
-				}
-			}
-		}
-	} else {
-		includeMatches = true
-	}
-
-	excludeMatches := false
-	if len(exclude.Values) != 0 {
-	ExcludeLoop:
-		for _, commit := range cg.commits {
-			for _, pattern := range exclude.Values {
-				if pattern.MatchString(commit.Source) {
-					excludeMatches = true
-					break ExcludeLoop
-				}
-			}
-		}
-	}
-
-	return includeMatches && !excludeMatches
-}
-
 func run(cmd *gocli.Command, args []string) {
-	if len(args) != 1 {
+	if len(args) != 0 {
 		cmd.Usage()
 		os.Exit(2)
 	}
 
-	if err := runMain(args[0]); err != nil {
+	if err := runMain(); err != nil {
 		log.Fatalln("\nError: " + err.Error())
 	}
 }
 
-func runMain(storyId string) (err error) {
+func runMain() (err error) {
 	var (
 		msg    string
 		stderr *bytes.Buffer
@@ -110,11 +80,40 @@ func runMain(storyId string) (err error) {
 		}
 	}()
 
-	// Get the list of all relevant story commits.
-	msg = "Get the list of relevant story commits"
-	commits, stderr, err := git.ListStoryCommits(storyId)
+	// Get the current release version string.
+	msg = "Get the current release version string"
+	ver, stderr, err := version.ReadFromBranch(config.ReleaseBranch)
 	if err != nil {
 		return
+	}
+
+	// Get the stories associated with the current release.
+	msg = "Fetch Pivotal Tracker stories"
+	if !porcelain {
+		log.Run(msg)
+	}
+	var (
+		token     = config.PivotalTracker.ApiToken()
+		projectId = config.PivotalTracker.ProjectId()
+	)
+	client := pivotal.NewClient(token)
+	stories, _, err := client.Stories.List(projectId, "label:release-"+ver.String())
+	if err != nil {
+		return
+	}
+
+	// Get the list of all relevant story commits.
+	msg = "Get the list of relevant commits"
+	var (
+		cs      []*git.Commit
+		commits = make([]*git.Commit, 0, len(stories))
+	)
+	for _, story := range stories {
+		cs, stderr, err = git.ListStoryCommits(strconv.Itoa(story.Id))
+		if err != nil {
+			return
+		}
+		commits = append(commits, cs...)
 	}
 
 	// Group the commits by change ID.
@@ -128,28 +127,38 @@ func runMain(storyId string) (err error) {
 	sort.Sort(changeGroups(groups))
 
 	// Dump the change details into the console.
-	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
+	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
 
-	io.WriteString(tw, "Change\tCommit SHA\tCommit Source\tCommit Title\n")
-	io.WriteString(tw, "======\t==========\t=============\t============\n")
+	if !porcelain {
+		io.WriteString(tw, "\n")
+		io.WriteString(tw, "Story\tChange\tCommit SHA\tCommit Source\tCommit Title\n")
+		io.WriteString(tw, "=====\t======\t==========\t=============\t============\n")
+	}
 	for _, group := range groups {
 		if !includeGroup(group) {
 			continue
 		}
 
 		commit := group.commits[0]
-		var changeId string
+		var (
+			storyId  string
+			changeId string
+		)
 		if porcelain {
+			storyId = commit.StoryId
 			changeId = commit.ChangeId
 		}
 
-		fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n",
-			commit.ChangeId, commit.SHA, commit.Source, commit.Title)
+		fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
+			commit.StoryId, commit.ChangeId, commit.SHA, commit.Source, commit.Title)
 		for _, commit := range group.commits[1:] {
-			fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", changeId, commit.SHA, commit.Source, commit.Title)
+			fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
+				storyId, changeId, commit.SHA, commit.Source, commit.Title)
 		}
 	}
-	io.WriteString(tw, "\n")
+	if !porcelain {
+		io.WriteString(tw, "\n")
+	}
 
 	tw.Flush()
 	return nil
@@ -233,4 +242,38 @@ func (cgs changeGroups) Swap(i, j int) {
 	tmp := cgs[i]
 	cgs[i] = cgs[j]
 	cgs[j] = tmp
+}
+
+// Stuff
+
+func includeGroup(cg *changeGroup) bool {
+	includeMatches := false
+	if len(include.Values) != 0 {
+	IncludeLoop:
+		for _, commit := range cg.commits {
+			for _, pattern := range include.Values {
+				if pattern.MatchString(commit.Source) {
+					includeMatches = true
+					break IncludeLoop
+				}
+			}
+		}
+	} else {
+		includeMatches = true
+	}
+
+	excludeMatches := false
+	if len(exclude.Values) != 0 {
+	ExcludeLoop:
+		for _, commit := range cg.commits {
+			for _, pattern := range exclude.Values {
+				if pattern.MatchString(commit.Source) {
+					excludeMatches = true
+					break ExcludeLoop
+				}
+			}
+		}
+	}
+
+	return includeMatches && !excludeMatches
 }
