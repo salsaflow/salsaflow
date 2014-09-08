@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	PackageFileName = "package.json"
-	VersionPattern  = "([0-9]+)[.]([0-9]+)[.]([0-9]+)"
+	PackageFileName    = "package.json"
+	GroupMatcherString = "([0-9]+)[.]([0-9]+)[.]([0-9]+)"
+	MatcherString      = "[0-9]+[.][0-9]+[.][0-9]+"
 )
 
 type packageFile struct {
@@ -105,7 +106,7 @@ func (ver *Version) CommitToBranch(branch string) (stderr *bytes.Buffer, err err
 	}
 
 	// Parse and replace stuff in package.json
-	pattern := regexp.MustCompile(fmt.Sprintf("\"version\": \"%v\"", VersionPattern))
+	pattern := regexp.MustCompile(fmt.Sprintf("\"version\": \"%v\"", MatcherString))
 	newContent := pattern.ReplaceAllLiteral(content,
 		[]byte(fmt.Sprintf("\"version\": \"%v\"", ver)))
 	if bytes.Equal(content, newContent) {
@@ -138,7 +139,7 @@ func (ver *Version) CommitToBranch(branch string) (stderr *bytes.Buffer, err err
 }
 
 func parseVersion(versionString string) (ver *Version, err error) {
-	pattern := regexp.MustCompile("^" + VersionPattern + "$")
+	pattern := regexp.MustCompile("^" + GroupMatcherString + "$")
 	parts := pattern.FindStringSubmatch(versionString)
 	if len(parts) != 4 {
 		return nil, fmt.Errorf("invalid version string: %v", versionString)

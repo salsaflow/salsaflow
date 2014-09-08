@@ -72,7 +72,9 @@ func (l Logger) Fail(msg string) {
 }
 
 func (l Logger) FailWithContext(msg string, stderr *bytes.Buffer) {
-	l.Fail(msg)
+	if msg != "" {
+		l.Fail(msg)
+	}
 	if stderr != nil && stderr.Len() != 0 {
 		l.Println("<<<<< stderr")
 		l.Print(stderr)
