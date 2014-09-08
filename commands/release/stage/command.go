@@ -1,4 +1,4 @@
-package closeCmd
+package stageCmd
 
 import (
 	// Stdlib
@@ -18,14 +18,14 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  close`,
-	Short: "close the current release",
+  stage`,
+	Short: "stage and close the current release",
 	Long: `
-  Close the release that is currently running. This means that:
+  Stage and close the release that is currently running. This means that:
 
-    1) Branch 'release' is tagged with its version string.
-    2) Branch 'release' is deleted.
-    3) Branch 'client' is moved to point to the newly created tag.
+    1) The release branch is tagged with its version string.
+    2) The release branch is deleted.
+    3) The client branch is moved to point to the newly created tag.
     4) Everything is pushed.
 	`,
 	Action: run,

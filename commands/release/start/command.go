@@ -1,4 +1,4 @@
-package createCmd
+package startCmd
 
 import (
 	// Stdlib
@@ -18,8 +18,8 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  create [-future_release=FUTURE]`,
-	Short: "create the release branch",
+  start [-future_release=FUTURE]`,
+	Short: "start the release branch",
 	Long: `
   Start a new release by creating the release branch from the trunk branch.
   More specifically, the steps are:

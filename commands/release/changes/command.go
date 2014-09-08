@@ -18,8 +18,8 @@ import (
 	"github.com/tchap/git-trunk/version"
 
 	// Other
-	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 	"github.com/tchap/gocli"
+	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 )
 
 var Command = &gocli.Command{
