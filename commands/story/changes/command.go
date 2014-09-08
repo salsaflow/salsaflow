@@ -128,10 +128,13 @@ func runMain(storyId string) (err error) {
 	sort.Sort(changeGroups(groups))
 
 	// Dump the change details into the console.
-	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
+	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
 
-	io.WriteString(tw, "Change\tCommit SHA\tCommit Source\tCommit Title\n")
-	io.WriteString(tw, "======\t==========\t=============\t============\n")
+	if !porcelain {
+		io.WriteString(tw, "\n")
+		io.WriteString(tw, "Change\tCommit SHA\tCommit Source\tCommit Title\n")
+		io.WriteString(tw, "======\t==========\t=============\t============\n")
+	}
 	for _, group := range groups {
 		if !includeGroup(group) {
 			continue
@@ -149,7 +152,9 @@ func runMain(storyId string) (err error) {
 			fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", changeId, commit.SHA, commit.Source, commit.Title)
 		}
 	}
-	io.WriteString(tw, "\n")
+	if !porcelain {
+		io.WriteString(tw, "\n")
+	}
 
 	tw.Flush()
 	return nil
