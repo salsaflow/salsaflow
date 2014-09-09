@@ -180,7 +180,7 @@ func runMain() (err error) {
 
 	// Deliver the stories in Pivotal Tracker.
 	taskMsg = "Deliver the stories"
-	stderr, err = pivotaltracker.SetStoriesState(stories, pivotal.StoryStateDelivered)
+	stories, stderr, err = pivotaltracker.SetStoriesState(stories, pivotal.StoryStateDelivered)
 	if err != nil {
 		return
 	}
@@ -188,7 +188,7 @@ func runMain() (err error) {
 		// On error, set the story state back to Finished.
 		if err != nil {
 			msg := "Deliver the stories"
-			out, ex := pivotaltracker.SetStoriesState(
+			_, out, ex := pivotaltracker.SetStoriesState(
 				stories, pivotal.StoryStateFinished)
 			if ex != nil {
 				log.FailWithContext(msg, out)

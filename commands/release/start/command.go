@@ -12,7 +12,7 @@ import (
 	"github.com/tchap/git-trunk/git"
 	"github.com/tchap/git-trunk/log"
 	"github.com/tchap/git-trunk/prompt"
-	"github.com/tchap/git-trunk/utils/pivotaltracker"
+	pt "github.com/tchap/git-trunk/utils/pivotaltracker"
 	"github.com/tchap/git-trunk/version"
 
 	// Other
@@ -86,7 +86,7 @@ func runMain() (err error) {
 
 	// Fetch the Pivotal Tracker candidate stories.
 	taskMsg = "Fetch Pivotal Tracker stories"
-	stories, err := pivotaltracker.ListReleaseCandidateStories()
+	stories, err := pt.ListReleaseCandidateStories()
 	if err != nil {
 		return err
 	}
@@ -141,19 +141,20 @@ func runMain() (err error) {
 		return
 	}
 
+	// Read the trunk version string.
+	taskMsg = "Read the current trunk version string"
+	log.Run(taskMsg)
+	ver, stderr, err := version.ReadFromBranch(config.TrunkBranch)
+	if err != nil {
+		return
+	}
+
 	// Get the future version string.
 	var futureVersion *version.Version
 	if !flagFuture.Zero() {
 		futureVersion = &flagFuture
 	} else {
-		taskMsg = "Read the current trunk version string"
-		log.Run(taskMsg)
-		var current *version.Version
-		current, stderr, err = version.ReadFromBranch(config.TrunkBranch)
-		if err != nil {
-			return
-		}
-		futureVersion = current.IncrementPatch()
+		futureVersion = ver.IncrementPatch()
 	}
 
 	// Create release on top of trunk.
@@ -167,7 +168,7 @@ func runMain() (err error) {
 		if err != nil {
 			msg := "Create the release branch on top of the trunk branch"
 			log.Rollback(msg)
-			out, ex := git.Branch("-D", config.ReleaseBranch)
+			out, ex := git.Branch("-d", config.ReleaseBranch)
 			if ex != nil {
 				log.FailWithContext(msg, out)
 			}
@@ -190,6 +191,25 @@ func runMain() (err error) {
 			msg := "Commit the future version string into the trunk branch"
 			log.Rollback(msg)
 			out, ex := git.ResetKeep(config.TrunkBranch, origTrunk)
+			if ex != nil {
+				log.FailWithContext(msg, out)
+			}
+		}
+	}()
+
+	// Add release labels to the relevant stories.
+	taskMsg = "Label the stories with the release label"
+	log.Run(taskMsg)
+	stories, stderr, err = pt.AddLabel(stories, pt.ReleaseLabel(ver.String()))
+	if err != nil {
+		return
+	}
+	defer func() {
+		// On error, remove the release labels again.
+		if err != nil {
+			msg := "Label the stories with the release label"
+			log.Rollback(msg)
+			_, out, ex := pt.RemoveLabel(stories, pt.ReleaseLabel(ver.String()))
 			if ex != nil {
 				log.FailWithContext(msg, out)
 			}
