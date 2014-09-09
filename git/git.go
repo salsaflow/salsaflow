@@ -16,9 +16,9 @@ func UpdateRemotes(remotes ...string) (stderr *bytes.Buffer, err error) {
 	return
 }
 
-func Push(remote string, refs []string) (stderr *bytes.Buffer, err error) {
+func Push(remote string, args ...string) (stderr *bytes.Buffer, err error) {
 	argsList := append([]string{"push"}, remote)
-	argsList = append(argsList, refs...)
+	argsList = append(argsList, args...)
 	_, stderr, err = Git(argsList...)
 	return
 }

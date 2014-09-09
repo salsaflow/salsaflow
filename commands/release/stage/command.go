@@ -200,12 +200,10 @@ func runMain() (err error) {
 	// Push to create the tag, reset client and delete release in the remote repository.
 	taskMsg = "Push to create the tag, reset client and delete release"
 	log.Run(taskMsg)
-	toPush := []string{
-		"-f", // for the client branch
-		"--tags",
-		":" + config.ReleaseBranch,
-		config.ClientBranch + ":" + config.ClientBranch,
-	}
-	stderr, err = git.Push(config.OriginName, toPush)
+	stderr, err = git.Push(
+		config.OriginName,
+		"-f", "--tags",
+		":"+config.ReleaseBranch,
+		config.ClientBranch+":"+config.ClientBranch)
 	return
 }

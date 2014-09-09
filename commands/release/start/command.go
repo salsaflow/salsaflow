@@ -219,10 +219,10 @@ func runMain() (err error) {
 	// Push trunk and release.
 	taskMsg = "Push the modified branches"
 	log.Run(taskMsg)
-	stderr, err = git.Push(config.OriginName, []string{
-		config.ReleaseBranch + ":" + config.ReleaseBranch,
-		config.TrunkBranch + ":" + config.TrunkBranch,
-	})
+	stderr, err = git.Push(
+		config.OriginName,
+		config.ReleaseBranch+":"+config.ReleaseBranch,
+		config.TrunkBranch+":"+config.TrunkBranch)
 	if err != nil {
 		return
 	}
