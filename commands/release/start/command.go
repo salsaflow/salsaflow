@@ -12,11 +12,11 @@ import (
 	"github.com/tchap/git-trunk/git"
 	"github.com/tchap/git-trunk/log"
 	"github.com/tchap/git-trunk/prompt"
+	"github.com/tchap/git-trunk/utils/pivotaltracker"
 	"github.com/tchap/git-trunk/version"
 
 	// Other
 	"github.com/tchap/gocli"
-	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 )
 
 var Command = &gocli.Command{
@@ -86,30 +86,9 @@ func runMain() (err error) {
 
 	// Fetch the Pivotal Tracker candidate stories.
 	taskMsg = "Fetch Pivotal Tracker stories"
-	var (
-		token     = config.PivotalTracker.ApiToken()
-		projectId = config.PivotalTracker.ProjectId()
-	)
-
-	client := pivotal.NewClient(token)
-
-	/*
-		filter := fmt.Sprintf(
-			"type:%v,%v state:%v !label:/release-%v/",
-			pivotal.StoryTypeFeature,
-			pivotal.StoryTypeBug,
-			pivotal.StoryStateFinished,
-			version.MatcherString)
-	*/
-	taskMsg = ""
-	filter := fmt.Sprintf(
-		"type:%v,%v state:%v !label:/release-.*/",
-		pivotal.StoryTypeFeature,
-		pivotal.StoryTypeBug,
-		pivotal.StoryStateFinished)
-	stories, _, err := client.Stories.List(projectId, filter)
+	stories, err := pivotaltracker.ListReleaseCandidateStories()
 	if err != nil {
-		return
+		return err
 	}
 
 	// Prompt the user to confirm the release.
@@ -123,6 +102,7 @@ func runMain() (err error) {
 		err = errors.New("Operation canceled")
 		return
 	}
+	fmt.Println()
 
 	// Remember the current branch.
 	taskMsg = "Remember the current branch"

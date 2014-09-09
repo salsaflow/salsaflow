@@ -35,7 +35,6 @@ func ConfirmStories(headerLine string, stories []*pivotal.Story) (bool, error) {
 		return false, err
 	}
 
-	fmt.Println()
 	return line == "y", nil
 }
 
