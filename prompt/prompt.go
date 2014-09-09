@@ -35,6 +35,7 @@ func ConfirmStories(headerLine string, stories []*pivotal.Story) (bool, error) {
 		return false, err
 	}
 
+	fmt.Println()
 	return line == "y", nil
 }
 
@@ -54,5 +55,5 @@ func printStoriesConfirmationDialog(headerLine string, stories []*pivotal.Story)
 	io.WriteString(tw, "\n")
 	tw.Flush()
 
-	fmt.Print("Do you want to proceed? [y/N]:")
+	fmt.Print("Do you want to proceed? [y/N]: ")
 }

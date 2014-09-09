@@ -120,8 +120,7 @@ func Hexsha(ref string) (hexsha string, stderr *bytes.Buffer, err error) {
 		return
 	}
 
-	hexsha = string(bytes.TrimSpace(stdout.Bytes()))
-	hexsha = strings.Split(hexsha, " ")[0]
+	hexsha = strings.Split(stdout.String(), " ")[0]
 	return
 }
 
