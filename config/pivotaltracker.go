@@ -4,19 +4,32 @@ import (
 	"github.com/tchap/git-trunk/log"
 )
 
+const (
+	DefaultReviewedLabel = "reviewed"
+	DefaultVerifiedLabel = "qa+"
+)
+
 var PivotalTracker PivotalTrackerConfig
 
 var ptLocalConfig struct {
 	PT struct {
 		ProjectId int `yaml:"ProjectId"`
+		Labels    struct {
+			ReviewedLabel string `yaml:"ReviewedLabel"`
+			VerifiedLabel string `yaml:"VerifiedLabel"`
+		} `yaml:"Labels"`
 	} `yaml:"PivotalTracker"`
 }
+
+var ptLocal = &ptLocalConfig.PT
 
 var ptGlobalConfig struct {
 	PT struct {
 		Token string `yaml:"Token"`
 	} `yaml:"PivotalTracker"`
 }
+
+var ptGlobal = &ptGlobalConfig.PT
 
 func init() {
 	if err := fillLocalConfig(&ptLocalConfig); err != nil {
@@ -27,6 +40,13 @@ func init() {
 	if err := fillGlobalConfig(&ptGlobalConfig); err != nil {
 		log.Fail("Load global Pivotal Tracker configuration")
 		log.Fatalln(err)
+	}
+
+	if ptLocal.Labels.ReviewedLabel == "" {
+		ptLocal.Labels.ReviewedLabel = DefaultReviewedLabel
+	}
+	if ptLocal.Labels.VerifiedLabel == "" {
+		ptLocal.Labels.VerifiedLabel = DefaultVerifiedLabel
 	}
 
 	if err := ptValidateLocalConfig(); err != nil {
@@ -43,16 +63,24 @@ func init() {
 type PivotalTrackerConfig struct{}
 
 func (pt *PivotalTrackerConfig) ProjectId() int {
-	return ptLocalConfig.PT.ProjectId
+	return ptLocal.ProjectId
+}
+
+func (pt *PivotalTrackerConfig) ReviewedLabel() string {
+	return ptLocal.Labels.ReviewedLabel
+}
+
+func (pt *PivotalTrackerConfig) VerifiedLabel() string {
+	return ptLocal.Labels.VerifiedLabel
 }
 
 func (pt *PivotalTrackerConfig) ApiToken() string {
-	return ptGlobalConfig.PT.Token
+	return ptGlobal.Token
 }
 
 func ptValidateLocalConfig() error {
 	switch {
-	case ptLocalConfig.PT.ProjectId == 0:
+	case ptLocal.ProjectId == 0:
 		return &ErrFieldNotSet{"PivotalTracker.ProjectId"}
 	default:
 		return nil
@@ -61,7 +89,7 @@ func ptValidateLocalConfig() error {
 
 func ptValidateGlobalConfig() error {
 	switch {
-	case ptGlobalConfig.PT.Token == "":
+	case ptGlobal.Token == "":
 		return &ErrFieldNotSet{"PivotalTracker.Token"}
 	default:
 		return nil
