@@ -34,12 +34,12 @@ var ptGlobal = &ptGlobalConfig.PT
 func init() {
 	if err := fillLocalConfig(&ptLocalConfig); err != nil {
 		log.Fail("Load local Pivotal Tracker configuration")
-		log.Fatalln(err)
+		log.Fatalln("\nError:", err)
 	}
 
 	if err := fillGlobalConfig(&ptGlobalConfig); err != nil {
 		log.Fail("Load global Pivotal Tracker configuration")
-		log.Fatalln(err)
+		log.Fatalln("\nError:", err)
 	}
 
 	if ptLocal.Labels.ReviewedLabel == "" {
@@ -51,12 +51,12 @@ func init() {
 
 	if err := ptValidateLocalConfig(); err != nil {
 		log.Fail("Validate local Pivotal Tracker configuration")
-		log.Fatalln(err)
+		log.Fatalln("\nError:", err)
 	}
 
 	if err := ptValidateGlobalConfig(); err != nil {
 		log.Fail("Validate global Pivotal Tracker configuration")
-		log.Fatalln(err)
+		log.Fatalln("\nError:", err)
 	}
 }
 

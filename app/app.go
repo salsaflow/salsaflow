@@ -17,6 +17,10 @@ func RegisterGlobalFlags(flags *flag.FlagSet) {
 	flags.Var(LogFlag, "log", "set logging verbosity; {trace|debug|verbose|info|off}")
 }
 
-func Init() {
+func MustInit() {
+	// Set up logging.
 	log.SetV(log.MustStringToLevel(LogFlag.Value()))
+
+	// Load the workflow configuration.
+	config.MustLoad()
 }

@@ -32,14 +32,14 @@ func init() {
 	localConfig, stderr, err := readLocalConfig()
 	if err != nil {
 		log.FailWithContext("Read local configuration file", stderr)
-		log.Fatalln(err)
+		log.Fatalln("\nError:", err)
 	}
 	localConfigContent = localConfig.Bytes()
 
 	globalConfig, err := readGlobalConfig()
 	if err != nil {
 		log.Fail("Read global configuration file")
-		log.Fatalln(err)
+		log.Fatalln("\nError:", err)
 	}
 	globalConfigContent = globalConfig.Bytes()
 }
