@@ -13,7 +13,7 @@ import (
 	"github.com/tchap/gocli"
 )
 
-const version = "0.1"
+const version = "0.1.2"
 
 func main() {
 	// Initialise the application.
