@@ -13,20 +13,20 @@ var PivotalTracker PivotalTrackerConfig
 
 var ptLocalConfig struct {
 	PT struct {
-		ProjectId int `yaml:"ProjectId"`
+		ProjectId int `yaml:"project_id"`
 		Labels    struct {
-			ReviewedLabel string `yaml:"ReviewedLabel"`
-			VerifiedLabel string `yaml:"VerifiedLabel"`
-		} `yaml:"Labels"`
-	} `yaml:"PivotalTracker"`
+			ReviewedLabel string `yaml:"reviewed"`
+			VerifiedLabel string `yaml:"verified"`
+		} `yaml:"labels"`
+	} `yaml:"pivotal_tracker"`
 }
 
 var ptLocal = &ptLocalConfig.PT
 
 var ptGlobalConfig struct {
 	PT struct {
-		Token string `yaml:"Token"`
-	} `yaml:"PivotalTracker"`
+		Token string `yaml:"token"`
+	} `yaml:"pivotal_tracker"`
 }
 
 var ptGlobal = &ptGlobalConfig.PT
