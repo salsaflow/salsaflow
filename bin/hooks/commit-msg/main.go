@@ -78,7 +78,7 @@ func run(msgPath string) error {
 		if err != nil {
 			return err
 		}
-		lines = append(lines, fmt.Sprintf("Change-Id: %v\n", changeId))
+		lines = append(lines, fmt.Sprintf("Change-Id: %v", changeId))
 	}
 
 	if !storyIdSeen {
@@ -91,7 +91,7 @@ func run(msgPath string) error {
 		matcher := regexp.MustCompile("^story/.+/([0-9]+)$")
 		parts := matcher.FindStringSubmatch(branch)
 		if len(parts) == 2 {
-			lines = append(lines, fmt.Sprintf("Story-Id: %v\n", parts[1]))
+			lines = append(lines, fmt.Sprintf("Story-Id: %v", parts[1]))
 		}
 	}
 
@@ -104,7 +104,7 @@ func run(msgPath string) error {
 		return err
 	}
 
-	content := strings.Join(lines, "\n")
+	content := strings.Join(lines, "\n") + "\n"
 	_, err = io.Copy(file, strings.NewReader(content))
 	return err
 }
