@@ -28,7 +28,8 @@ var (
 	globalConfigContent []byte
 )
 
-func init() {
+func MustLoad() {
+	// Read the config files from the disk.
 	localConfig, stderr, err := readLocalConfig()
 	if err != nil {
 		log.FailWithContext("Read local configuration file", stderr)
@@ -42,6 +43,9 @@ func init() {
 		log.Fatalln("\nError:", err)
 	}
 	globalConfigContent = globalConfig.Bytes()
+
+	// Initialize the modules.
+	mustInitPivotalTracker()
 }
 
 func readLocalConfig() (content, stderr *bytes.Buffer, err error) {

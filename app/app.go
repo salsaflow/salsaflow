@@ -5,12 +5,14 @@ import (
 	"flag"
 
 	// Internal
+	"github.com/tchap/git-trunk/config"
 	flags "github.com/tchap/git-trunk/flag"
 	"github.com/tchap/git-trunk/log"
 )
 
 var (
-	LogFlag *flags.StringEnumFlag = flags.NewStringEnumFlag(log.LevelStrings(), log.MustLevelToString(log.Info))
+	LogFlag *flags.StringEnumFlag = flags.NewStringEnumFlag(
+		log.LevelStrings(), log.MustLevelToString(log.Info))
 )
 
 func RegisterGlobalFlags(flags *flag.FlagSet) {

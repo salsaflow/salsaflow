@@ -31,7 +31,7 @@ var ptGlobalConfig struct {
 
 var ptGlobal = &ptGlobalConfig.PT
 
-func init() {
+func mustInitPivotalTracker() {
 	if err := fillLocalConfig(&ptLocalConfig); err != nil {
 		log.Fail("Load local Pivotal Tracker configuration")
 		log.Fatalln("\nError:", err)

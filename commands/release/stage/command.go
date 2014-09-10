@@ -39,7 +39,7 @@ func run(cmd *gocli.Command, args []string) {
 		os.Exit(2)
 	}
 
-	app.Init()
+	app.MustInit()
 
 	if err := runMain(); err != nil {
 		log.Fatalln("\nError: " + err.Error())
