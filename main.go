@@ -5,6 +5,7 @@ import (
 	"os"
 
 	// Internal
+	"github.com/tchap/git-trunk/app"
 	"github.com/tchap/git-trunk/commands/release"
 	"github.com/tchap/git-trunk/commands/story"
 
@@ -23,6 +24,9 @@ func main() {
 	trunk.Long = `
   git-trunk is a git plugin that provides some useful shortcuts for
   Trunk Based Development. See the list of subcommands.`
+
+	// Register global flags.
+	app.RegisterGlobalFlags(&trunk.Flags)
 
 	// Register subcommands.
 	trunk.MustRegisterSubcommand(releaseCmd.Command)

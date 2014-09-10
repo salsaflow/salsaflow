@@ -6,6 +6,7 @@ import (
 	"os"
 
 	// Internal
+	"github.com/tchap/git-trunk/app"
 	"github.com/tchap/git-trunk/config"
 	"github.com/tchap/git-trunk/git"
 	"github.com/tchap/git-trunk/log"
@@ -37,6 +38,8 @@ func run(cmd *gocli.Command, args []string) {
 		cmd.Usage()
 		os.Exit(2)
 	}
+
+	app.Init()
 
 	if err := runMain(); err != nil {
 		log.Fatalln("\nError: " + err.Error())

@@ -1,6 +1,7 @@
 package flag
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 )
@@ -29,4 +30,31 @@ func (set *RegexpSetFlag) Set(value string) error {
 	}
 	set.Values = append(set.Values, re)
 	return nil
+}
+
+type StringEnumFlag struct {
+	choices []string
+	value   string
+}
+
+func NewStringEnumFlag(choices []string, defaultChoice string) *StringEnumFlag {
+	return &StringEnumFlag{choices, defaultChoice}
+}
+
+func (enum *StringEnumFlag) String() string {
+	return enum.value
+}
+
+func (enum *StringEnumFlag) Set(value string) error {
+	for _, c := range enum.choices {
+		if value == c {
+			enum.value = value
+			return nil
+		}
+	}
+	return errors.New("not one of the possible enum values: " + value)
+}
+
+func (enum *StringEnumFlag) Value() string {
+	return enum.value
 }

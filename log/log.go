@@ -2,6 +2,7 @@ package log
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"sync/atomic"
@@ -163,4 +164,54 @@ func Fatalf(format string, v ...interface{}) {
 
 func Fatalln(v ...interface{}) {
 	V(Info).Fatalln(v...)
+}
+
+var levelToStringMap = map[Level]string{
+	Trace:   "trace",
+	Debug:   "debug",
+	Verbose: "verbose",
+	Info:    "info",
+	Off:     "off",
+}
+
+func LevelToString(level Level) (string, bool) {
+	v, ok := levelToStringMap[level]
+	return v, ok
+}
+
+func MustLevelToString(level Level) string {
+	v, ok := LevelToString(level)
+	if !ok {
+		panic(fmt.Errorf("invalid log level: %v", level))
+	}
+	return v
+}
+
+var stringToLevelMap = map[string]Level{
+	"trace":   Trace,
+	"debug":   Debug,
+	"verbose": Verbose,
+	"info":    Info,
+	"off":     Off,
+}
+
+func StringToLevel(levelString string) (Level, bool) {
+	v, ok := stringToLevelMap[levelString]
+	return v, ok
+}
+
+func MustStringToLevel(levelString string) Level {
+	level, ok := StringToLevel(levelString)
+	if !ok {
+		panic(errors.New("invalid log level string: " + levelString))
+	}
+	return level
+}
+
+func LevelStrings() []string {
+	levels := make([]string, 0, len(stringToLevelMap))
+	for k := range stringToLevelMap {
+		levels = append(levels, k)
+	}
+	return levels
 }
