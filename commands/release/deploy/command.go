@@ -3,6 +3,7 @@ package deployCmd
 import (
 	// Stdlib
 	"bytes"
+	"fmt"
 	"os"
 
 	// Internal
@@ -70,6 +71,17 @@ func runMain(ref string) (err error) {
 	log.Run(msg)
 	currentBranch, stderr, err = git.CurrentBranch()
 	if err != nil {
+		return
+	}
+
+	// Make sure that the target ref exists.
+	msg = "Make sure that the target git reference exists"
+	exists, stderr, err := git.RefExists(ref)
+	if err != nil {
+		return
+	}
+	if !exists {
+		err = fmt.Errorf("git reference '%v' not found", ref)
 		return
 	}
 

@@ -29,22 +29,34 @@ func Branch(args ...string) (stderr *bytes.Buffer, err error) {
 	return
 }
 
-// RefExists requires the whole ref path to be specified,
-// e.g. refs/remotes/origin/master.
 func RefExists(ref string) (exists bool, stderr *bytes.Buffer, err error) {
-	_, stderr, err = Git("show-ref", "--verify", "--quiet", ref)
+	_, out, err := Git("show-ref", "--quiet", ref)
 	if err != nil {
-		if stderr.Len() != 0 {
+		if out.Len() != 0 {
 			// Non-empty error output means that there was an error.
-			return
+			return false, out, err
 		}
 		// Otherwise the ref does not exist.
-		err = nil
-		return
+		return false, out, nil
 	}
 	// No error means that the ref exists.
-	exists = true
-	return
+	return true, out, nil
+}
+
+// RefExistsStrict requires the whole ref path to be specified,
+// e.g. refs/remotes/origin/master.
+func RefExistsStrict(ref string) (exists bool, stderr *bytes.Buffer, err error) {
+	_, out, err := Git("show-ref", "--verify", "--quiet", ref)
+	if err != nil {
+		if out.Len() != 0 {
+			// Non-empty error output means that there was an error.
+			return false, out, err
+		}
+		// Otherwise the ref does not exist.
+		return false, out, nil
+	}
+	// No error means that the ref exists.
+	return true, out, nil
 }
 
 func EnsureBranchNotExists(branch string, remote string) (stderr *bytes.Buffer, err error) {
@@ -69,12 +81,12 @@ func EnsureBranchNotExists(branch string, remote string) (stderr *bytes.Buffer, 
 
 func LocalBranchExists(branch string) (exists bool, stderr *bytes.Buffer, err error) {
 	ref := "refs/heads/" + branch
-	return RefExists(ref)
+	return RefExistsStrict(ref)
 }
 
 func RemoteBranchExists(branch string, remote string) (exists bool, stderr *bytes.Buffer, err error) {
 	ref := fmt.Sprintf("refs/remotes/%v/%v", remote, branch)
-	return RefExists(ref)
+	return RefExistsStrict(ref)
 }
 
 func CreateTrackingBranchUnlessExists(branch string, remote string) (stderr *bytes.Buffer, err error) {
@@ -167,7 +179,7 @@ func EnsureBranchSynchronized(branch, remote string) (stderr *bytes.Buffer, err 
 	}
 
 	if localHexsha != remoteHexsha {
-		err = fmt.Errorf("branch %v is not synchronized", branch, remote)
+		err = fmt.Errorf("branch '%v' is not up to date", branch)
 	}
 	return
 }

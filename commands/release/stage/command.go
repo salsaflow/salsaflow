@@ -3,6 +3,7 @@ package stageCmd
 import (
 	// Stdlib
 	"bytes"
+	"errors"
 	"os"
 
 	// Internal
@@ -71,6 +72,21 @@ func runMain() (err error) {
 		}
 	}()
 
+	// Remember the current branch.
+	msg = "Remember the current branch"
+	log.Run(msg)
+	currentBranch, stderr, err = git.CurrentBranch()
+	if err != nil {
+		return
+	}
+
+	// Cannot be on the release branch, it will be deleted.
+	msg = "Make sure that the release branch is not checked out"
+	if currentBranch == config.ReleaseBranch {
+		err = errors.New("cannot stage the release while on the release branch")
+		return
+	}
+
 	// Fetch the remote repository.
 	msg = "Fetch the remote repository"
 	log.Run(msg)
@@ -113,14 +129,6 @@ func runMain() (err error) {
 	msg = "Make sure that all the stories are deliverable"
 	log.Run(msg)
 	stderr, err = pivotaltracker.ReleaseDeliverable(stories)
-	if err != nil {
-		return
-	}
-
-	// Remember the current branch.
-	msg = "Remember the current branch"
-	log.Run(msg)
-	currentBranch, stderr, err = git.CurrentBranch()
 	if err != nil {
 		return
 	}

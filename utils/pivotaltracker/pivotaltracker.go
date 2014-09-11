@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"text/tabwriter"
 
 	// Internal
 	"github.com/tchap/git-trunk/config"
@@ -15,7 +17,7 @@ import (
 )
 
 var (
-	ErrReleaseNotDeliverable = errors.New("Pivotal Tracker: The release is not deliverable")
+	ErrReleaseNotDeliverable = errors.New("Pivotal Tracker: the release is not deliverable")
 	ErrApiCall               = errors.New("Pivotal Tracker: API call failed")
 )
 
@@ -51,22 +53,27 @@ func ListReleaseStories(version string) ([]*pivotal.Story, error) {
 }
 
 func ReleaseDeliverable(stories []*pivotal.Story) (stderr *bytes.Buffer, err error) {
-	stderr = new(bytes.Buffer)
+	var out bytes.Buffer
+	tw := tabwriter.NewWriter(&out, 0, 8, 2, '\t', 0)
+	io.WriteString(tw, "\n")
+	io.WriteString(tw, "Story URL\tError\n")
+	io.WriteString(tw, "=========\t=====\n")
+
 	for _, story := range stories {
 		if !StoryLabeled(story, config.PivotalTracker.ReviewedLabel()) {
-			fmt.Fprintf(
-				stderr,
-				"\tStory %v has not been accepted by the reviewer.\n",
-				story.URL)
+			fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the reviewer")
 			err = ErrReleaseNotDeliverable
 		}
 		if !StoryLabeled(story, config.PivotalTracker.VerifiedLabel()) {
-			fmt.Fprintf(
-				stderr,
-				"\tStory %v has not been accepted by the QA.\n",
-				story.URL)
+			fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the QA")
 			err = ErrReleaseNotDeliverable
 		}
+	}
+
+	io.WriteString(tw, "\n")
+	if err != nil {
+		tw.Flush()
+		stderr = &out
 	}
 	return
 }
