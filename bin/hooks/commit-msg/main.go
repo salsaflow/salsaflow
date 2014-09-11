@@ -16,6 +16,13 @@ import (
 	"github.com/tchap/git-trunk/utils/uuid"
 )
 
+const (
+	stateDropEmptyLines = iota + 1
+	stateAppendContent
+)
+
+const diffSeparator = "# ------------------------ >8 ------------------------"
+
 func main() {
 	if len(os.Args) != 2 {
 		panic(fmt.Errorf("argv: %#v", os.Args))
@@ -36,31 +43,63 @@ func run(msgPath string) error {
 
 	// Read and parse the commit message.
 	var (
+		state        = stateDropEmptyLines
 		changeIdSeen bool
 		storyIdSeen  bool
 		lines        []string
 	)
 	scanner := bufio.NewScanner(file)
+ScanLoop:
 	for scanner.Scan() {
 		line := scanner.Text()
+		trimmedLine := strings.TrimSpace(line)
 
-		switch {
-		case strings.HasPrefix(line, "Change-Id:"):
-			if changeIdSeen {
-				return errors.New("multiple Change-Id tags detected")
+		if state == stateDropEmptyLines {
+			if trimmedLine == "" {
+				continue ScanLoop
 			}
-			changeIdSeen = true
-		case strings.HasPrefix(line, "Story-Id:"):
-			if storyIdSeen {
-				return errors.New("multiple Story-Id tags detected")
-			}
-			storyIdSeen = true
+			state = stateAppendContent
 		}
 
-		lines = append(lines, line)
+		if state == stateAppendContent {
+			switch {
+			case strings.HasPrefix(trimmedLine, "Change-Id:"):
+				if changeIdSeen {
+					return errors.New("multiple Change-Id tags detected")
+				}
+				changeIdSeen = true
+
+			case strings.HasPrefix(trimmedLine, "Story-Id:"):
+				if storyIdSeen {
+					return errors.New("multiple Story-Id tags detected")
+				}
+				storyIdSeen = true
+
+			case line == diffSeparator:
+				// Everything below diffSeparator is anyway removed by git,
+				// so we can as well just skip it and drop the content here.
+				break ScanLoop
+
+			case strings.HasPrefix(line, "#"):
+				// Let's drop comments here.
+				// This must come after the previous case, otherwise
+				// the diff separator is dropped as well.
+				continue ScanLoop
+			}
+
+			lines = append(lines, line)
+			continue ScanLoop
+		}
+
+		panic("unreachable code reached")
 	}
 	if err := scanner.Err(); err != nil {
 		return err
+	}
+
+	// Return if the file is empty.
+	if len(lines) == 0 {
+		return nil
 	}
 
 	// Return if all the tags are already there.
@@ -68,11 +107,12 @@ func run(msgPath string) error {
 		return nil
 	}
 
-	// Get the values for the missing tags.
-	if len(lines) == 0 || lines[len(lines)-1] != "\n" {
+	// Append a newline if it's not already there.
+	if lines[len(lines)-1] != "\n" {
 		lines = append(lines, "")
 	}
 
+	// Get the values for the missing tags.
 	if !changeIdSeen {
 		changeId, err := uuid.New()
 		if err != nil {
