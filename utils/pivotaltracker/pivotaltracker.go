@@ -31,6 +31,47 @@ func ListStories(filter string) ([]*pivotal.Story, error) {
 	return stories, err
 }
 
+type storyGetResult struct {
+	story *pivotal.Story
+	err   error
+}
+
+func ListStoriesById(ids []int) ([]*pivotal.Story, *bytes.Buffer, error) {
+	// Prepare the PT client.
+	var (
+		token     = config.PivotalTracker.ApiToken()
+		projectId = config.PivotalTracker.ProjectId()
+	)
+	client := pivotal.NewClient(token)
+
+	// Send all the request at once.
+	retCh := make(chan *storyGetResult, len(ids))
+	for i, identifier := range ids {
+		go func(i, id int) {
+			story, _, err := client.Stories.Get(projectId, id)
+			retCh <- &storyGetResult{story, err}
+		}(i, identifier)
+	}
+
+	// Wait for the requests to return.
+	var (
+		stories = make([]*pivotal.Story, 0, len(ids))
+		stderr  = new(bytes.Buffer)
+		err     error
+	)
+	for i := 0; i < cap(retCh); i++ {
+		ret := <-retCh
+		if ret.err == nil {
+			stories = append(stories, ret.story)
+		} else {
+			fmt.Fprintln(stderr, ret.err)
+			err = ErrApiCall
+		}
+	}
+
+	return stories, stderr, err
+}
+
 func ListReleaseCandidateStories() ([]*pivotal.Story, error) {
 	filter := fmt.Sprintf(
 		"type:%v,%v state:%v -label:/%v/",

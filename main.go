@@ -9,6 +9,7 @@ import (
 	// Internal
 	"github.com/tchap/git-trunk/app"
 	"github.com/tchap/git-trunk/commands/release"
+	"github.com/tchap/git-trunk/commands/repo"
 	"github.com/tchap/git-trunk/commands/story"
 
 	// Other
@@ -32,6 +33,7 @@ func main() {
 
 	// Register subcommands.
 	trunk.MustRegisterSubcommand(releaseCmd.Command)
+	trunk.MustRegisterSubcommand(repoCmd.Command)
 	trunk.MustRegisterSubcommand(storyCmd.Command)
 
 	// Start processing signals.

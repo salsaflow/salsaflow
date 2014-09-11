@@ -13,6 +13,35 @@ import (
 	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 )
 
+func Confirm(question string) (bool, error) {
+	printQuestion := func() {
+		fmt.Print(question)
+		fmt.Print(" [y/N]: ")
+	}
+	printQuestion()
+
+	var line string
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		line = strings.ToLower(scanner.Text())
+		switch line {
+		case "":
+			line = "n"
+		case "y":
+		case "n":
+		default:
+			printQuestion()
+			continue
+		}
+		break
+	}
+	if err := scanner.Err(); err != nil {
+		return false, err
+	}
+
+	return line == "y", nil
+}
+
 func ConfirmStories(headerLine string, stories []*pivotal.Story) (bool, error) {
 	printStoriesConfirmationDialog(headerLine, stories)
 
