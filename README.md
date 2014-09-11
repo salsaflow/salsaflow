@@ -12,6 +12,10 @@ Actually, I don't know about you, but we use it here at [Salsita](https://www.sa
    Add `$GOPATH/bin` into `PATH` to be able to run the executable directly from the command line.
 4. Run `go build` in `bin/hooks/commit-msg`, then use it as a Git [hook](http://git-scm.com/book/en/Customizing-Git-Git-Hooks) in your repo.
 
+## System Requirements ##
+
+* `git>=2.0.0` in your `PATH`
+
 ## License ##
 
 `MIT`, see the `LICENSE` file.
