@@ -83,6 +83,13 @@ func runMain() (err error) {
 		}
 	}()
 
+	// Make sure that the local release branch exists.
+	msg = "Make sure that the local release branch exists"
+	stderr, err = git.CreateTrackingBranchUnlessExists(config.ReleaseBranch, config.OriginName)
+	if err != nil {
+		return
+	}
+
 	// Get the current release version string.
 	msg = "Get the current release version string"
 	ver, stderr, err := version.ReadFromBranch(config.ReleaseBranch)

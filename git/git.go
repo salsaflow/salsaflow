@@ -70,6 +70,27 @@ func RemoteBranchExists(branch string, remote string) (exists bool, stderr *byte
 	return RefExists(ref)
 }
 
+func CreateTrackingBranchUnlessExists(branch string, remote string) (stderr *bytes.Buffer, err error) {
+	// Check whether the local branch exists and just return in that case.
+	exists, stderr, err := LocalBranchExists(branch)
+	if exists || err != nil {
+		return
+	}
+
+	// Check whether the remote counterpart exists.
+	exists, stderr, err = RemoteBranchExists(branch, remote)
+	if err != nil {
+		return
+	}
+	if !exists {
+		err = fmt.Errorf("branch '%v' not found in the remote '%v'", branch, remote)
+		return
+	}
+
+	// Create the local branch.
+	return Branch(branch, remote+"/"+branch)
+}
+
 func CreateOrResetBranch(branch, target string) (stderr *bytes.Buffer, err error) {
 	exists, stderr, err := LocalBranchExists(branch)
 	if err != nil {

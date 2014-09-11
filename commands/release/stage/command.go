@@ -79,7 +79,14 @@ func runMain() (err error) {
 		return
 	}
 
-	// Ensure that the release branch is in sync.
+	// Make sure that the local release branch exists.
+	taskMsg = "Make sure that the local release branch exists"
+	stderr, err = git.CreateTrackingBranchUnlessExists(config.ReleaseBranch, config.OriginName)
+	if err != nil {
+		return
+	}
+
+	// Ensure that the release branch is synchronized.
 	taskMsg = "Ensure that the release branch is synchronized"
 	log.Run(taskMsg)
 	stderr, err = git.EnsureBranchSynchronized(config.ReleaseBranch, config.OriginName)
@@ -164,6 +171,7 @@ func runMain() (err error) {
 
 	// Delete the local release branch.
 	taskMsg = "Delete the local release branch"
+	log.Run(taskMsg)
 	stderr, err = git.Branch("-d", config.ReleaseBranch)
 	if err != nil {
 		return
