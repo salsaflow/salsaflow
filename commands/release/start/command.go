@@ -64,32 +64,32 @@ func run(cmd *gocli.Command, args []string) {
 
 func runMain() (err error) {
 	var (
-		taskMsg       string
+		msg           string
 		stderr        *bytes.Buffer
 		currentBranch string
 	)
 	defer func() {
 		// Print error details.
 		if err != nil {
-			log.FailWithContext(taskMsg, stderr)
+			log.FailWithContext(msg, stderr)
 		}
 
 		// Checkout the original branch.
 		if currentBranch == "" {
 			return
 		}
-		taskMsg = "Checkout the original branch"
-		log.Run(taskMsg)
+		msg = "Checkout the original branch"
+		log.Run(msg)
 		out, ex := git.Checkout(currentBranch)
 		if ex != nil {
-			log.FailWithContext(taskMsg, out)
+			log.FailWithContext(msg, out)
 			return
 		}
 	}()
 
 	// Fetch the Pivotal Tracker candidate stories.
-	taskMsg = "Fetch Pivotal Tracker stories"
-	log.Run(taskMsg)
+	msg = "Fetch Pivotal Tracker stories"
+	log.Run(msg)
 	stories, err := pt.ListReleaseCandidateStories()
 	if err != nil {
 		return err
@@ -97,7 +97,7 @@ func runMain() (err error) {
 
 	// Exit if there are not candidate stories.
 	if len(stories) == 0 {
-		taskMsg = ""
+		msg = ""
 		err = errors.New("No candidate stories found in Pivotal Tracker")
 		return
 	}
@@ -111,31 +111,31 @@ func runMain() (err error) {
 	}
 	if !confirmed {
 		// Don't print the fail message.
-		taskMsg = ""
+		msg = ""
 		err = errors.New("Operation canceled")
 		return
 	}
 	fmt.Println()
 
 	// Remember the current branch.
-	taskMsg = "Remember the current branch"
-	log.Run(taskMsg)
+	msg = "Remember the current branch"
+	log.Run(msg)
 	currentBranch, stderr, err = git.CurrentBranch()
 	if err != nil {
 		return
 	}
 
 	// Fetch the remote repository.
-	taskMsg = "Fetch the remote repository"
-	log.Run(taskMsg)
+	msg = "Fetch the remote repository"
+	log.Run(msg)
 	stderr, err = git.UpdateRemotes(config.OriginName)
 	if err != nil {
 		return
 	}
 
 	// Make sure that release does not exist.
-	taskMsg = "Ensure that the release branch does not exist"
-	log.Run(taskMsg)
+	msg = "Ensure that the release branch does not exist"
+	log.Run(msg)
 	exists, stderr, err := git.BranchExists(config.ReleaseBranch, config.OriginName)
 	if err != nil {
 		return err
@@ -147,16 +147,16 @@ func runMain() (err error) {
 	}
 
 	// Make sure that trunk is up to date.
-	taskMsg = "Ensure that the trunk branch is up to date"
-	log.Run(taskMsg)
+	msg = "Ensure that the trunk branch is up to date"
+	log.Run(msg)
 	stderr, err = git.EnsureBranchSynchronized(config.TrunkBranch, config.OriginName)
 	if err != nil {
 		return
 	}
 
 	// Read the trunk version string.
-	taskMsg = "Read the current trunk version string"
-	log.Run(taskMsg)
+	msg = "Read the current trunk version string"
+	log.Run(msg)
 	ver, stderr, err := version.ReadFromBranch(config.TrunkBranch)
 	if err != nil {
 		return
@@ -171,26 +171,25 @@ func runMain() (err error) {
 	}
 
 	// Create release on top of trunk.
-	taskMsg = "Create the release branch on top of the trunk branch"
-	log.Run(taskMsg)
+	msg = "Create the release branch on top of the trunk branch"
+	log.Run(msg)
 	stderr, err = git.Branch(config.ReleaseBranch, config.TrunkBranch)
 	if err != nil {
 		return
 	}
-	defer func() {
+	defer func(taskMsg string) {
 		if err != nil {
-			msg := "Create the release branch on top of the trunk branch"
-			log.Rollback(msg)
+			log.Rollback(taskMsg)
 			out, ex := git.Branch("-d", config.ReleaseBranch)
 			if ex != nil {
-				log.FailWithContext(msg, out)
+				log.FailWithContext(taskMsg, out)
 			}
 		}
-	}()
+	}(msg)
 
 	// Commit the future version string to the trunk branch.
-	taskMsg = "Commit the future version string into the trunk branch"
-	log.Run(taskMsg)
+	msg = "Commit the future version string into the trunk branch"
+	log.Run(msg)
 	origTrunk, stderr, err := git.Hexsha("refs/heads/" + config.TrunkBranch)
 	if err != nil {
 		return
@@ -199,39 +198,37 @@ func runMain() (err error) {
 	if err != nil {
 		return
 	}
-	defer func() {
+	defer func(taskMsg string) {
 		if err != nil {
-			msg := "Commit the future version string into the trunk branch"
-			log.Rollback(msg)
+			log.Rollback(taskMsg)
 			out, ex := git.ResetKeep(config.TrunkBranch, origTrunk)
 			if ex != nil {
-				log.FailWithContext(msg, out)
+				log.FailWithContext(taskMsg, out)
 			}
 		}
-	}()
+	}(msg)
 
 	// Add release labels to the relevant stories.
-	taskMsg = "Label the stories with the release label"
-	log.Run(taskMsg)
+	msg = "Label the stories with the release label"
+	log.Run(msg)
 	stories, stderr, err = pt.AddLabel(stories, pt.ReleaseLabel(ver.String()))
 	if err != nil {
 		return
 	}
-	defer func() {
+	defer func(taskMsg string) {
 		// On error, remove the release labels again.
 		if err != nil {
-			msg := "Label the stories with the release label"
-			log.Rollback(msg)
+			log.Rollback(taskMsg)
 			_, out, ex := pt.RemoveLabel(stories, pt.ReleaseLabel(ver.String()))
 			if ex != nil {
-				log.FailWithContext(msg, out)
+				log.FailWithContext(taskMsg, out)
 			}
 		}
-	}()
+	}(msg)
 
 	// Push trunk and release.
-	taskMsg = "Push the modified branches"
-	log.Run(taskMsg)
+	msg = "Push the modified branches"
+	log.Run(msg)
 	stderr, err = git.Push(
 		config.OriginName,
 		config.ReleaseBranch+":"+config.ReleaseBranch,

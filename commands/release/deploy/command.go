@@ -42,40 +42,40 @@ func run(cmd *gocli.Command, args []string) {
 
 func runMain(ref string) (err error) {
 	var (
-		taskMsg       string
+		msg           string
 		stderr        *bytes.Buffer
 		currentBranch string
 	)
 	defer func() {
 		// Print error details.
 		if err != nil {
-			log.FailWithContext(taskMsg, stderr)
+			log.FailWithContext(msg, stderr)
 		}
 
 		// Checkout the original branch.
 		if currentBranch == "" {
 			return
 		}
-		taskMsg = "Checkout the original branch"
-		log.Run(taskMsg)
+		msg = "Checkout the original branch"
+		log.Run(msg)
 		out, ex := git.Checkout(currentBranch)
 		if ex != nil {
-			log.FailWithContext(taskMsg, out)
+			log.FailWithContext(msg, out)
 			return
 		}
 	}()
 
 	// Remember the current branch.
-	taskMsg = "Remember the current branch"
-	log.Run(taskMsg)
+	msg = "Remember the current branch"
+	log.Run(msg)
 	currentBranch, stderr, err = git.CurrentBranch()
 	if err != nil {
 		return
 	}
 
 	// Reset the master branch to point to the chosen ref.
-	taskMsg = "Reset the master branch to point to " + ref
-	log.Run(taskMsg)
+	msg = "Reset the master branch to point to " + ref
+	log.Run(msg)
 	origMaster, stderr, err := git.Hexsha("refs/heads/" + config.MasterBranch)
 	if err != nil {
 		return
@@ -84,20 +84,20 @@ func runMain(ref string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func(msg string) {
+	defer func(taskMsg string) {
 		// On error, reset the master branch to the origin position.
 		if err != nil {
 			log.Rollback(msg)
 			out, ex := git.ResetKeep(config.MasterBranch, origMaster)
 			if ex != nil {
-				log.FailWithContext(msg, out)
+				log.FailWithContext(taskMsg, out)
 			}
 		}
-	}(taskMsg)
+	}(msg)
 
 	// Push the master branch to trigger deployment.
-	taskMsg = "Push the master branch to trigger deployment"
-	log.Run(taskMsg)
+	msg = "Push the master branch to trigger deployment"
+	log.Run(msg)
 	stderr, err = git.Push(
 		config.OriginName, "-f", config.MasterBranch+":"+config.MasterBranch)
 	return

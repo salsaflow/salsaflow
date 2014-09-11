@@ -48,106 +48,105 @@ func run(cmd *gocli.Command, args []string) {
 
 func runMain() (err error) {
 	var (
-		taskMsg       string
+		msg           string
 		stderr        *bytes.Buffer
 		currentBranch string
 	)
 	defer func() {
 		// Print error details.
 		if err != nil {
-			log.FailWithContext(taskMsg, stderr)
+			log.FailWithContext(msg, stderr)
 		}
 
 		// Checkout the original branch.
 		if currentBranch == "" {
 			return
 		}
-		taskMsg = "Checkout the original branch"
-		log.Run(taskMsg)
+		msg = "Checkout the original branch"
+		log.Run(msg)
 		out, ex := git.Checkout(currentBranch)
 		if ex != nil {
-			log.FailWithContext(taskMsg, out)
+			log.FailWithContext(msg, out)
 			return
 		}
 	}()
 
 	// Fetch the remote repository.
-	taskMsg = "Fetch the remote repository"
-	log.Run(taskMsg)
+	msg = "Fetch the remote repository"
+	log.Run(msg)
 	stderr, err = git.UpdateRemotes(config.OriginName)
 	if err != nil {
 		return
 	}
 
 	// Make sure that the local release branch exists.
-	taskMsg = "Make sure that the local release branch exists"
+	msg = "Make sure that the local release branch exists"
 	stderr, err = git.CreateTrackingBranchUnlessExists(config.ReleaseBranch, config.OriginName)
 	if err != nil {
 		return
 	}
 
 	// Ensure that the release branch is synchronized.
-	taskMsg = "Ensure that the release branch is synchronized"
-	log.Run(taskMsg)
+	msg = "Ensure that the release branch is synchronized"
+	log.Run(msg)
 	stderr, err = git.EnsureBranchSynchronized(config.ReleaseBranch, config.OriginName)
 	if err != nil {
 		return
 	}
 
 	// Read the current release version string.
-	taskMsg = "Read the current release version"
+	msg = "Read the current release version"
 	ver, stderr, err := version.ReadFromBranch(config.ReleaseBranch)
 	if err != nil {
 		return
 	}
 
 	// Fetch the relevant Pivotal Tracker stories.
-	taskMsg = "Fetch Pivotal Tracker stories"
-	log.Run(taskMsg)
+	msg = "Fetch Pivotal Tracker stories"
+	log.Run(msg)
 	stories, err := pivotaltracker.ListReleaseStories(ver.String())
 	if err != nil {
 		return
 	}
 
 	// Make sure that all the stories are reviewed and QA'd.
-	taskMsg = "Make sure that all the stories are deliverable"
-	log.Run(taskMsg)
+	msg = "Make sure that all the stories are deliverable"
+	log.Run(msg)
 	stderr, err = pivotaltracker.ReleaseDeliverable(stories)
 	if err != nil {
 		return
 	}
 
 	// Remember the current branch.
-	taskMsg = "Remember the current branch"
-	log.Run(taskMsg)
+	msg = "Remember the current branch"
+	log.Run(msg)
 	currentBranch, stderr, err = git.CurrentBranch()
 	if err != nil {
 		return
 	}
 
 	// Tag the release branch with its version string.
-	taskMsg = "Tag the release branch with its version string"
-	log.Run(taskMsg)
+	msg = "Tag the release branch with its version string"
+	log.Run(msg)
 	tag := ver.ReleaseTagString()
 	stderr, err = git.Tag(tag, config.ReleaseBranch)
 	if err != nil {
 		return
 	}
-	defer func() {
+	defer func(taskMsg string) {
 		// On error, delete the release tag.
 		if err != nil {
-			msg := "Tag the release branch with its version string"
-			log.Rollback(msg)
+			log.Rollback(taskMsg)
 			out, ex := git.DeleteTag(tag)
 			if ex != nil {
-				log.FailWithContext(msg, out)
+				log.FailWithContext(taskMsg, out)
 			}
 		}
-	}()
+	}(msg)
 
 	// Reset the client branch to point to the newly created tag.
-	taskMsg = "Reset the client branch to point to the release tag"
-	log.Run(taskMsg)
+	msg = "Reset the client branch to point to the release tag"
+	log.Run(msg)
 	origClient, stderr, err := git.Hexsha("refs/heads/" + config.ClientBranch)
 	if err != nil {
 		return
@@ -157,60 +156,57 @@ func runMain() (err error) {
 	if err != nil {
 		return
 	}
-	defer func() {
+	defer func(taskMsg string) {
 		// On error, reset the client branch back to the original position.
 		if err != nil {
-			msg := "Reset the client branch to point to the release tag"
-			log.Rollback(msg)
+			log.Rollback(taskMsg)
 			out, ex := git.ResetKeep(config.ClientBranch, origClient)
 			if ex != nil {
-				log.FailWithContext(msg, out)
+				log.FailWithContext(taskMsg, out)
 			}
 		}
-	}()
+	}(msg)
 
 	// Delete the local release branch.
-	taskMsg = "Delete the local release branch"
-	log.Run(taskMsg)
+	msg = "Delete the local release branch"
+	log.Run(msg)
 	stderr, err = git.Branch("-d", config.ReleaseBranch)
 	if err != nil {
 		return
 	}
-	defer func() {
+	defer func(taskMsg string) {
 		// On error, re-create the local release branch.
 		if err != nil {
-			msg := "Delete the local release branch"
-			log.Rollback(msg)
+			log.Rollback(taskMsg)
 			out, ex := git.Branch(
 				config.ReleaseBranch, config.OriginName+"/"+config.ReleaseBranch)
 			if ex != nil {
-				log.FailWithContext(msg, out)
+				log.FailWithContext(taskMsg, out)
 			}
 		}
-	}()
+	}(msg)
 
 	// Deliver the stories in Pivotal Tracker.
-	taskMsg = "Deliver the stories"
-	log.Run(taskMsg)
+	msg = "Deliver the stories"
+	log.Run(msg)
 	stories, stderr, err = pivotaltracker.SetStoriesState(stories, pivotal.StoryStateDelivered)
 	if err != nil {
 		return
 	}
-	defer func() {
+	defer func(taskMsg string) {
 		// On error, set the story state back to Finished.
 		if err != nil {
-			msg := "Deliver the stories"
 			_, out, ex := pivotaltracker.SetStoriesState(
 				stories, pivotal.StoryStateFinished)
 			if ex != nil {
-				log.FailWithContext(msg, out)
+				log.FailWithContext(taskMsg, out)
 			}
 		}
-	}()
+	}(msg)
 
 	// Push to create the tag, reset client and delete release in the remote repository.
-	taskMsg = "Push to create the tag, reset client and delete release"
-	log.Run(taskMsg)
+	msg = "Push to create the tag, reset client and delete release"
+	log.Run(msg)
 	stderr, err = git.Push(
 		config.OriginName,
 		"-f", "--tags",
