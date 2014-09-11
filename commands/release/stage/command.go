@@ -86,8 +86,8 @@ func runMain() (err error) {
 		return
 	}
 
-	// Ensure that the release branch is synchronized.
-	msg = "Ensure that the release branch is synchronized"
+	// Make sure that the release branch is up to date.
+	msg = "Make sure that the release branch is up to date"
 	log.Run(msg)
 	stderr, err = git.EnsureBranchSynchronized(config.ReleaseBranch, config.OriginName)
 	if err != nil {
@@ -125,8 +125,8 @@ func runMain() (err error) {
 		return
 	}
 
-	// Tag the release branch with its version string.
-	msg = "Tag the release branch with its version string"
+	// Tag the release branch with the associated version string.
+	msg = "Tag the release branch with the associated version string"
 	log.Run(msg)
 	tag := ver.ReleaseTagString()
 	stderr, err = git.Tag(tag, config.ReleaseBranch)

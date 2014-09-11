@@ -47,16 +47,23 @@ func RefExists(ref string) (exists bool, stderr *bytes.Buffer, err error) {
 	return
 }
 
-func BranchExists(branch string, remote string) (exists bool, stderr *bytes.Buffer, err error) {
-	exists, stderr, err = LocalBranchExists(branch)
-	if exists || err != nil {
+func EnsureBranchNotExists(branch string, remote string) (stderr *bytes.Buffer, err error) {
+	exists, stderr, err := LocalBranchExists(branch)
+	if err != nil {
+		return
+	}
+	if exists {
+		err = fmt.Errorf("branch '%v' already exists", branch)
 		return
 	}
 
-	if remote == "" {
+	exists, stderr, err = RemoteBranchExists(branch, remote)
+	if err != nil {
 		return
 	}
-	exists, stderr, err = RemoteBranchExists(branch, remote)
+	if exists {
+		err = fmt.Errorf("branch '%v' already exists in remote '%v'", branch, remote)
+	}
 	return
 }
 

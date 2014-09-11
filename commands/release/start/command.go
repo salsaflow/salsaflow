@@ -134,20 +134,15 @@ func runMain() (err error) {
 	}
 
 	// Make sure that release does not exist.
-	msg = "Ensure that the release branch does not exist"
+	msg = "Make sure that the release branch does not exist"
 	log.Run(msg)
-	exists, stderr, err := git.BranchExists(config.ReleaseBranch, config.OriginName)
+	stderr, err = git.EnsureBranchNotExists(config.ReleaseBranch, config.OriginName)
 	if err != nil {
-		return err
-	}
-	if exists {
-		err = fmt.Errorf("branch %s already exists either locally or remotely",
-			config.ReleaseBranch)
 		return
 	}
 
 	// Make sure that trunk is up to date.
-	msg = "Ensure that the trunk branch is up to date"
+	msg = "Make sure that the trunk branch is up to date"
 	log.Run(msg)
 	stderr, err = git.EnsureBranchSynchronized(config.TrunkBranch, config.OriginName)
 	if err != nil {
