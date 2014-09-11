@@ -3,6 +3,7 @@ package changesCmd
 import (
 	// Stdlib
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -67,6 +68,9 @@ func run(cmd *gocli.Command, args []string) {
 	app.MustInit()
 
 	if err := runMain(); err != nil {
+		if porcelain {
+			os.Exit(1)
+		}
 		log.Fatalln("\nError: " + err.Error())
 	}
 }
@@ -78,7 +82,7 @@ func runMain() (err error) {
 	)
 	defer func() {
 		// Print error details.
-		if err != nil {
+		if err != nil && !porcelain {
 			log.FailWithContext(msg, stderr)
 		}
 	}()
@@ -112,6 +116,12 @@ func runMain() (err error) {
 		return
 	}
 
+	// Just return in case there are no relevant stories found.
+	if len(stories) == 0 {
+		err = errors.New("no relevant stories found")
+		return
+	}
+
 	// Get the list of all relevant story commits.
 	msg = "Get the list of relevant commits"
 	var (
@@ -124,6 +134,12 @@ func runMain() (err error) {
 			return
 		}
 		commits = append(commits, cs...)
+	}
+
+	// Just return in case there are no relevant commits found.
+	if len(commits) == 0 {
+		err = errors.New("no relevant story commits found")
+		return
 	}
 
 	// Group the commits by change ID.
