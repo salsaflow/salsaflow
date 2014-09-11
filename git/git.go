@@ -139,7 +139,7 @@ func EnsureBranchSynchronized(branch, remote string) (stderr *bytes.Buffer, err 
 	}
 
 	if localHexsha != remoteHexsha {
-		err = fmt.Errorf("branch %v is not in sync with %v", branch, remote)
+		err = fmt.Errorf("branch %v is not synchronized", branch, remote)
 	}
 	return
 }

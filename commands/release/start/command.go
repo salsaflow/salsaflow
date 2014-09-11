@@ -89,9 +89,17 @@ func runMain() (err error) {
 
 	// Fetch the Pivotal Tracker candidate stories.
 	taskMsg = "Fetch Pivotal Tracker stories"
+	log.Run(taskMsg)
 	stories, err := pt.ListReleaseCandidateStories()
 	if err != nil {
 		return err
+	}
+
+	// Exit if there are not candidate stories.
+	if len(stories) == 0 {
+		taskMsg = ""
+		err = errors.New("No candidate stories found in Pivotal Tracker")
+		return
 	}
 
 	// Prompt the user to confirm the release.
@@ -102,6 +110,8 @@ func runMain() (err error) {
 		return
 	}
 	if !confirmed {
+		// Don't print the fail message.
+		taskMsg = ""
 		err = errors.New("Operation canceled")
 		return
 	}
