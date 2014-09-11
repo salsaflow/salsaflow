@@ -2,7 +2,9 @@ package main
 
 import (
 	// Stdlib
+	"fmt"
 	"os"
+	"os/signal"
 
 	// Internal
 	"github.com/tchap/git-trunk/app"
@@ -32,6 +34,22 @@ func main() {
 	trunk.MustRegisterSubcommand(releaseCmd.Command)
 	trunk.MustRegisterSubcommand(storyCmd.Command)
 
+	// Start processing signals.
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, os.Interrupt)
+	go catchSignals(signalCh)
+
 	// Run the application.
 	trunk.Run(os.Args[1:])
+}
+
+func catchSignals(ch chan os.Signal) {
+	<-ch
+	fmt.Print(`
++-----------------------------------------------------+
+| Signal received, the child processes were notified. |
+| Send the signal again to exit immediately.          |
++-----------------------------------------------------+
+	`)
+	signal.Stop(ch)
 }
