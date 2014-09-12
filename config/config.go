@@ -20,7 +20,7 @@ const (
 	LocalConfigFileName  = "gitflow.yml"
 	GlobalConfigFileName = ".gitflow.yml"
 
-	ConfigBranch = "gitflow-config"
+	ConfigBranch = TrunkBranch
 )
 
 var (
