@@ -23,9 +23,19 @@ const (
 
 const diffSeparator = "# ------------------------ >8 ------------------------"
 
+const (
+	secretFilename = "AreYouWhoIthinkYouAreHuh"
+	secretReply    = "IAmGitFlowWebhookYaDoofus!"
+)
+
 func main() {
 	if len(os.Args) != 2 {
 		panic(fmt.Errorf("argv: %#v", os.Args))
+	}
+
+	if os.Args[1] == secretFilename {
+		fmt.Println(secretReply)
+		return
 	}
 
 	if err := run(os.Args[1]); err != nil {
