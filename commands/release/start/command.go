@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"text/tabwriter"
 
 	// Internal
 	"github.com/tchap/git-trunk/app"
@@ -18,6 +20,7 @@ import (
 
 	// Other
 	"github.com/tchap/gocli"
+	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 )
 
 var Command = &gocli.Command{
@@ -100,6 +103,39 @@ func runMain() (err error) {
 		msg = ""
 		err = errors.New("No candidate stories found in Pivotal Tracker")
 		return
+	}
+
+	// Check point-me label.
+	var (
+		pmLabel   = config.PivotalTracker.PointMeLabel()
+		pmStories []*pivotal.Story
+	)
+	for _, story := range stories {
+		if pt.StoryLabeled(story, pmLabel) {
+			pmStories = append(pmStories, story)
+		}
+	}
+	if len(pmStories) != 0 {
+		tw := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
+		fmt.Fprintf(tw, "\nThe following stories are labeled '%v':\n\n", pmLabel)
+		io.WriteString(tw, "Story Name\tStory URL\n")
+		io.WriteString(tw, "========= \t=========\n")
+		for _, story := range stories {
+			fmt.Fprintf(tw, "%v\t%v\n", story.Name, story.URL)
+		}
+		io.WriteString(tw, "\n")
+		tw.Flush()
+
+		ok, ex := prompt.Confirm("Are you sure you want to continue?")
+		if ex != nil {
+			err = ex
+			return
+		}
+		if !ok {
+			msg = ""
+			err = errors.New("Operation canceled")
+			return
+		}
 	}
 
 	// Prompt the user to confirm the release.

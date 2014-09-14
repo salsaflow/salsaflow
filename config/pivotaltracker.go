@@ -5,9 +5,12 @@ import (
 )
 
 const (
+	DefaultPointMeLabel  = "point me"
 	DefaultReviewedLabel = "reviewed"
 	DefaultVerifiedLabel = "qa+"
 )
+
+var DefaultSkipLabels = []string{"dupe", "wontfix"}
 
 var PivotalTracker PivotalTrackerConfig
 
@@ -15,8 +18,10 @@ var ptLocalConfig struct {
 	PT struct {
 		ProjectId int `yaml:"project_id"`
 		Labels    struct {
-			ReviewedLabel string `yaml:"reviewed"`
-			VerifiedLabel string `yaml:"verified"`
+			PointMeLabel    string   `yaml:"point_me"`
+			ReviewedLabel   string   `yaml:"reviewed"`
+			VerifiedLabel   string   `yaml:"verified"`
+			SkipCheckLabels []string `yaml:"skip_release_check"`
 		} `yaml:"labels"`
 	} `yaml:"pivotal_tracker"`
 }
@@ -42,12 +47,16 @@ func mustInitPivotalTracker() {
 		log.Fatalln("\nError:", err)
 	}
 
+	if ptLocal.Labels.PointMeLabel == "" {
+		ptLocal.Labels.PointMeLabel = DefaultPointMeLabel
+	}
 	if ptLocal.Labels.ReviewedLabel == "" {
 		ptLocal.Labels.ReviewedLabel = DefaultReviewedLabel
 	}
 	if ptLocal.Labels.VerifiedLabel == "" {
 		ptLocal.Labels.VerifiedLabel = DefaultVerifiedLabel
 	}
+	ptLocal.Labels.SkipCheckLabels = append(ptLocal.Labels.SkipCheckLabels, DefaultSkipLabels...)
 
 	if err := ptValidateLocalConfig(); err != nil {
 		log.Fail("Validate local Pivotal Tracker configuration")
@@ -66,12 +75,20 @@ func (pt *PivotalTrackerConfig) ProjectId() int {
 	return ptLocal.ProjectId
 }
 
+func (pt *PivotalTrackerConfig) PointMeLabel() string {
+	return ptLocal.Labels.PointMeLabel
+}
+
 func (pt *PivotalTrackerConfig) ReviewedLabel() string {
 	return ptLocal.Labels.ReviewedLabel
 }
 
 func (pt *PivotalTrackerConfig) VerifiedLabel() string {
 	return ptLocal.Labels.VerifiedLabel
+}
+
+func (pt *PivotalTrackerConfig) SkipCheckLabels() []string {
+	return ptLocal.Labels.SkipCheckLabels
 }
 
 func (pt *PivotalTrackerConfig) ApiToken() string {

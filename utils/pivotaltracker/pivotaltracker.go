@@ -106,7 +106,16 @@ func ReleaseDeliverable(stories []*pivotal.Story) (stderr *bytes.Buffer, err err
 	io.WriteString(tw, "Story URL\tError\n")
 	io.WriteString(tw, "=========\t=====\n")
 
+StoryLoop:
 	for _, story := range stories {
+		// Skip the check when the relevant label is there.
+		for _, label := range config.PivotalTracker.SkipCheckLabels() {
+			if StoryLabeled(story, label) {
+				continue StoryLoop
+			}
+		}
+
+		// Otherwise make sure the story is accepted.
 		if !StoryLabeled(story, config.PivotalTracker.ReviewedLabel()) {
 			fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the reviewer")
 			err = ErrReleaseNotDeliverable
