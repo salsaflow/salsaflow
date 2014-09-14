@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
+	"strconv"
 	"text/tabwriter"
 
 	// Internal
 	"github.com/tchap/git-trunk/app"
+	"github.com/tchap/git-trunk/changes"
 	"github.com/tchap/git-trunk/flag"
 	"github.com/tchap/git-trunk/git"
 	"github.com/tchap/git-trunk/log"
@@ -56,38 +57,6 @@ func init() {
 	Command.Flags.Var(exclude, "exclude_source", "source ref to exclude")
 }
 
-func includeGroup(cg *changeGroup) bool {
-	includeMatches := false
-	if len(include.Values) != 0 {
-	IncludeLoop:
-		for _, commit := range cg.commits {
-			for _, pattern := range include.Values {
-				if pattern.MatchString(commit.Source) {
-					includeMatches = true
-					break IncludeLoop
-				}
-			}
-		}
-	} else {
-		includeMatches = true
-	}
-
-	excludeMatches := false
-	if len(exclude.Values) != 0 {
-	ExcludeLoop:
-		for _, commit := range cg.commits {
-			for _, pattern := range exclude.Values {
-				if pattern.MatchString(commit.Source) {
-					excludeMatches = true
-					break ExcludeLoop
-				}
-			}
-		}
-	}
-
-	return includeMatches && !excludeMatches
-}
-
 func run(cmd *gocli.Command, args []string) {
 	if len(args) != 1 {
 		cmd.Usage()
@@ -101,7 +70,7 @@ func run(cmd *gocli.Command, args []string) {
 	}
 }
 
-func runMain(storyId string) (err error) {
+func runMain(storyIdString string) (err error) {
 	var (
 		msg    string
 		stderr *bytes.Buffer
@@ -115,20 +84,18 @@ func runMain(storyId string) (err error) {
 
 	// Get the list of all relevant story commits.
 	msg = "Get the list of relevant story commits"
+	storyId, err := strconv.Atoi(storyIdString)
+	if err != nil {
+		return
+	}
 	commits, stderr, err := git.ListStoryCommits(storyId)
 	if err != nil {
 		return
 	}
 
 	// Group the commits by change ID.
-	// The groups are internally sorted by branch significance.
-	groups := groupCommitsByChangeId(commits)
-	if err != nil {
-		return
-	}
-
-	// Sort the groups in the list according to commit date.
-	sort.Sort(changeGroups(groups))
+	groups := changes.GroupCommitsByChangeId(commits)
+	groups = changes.FilterChangesBySource(groups, include.Values, exclude.Values)
 
 	// Dump the change details into the console.
 	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
@@ -139,11 +106,7 @@ func runMain(storyId string) (err error) {
 		io.WriteString(tw, "======\t==========\t=============\t============\n")
 	}
 	for _, group := range groups {
-		if !includeGroup(group) {
-			continue
-		}
-
-		commit := group.commits[0]
+		commit := group.Commits[0]
 		var changeId string
 		if porcelain {
 			changeId = commit.ChangeId
@@ -151,7 +114,7 @@ func runMain(storyId string) (err error) {
 
 		fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n",
 			commit.ChangeId, commit.SHA, commit.Source, commit.Title)
-		for _, commit := range group.commits[1:] {
+		for _, commit := range group.Commits[1:] {
 			fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", changeId, commit.SHA, commit.Source, commit.Title)
 		}
 	}
@@ -161,84 +124,4 @@ func runMain(storyId string) (err error) {
 
 	tw.Flush()
 	return nil
-}
-
-type changeGroup struct {
-	commits []*git.Commit
-}
-
-func (cg *changeGroup) Add(commit *git.Commit) {
-	// Just create the list in case it is empty.
-	if len(cg.commits) == 0 {
-		cg.commits = []*git.Commit{commit}
-		return
-	}
-
-	// Insert into the sorted list of commits.
-	var (
-		begin int
-		end   int = len(cg.commits)
-		i     int
-	)
-	for {
-		if begin == end {
-			sorted := make([]*git.Commit, end, len(cg.commits)+1)
-			copy(sorted, cg.commits[:end])
-			sorted = append(sorted, commit)
-			sorted = append(sorted, cg.commits[end:]...)
-			cg.commits = sorted
-			return
-		}
-
-		i = begin + (end-begin)/2
-		pivot := cg.commits[i]
-		if commit.CommitDate.Before(pivot.CommitDate) {
-			end = i
-		} else {
-			begin = i + 1
-		}
-	}
-}
-
-func (cg *changeGroup) EarliestCommit() *git.Commit {
-	if len(cg.commits) == 0 {
-		return nil
-	}
-	return cg.commits[0]
-}
-
-func groupCommitsByChangeId(commits []*git.Commit) changeGroups {
-	gs := make(map[string]*changeGroup)
-	for _, commit := range commits {
-		g, ok := gs[commit.ChangeId]
-		if !ok {
-			g = &changeGroup{}
-			gs[commit.ChangeId] = g
-		}
-		g.Add(commit)
-	}
-
-	groups := make(changeGroups, 0, len(gs))
-	for _, g := range gs {
-		groups = append(groups, g)
-	}
-	return groups
-}
-
-// Sorting of []*changeGroup
-
-type changeGroups []*changeGroup
-
-func (cgs changeGroups) Len() int {
-	return len(cgs)
-}
-
-func (cgs changeGroups) Less(i, j int) bool {
-	return cgs[i].EarliestCommit().CommitDate.Before(cgs[j].EarliestCommit().CommitDate)
-}
-
-func (cgs changeGroups) Swap(i, j int) {
-	tmp := cgs[i]
-	cgs[i] = cgs[j]
-	cgs[j] = tmp
 }

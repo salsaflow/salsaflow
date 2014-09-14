@@ -7,21 +7,21 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strconv"
 	"text/tabwriter"
 
 	// Internal
 	"github.com/tchap/git-trunk/app"
+	"github.com/tchap/git-trunk/changes"
 	"github.com/tchap/git-trunk/config"
 	"github.com/tchap/git-trunk/flag"
 	"github.com/tchap/git-trunk/git"
 	"github.com/tchap/git-trunk/log"
+	"github.com/tchap/git-trunk/utils/pivotaltracker"
 	"github.com/tchap/git-trunk/version"
 
 	// Other
 	"github.com/tchap/gocli"
-	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 )
 
 var Command = &gocli.Command{
@@ -106,18 +106,14 @@ func runMain() (err error) {
 	if !porcelain {
 		log.Run(msg)
 	}
-	var (
-		token     = config.PivotalTracker.ApiToken()
-		projectId = config.PivotalTracker.ProjectId()
-	)
-	client := pivotal.NewClient(token)
-	stories, _, err := client.Stories.List(projectId, "label:release-"+ver.String())
+	stories, err := pivotaltracker.ListStories("label:release-" + ver.String())
 	if err != nil {
 		return
 	}
 
 	// Just return in case there are no relevant stories found.
 	if len(stories) == 0 {
+		msg = ""
 		err = errors.New("no relevant stories found")
 		return
 	}
@@ -129,7 +125,7 @@ func runMain() (err error) {
 		commits = make([]*git.Commit, 0, len(stories))
 	)
 	for _, story := range stories {
-		cs, stderr, err = git.ListStoryCommits(strconv.Itoa(story.Id))
+		cs, stderr, err = git.ListStoryCommits(story.Id)
 		if err != nil {
 			return
 		}
@@ -142,15 +138,8 @@ func runMain() (err error) {
 		return
 	}
 
-	// Group the commits by change ID.
-	// The groups are internally sorted by branch significance.
-	groups := groupCommitsByChangeId(commits)
-	if err != nil {
-		return
-	}
-
-	// Sort the groups in the list according to commit date.
-	sort.Sort(changeGroups(groups))
+	// Create the story change groups.
+	storyGroups := changes.GroupChangesByStoryId(changes.GroupCommitsByChangeId(commits))
 
 	// Dump the change details into the console.
 	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
@@ -160,26 +149,28 @@ func runMain() (err error) {
 		io.WriteString(tw, "Story\tChange\tCommit SHA\tCommit Source\tCommit Title\n")
 		io.WriteString(tw, "=====\t======\t==========\t=============\t============\n")
 	}
-	for _, group := range groups {
-		if !includeGroup(group) {
-			continue
-		}
+	for _, group := range storyGroups {
+		storyId := strconv.Itoa(group.StoryId)
 
-		commit := group.commits[0]
-		var (
-			storyId  string
-			changeId string
-		)
-		if porcelain {
-			storyId = commit.StoryId
-			changeId = commit.ChangeId
-		}
+		for _, change := range group.Changes {
+			changeId := change.ChangeId
 
-		fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
-			commit.StoryId, commit.ChangeId, commit.SHA, commit.Source, commit.Title)
-		for _, commit := range group.commits[1:] {
+			// Print the first line.
+			commit := change.Commits[0]
 			fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
 				storyId, changeId, commit.SHA, commit.Source, commit.Title)
+
+			// Make some of the columns empty in case we are not porcelain.
+			if !porcelain {
+				storyId = ""
+				changeId = ""
+			}
+
+			// Print the rest with the chosen columns being empty.
+			for _, commit := range change.Commits[1:] {
+				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
+					storyId, changeId, commit.SHA, commit.Source, commit.Title)
+			}
 		}
 	}
 	if !porcelain {
@@ -188,118 +179,4 @@ func runMain() (err error) {
 
 	tw.Flush()
 	return nil
-}
-
-type changeGroup struct {
-	commits []*git.Commit
-}
-
-func (cg *changeGroup) Add(commit *git.Commit) {
-	// Just create the list in case it is empty.
-	if len(cg.commits) == 0 {
-		cg.commits = []*git.Commit{commit}
-		return
-	}
-
-	// Insert into the sorted list of commits.
-	var (
-		begin int
-		end   int = len(cg.commits)
-		i     int
-	)
-	for {
-		if begin == end {
-			sorted := make([]*git.Commit, end, len(cg.commits)+1)
-			copy(sorted, cg.commits[:end])
-			sorted = append(sorted, commit)
-			sorted = append(sorted, cg.commits[end:]...)
-			cg.commits = sorted
-			return
-		}
-
-		i = begin + (end-begin)/2
-		pivot := cg.commits[i]
-		if commit.CommitDate.Before(pivot.CommitDate) {
-			end = i
-		} else {
-			begin = i + 1
-		}
-	}
-}
-
-func (cg *changeGroup) EarliestCommit() *git.Commit {
-	if len(cg.commits) == 0 {
-		return nil
-	}
-	return cg.commits[0]
-}
-
-func groupCommitsByChangeId(commits []*git.Commit) changeGroups {
-	gs := make(map[string]*changeGroup)
-	for _, commit := range commits {
-		g, ok := gs[commit.ChangeId]
-		if !ok {
-			g = &changeGroup{}
-			gs[commit.ChangeId] = g
-		}
-		g.Add(commit)
-	}
-
-	groups := make(changeGroups, 0, len(gs))
-	for _, g := range gs {
-		groups = append(groups, g)
-	}
-	return groups
-}
-
-// Sorting of []*changeGroup
-
-type changeGroups []*changeGroup
-
-func (cgs changeGroups) Len() int {
-	return len(cgs)
-}
-
-func (cgs changeGroups) Less(i, j int) bool {
-	return cgs[i].EarliestCommit().CommitDate.Before(cgs[j].EarliestCommit().CommitDate)
-}
-
-func (cgs changeGroups) Swap(i, j int) {
-	tmp := cgs[i]
-	cgs[i] = cgs[j]
-	cgs[j] = tmp
-}
-
-// Stuff
-
-func includeGroup(cg *changeGroup) bool {
-	includeMatches := false
-	if len(include.Values) != 0 {
-	IncludeLoop:
-		for _, commit := range cg.commits {
-			for _, pattern := range include.Values {
-				if pattern.MatchString(commit.Source) {
-					includeMatches = true
-					break IncludeLoop
-				}
-			}
-		}
-	} else {
-		includeMatches = true
-	}
-
-	excludeMatches := false
-	if len(exclude.Values) != 0 {
-	ExcludeLoop:
-		for _, commit := range cg.commits {
-			for _, pattern := range exclude.Values {
-				if pattern.MatchString(commit.Source) {
-					excludeMatches = true
-					break ExcludeLoop
-				}
-			}
-		}
-	}
-
-	return includeMatches && !excludeMatches
 }

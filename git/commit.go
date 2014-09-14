@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -29,12 +30,16 @@ type Commit struct {
 	CommitDate time.Time
 	Title      string
 	ChangeId   string
-	StoryId    string
+	StoryId    int
 	Source     string
 }
 
 // ListStoryCommits returns the list of all commits that are associated with the given story.
-func ListStoryCommits(storyId string) (commits []*Commit, stderr *bytes.Buffer, err error) {
+func ListStoryCommits(storyId int) (commits []*Commit, stderr *bytes.Buffer, err error) {
+	return GrepCommits(fmt.Sprintf("Story-Id: %v", storyId))
+}
+
+func GrepCommits(filter string) (commits []*Commit, stderr *bytes.Buffer, err error) {
 	// Get the raw Git output.
 	args := []string{
 		"log",
@@ -42,11 +47,11 @@ func ListStoryCommits(storyId string) (commits []*Commit, stderr *bytes.Buffer, 
 		"--source",
 		"--abbrev-commit",
 		"--pretty=fuller",
-		fmt.Sprintf("--grep=Story-Id: %v", storyId),
+		"--grep=" + filter,
 	}
-	stdout, stderr, err := Git(args...)
+	sout, serr, err := Git(args...)
 	if err != nil {
-		return
+		return nil, serr, err
 	}
 
 	// Parse git log output, which is a sequence of Git commits looking like
@@ -62,7 +67,7 @@ func ListStoryCommits(storyId string) (commits []*Commit, stderr *bytes.Buffer, 
 	//    Change-Id: $changeId
 	//    Story-Id: $storyId
 
-	commits = make([]*Commit, 0)
+	cs := make([]*Commit, 0)
 
 	var (
 		lineNum     int
@@ -70,7 +75,7 @@ func ListStoryCommits(storyId string) (commits []*Commit, stderr *bytes.Buffer, 
 		maybeHead   = true
 		commit      *Commit
 		headPattern = regexp.MustCompile("^commit[ \t]+([0-9a-f]+)[ \t]+(.+)$")
-		scanner     = bufio.NewScanner(stdout)
+		scanner     = bufio.NewScanner(sout)
 	)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -87,11 +92,11 @@ func ListStoryCommits(storyId string) (commits []*Commit, stderr *bytes.Buffer, 
 		case logScanHead:
 			parts := headPattern.FindStringSubmatch(line)
 			if len(parts) != 3 {
-				err = fmt.Errorf("invalid commit log (line %v): %v", lineNum, line)
+				err = fmt.Errorf("commit log (line %v): %v", lineNum, line)
 				return
 			}
 			if commit != nil {
-				commits = append(commits, commit)
+				cs = append(cs, commit)
 			}
 			commit = &Commit{
 				SHA:    parts[1],
@@ -107,7 +112,7 @@ func ListStoryCommits(storyId string) (commits []*Commit, stderr *bytes.Buffer, 
 				commit.Author = line[12:]
 				nextState = logScanAuthorDate
 			} else {
-				err = fmt.Errorf("invalid commit log (line %v): %v", lineNum, line)
+				err = fmt.Errorf("commit log (line %v, commit %v): %v", lineNum, commit.SHA, line)
 				return
 			}
 
@@ -117,13 +122,14 @@ func ListStoryCommits(storyId string) (commits []*Commit, stderr *bytes.Buffer, 
 				dateString := line[12:]
 				date, err = time.Parse(dateLayout, dateString)
 				if err != nil {
-					err = fmt.Errorf("invalid commit log (line %v): %v", lineNum, line)
+					err = fmt.Errorf("commit log (line %v, commit %v): %v",
+						lineNum, commit.SHA, line)
 					return
 				}
 				commit.AuthorDate = date
 				nextState = logScanCommitter
 			} else {
-				err = fmt.Errorf("invalid commit log (line %v): %v", lineNum, line)
+				err = fmt.Errorf("commit log (line %v, commit %v): %v", lineNum, commit.SHA, line)
 				return
 			}
 
@@ -132,7 +138,7 @@ func ListStoryCommits(storyId string) (commits []*Commit, stderr *bytes.Buffer, 
 				commit.Committer = line[12:]
 				nextState = logScanCommitDate
 			} else {
-				err = fmt.Errorf("invalid commit log (line %v): %v", lineNum, line)
+				err = fmt.Errorf("commit log (line %v, commit %v): %v", lineNum, commit.SHA, line)
 				return
 			}
 
@@ -142,7 +148,8 @@ func ListStoryCommits(storyId string) (commits []*Commit, stderr *bytes.Buffer, 
 				dateString := line[12:]
 				date, err = time.Parse(dateLayout, dateString)
 				if err != nil {
-					err = fmt.Errorf("invalid commit log (line %v): %v", lineNum, line)
+					err = fmt.Errorf("commit log (line %v, commit %v): %v",
+						lineNum, commit.SHA, line)
 					return
 				}
 				commit.CommitDate = date
@@ -165,29 +172,42 @@ func ListStoryCommits(storyId string) (commits []*Commit, stderr *bytes.Buffer, 
 			case strings.HasPrefix(line, "Change-Id: "):
 				if commit.ChangeId != "" {
 					err = fmt.Errorf(
-						"invalid commit log (line): duplicate Change-Id tag",
-						lineNum)
+						"commit log (line %v, commit %v): duplicate Change-Id tag",
+						lineNum, commit.SHA)
 					return
 				}
 				commit.ChangeId = line[11:]
 				maybeHead = true
 			case strings.HasPrefix(line, "Story-Id: "):
-				if commit.StoryId != "" {
+				if commit.StoryId != 0 {
 					err = fmt.Errorf(
-						"invalid commit log (line %v): duplicate Story-Id tag",
-						lineNum)
+						"commit log (line %v): duplicate Story-Id tag",
+						lineNum, commit.SHA)
 					return
 
 				}
-				commit.StoryId = line[10:]
+				var (
+					storyIdString = line[10:]
+					storyId       int
+				)
+				storyId, err = strconv.Atoi(storyIdString)
+				if err != nil {
+					err = fmt.Errorf(
+						"commit log (line %v, commit %v): invalid Story-Id: %v",
+						lineNum, commit.SHA, storyIdString)
+					return
+				}
+				commit.StoryId = storyId
 				maybeHead = true
 			}
 		}
 	}
 	if commit != nil {
-		commits = append(commits, commit)
+		cs = append(cs, commit)
 	}
 
-	err = scanner.Err()
-	return
+	if err := scanner.Err(); err != nil {
+		return nil, nil, err
+	}
+	return cs, nil, nil
 }
