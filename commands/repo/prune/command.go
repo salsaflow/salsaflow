@@ -68,6 +68,11 @@ func run(cmd *gocli.Command, args []string) {
 	}
 }
 
+type storiesFetchResult struct {
+	stderr *bytes.Buffer
+	err    error
+}
+
 func runMain() (err error) {
 	var (
 		msg    string
@@ -115,37 +120,66 @@ func runMain() (err error) {
 
 	// Get the associated stories.
 	msg = "Fetch the associated Pivotal Tracker stories"
-	log.Run(msg)
-	idSet := make(map[int]struct{})
-	for _, ref := range refs {
-		id, _ := pt.RefToStoryId(ref)
-		idSet[id] = struct{}{}
-	}
+	log.Go(msg)
+	var (
+		storyMap     = make(map[int]*pivotal.Story)
+		storiesResCh = make(chan *storiesFetchResult, 1)
+	)
+	go func(taskMsg string) {
+		idSet := make(map[int]struct{})
+		for _, ref := range refs {
+			id, _ := pt.RefToStoryId(ref)
+			idSet[id] = struct{}{}
+		}
 
-	ids := make([]int, 0, len(idSet))
-	for id := range idSet {
-		ids = append(ids, id)
-	}
+		ids := make([]int, 0, len(idSet))
+		for id := range idSet {
+			ids = append(ids, id)
+		}
 
-	stories, stderr, err := pt.ListStoriesById(ids)
-	if err != nil {
-		return
-	}
+		stories, stderr, err := pt.ListStoriesById(ids)
+		if err != nil {
+			storiesResCh <- &storiesFetchResult{stderr, err}
+			log.Fail(msg)
+		}
 
-	storyMap := make(map[int]*pivotal.Story)
-	for _, story := range stories {
-		storyMap[story.Id] = story
-	}
+		for _, story := range stories {
+			storyMap[story.Id] = story
+		}
 
-	stories = nil
+		storiesResCh <- &storiesFetchResult{}
+		log.Ok(taskMsg)
+	}(msg)
 
 	// Filter the branches according to the story state and owner.
 	msg = "Fetch your Pivotal Tracker user record"
-	log.Run(msg)
-	var me *pivotal.Me
+	var (
+		me      *pivotal.Me
+		meResCh = make(chan error, 1)
+	)
 	if !flagAllOwners {
-		me, err = pt.Me()
-		if err != nil {
+		log.Go(msg)
+		go func(taskMsg string) {
+			var err error
+			me, err = pt.Me()
+			if err == nil {
+				log.Ok(msg)
+			} else {
+				log.Fail(msg)
+			}
+			meResCh <- err
+		}(msg)
+	}
+
+	// Wait for the stories to arrive.
+	if res := <-storiesResCh; res.err != nil {
+		stderr, err = res.stderr, res.err
+		return
+	}
+	// Wait for the me record to arrive.
+	if !flagAllOwners {
+		if ex := <-meResCh; ex != nil {
+			err = ex
 			return
 		}
 	}
