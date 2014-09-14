@@ -23,17 +23,23 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  prune [-include_delivered] [-local_only] [-remote_only]`,
+  prune [-include_delivered] [-all_owners]
+        [-local_only] [-remote_only]`,
 	Short: "prune delivered story branches",
 	Long: `
   Delete local and remote branches that are associated with stories
   that were accepted (or delivered, that depends on the flags).
+
+  Usually only the branches owned by the caller are offered for deletion.
+  That can be changed by -all_owners. If that flag is specified,
+  all story branches in the repository are offered for deletion.
 	`,
 	Action: run,
 }
 
 var (
 	flagIncludeDelivered bool
+	flagAllOwners        bool
 	flagLocalOnly        bool
 	flagRemoteOnly       bool
 )
@@ -41,6 +47,8 @@ var (
 func init() {
 	Command.Flags.BoolVar(&flagIncludeDelivered, "include_delivered", flagIncludeDelivered,
 		"prune Delivered story branches as well")
+	Command.Flags.BoolVar(&flagAllOwners, "all_owners", flagAllOwners,
+		"include story branches from everybody")
 	Command.Flags.BoolVar(&flagLocalOnly, "local_only", flagLocalOnly,
 		"prune local branches only")
 	Command.Flags.BoolVar(&flagRemoteOnly, "remote_only", flagRemoteOnly,
@@ -106,7 +114,7 @@ func runMain() (err error) {
 	}
 
 	// Get the associated stories.
-	msg = "Fetch the associated stories"
+	msg = "Fetch the associated Pivotal Tracker stories"
 	log.Run(msg)
 	idSet := make(map[int]struct{})
 	for _, ref := range refs {
@@ -129,8 +137,20 @@ func runMain() (err error) {
 		storyMap[story.Id] = story
 	}
 
-	// Filter the branches according to the story state.
-	msg = "Filter the branches according to the story state"
+	stories = nil
+
+	// Filter the branches according to the story state and owner.
+	msg = "Fetch your Pivotal Tracker user record"
+	log.Run(msg)
+	var me *pivotal.Me
+	if !flagAllOwners {
+		me, err = pt.Me()
+		if err != nil {
+			return
+		}
+	}
+
+	msg = "Filter the branches according to the story state and owner"
 	var filteredRefs []string
 	for _, ref := range refs {
 		id, _ := pt.RefToStoryId(ref)
@@ -140,6 +160,19 @@ func runMain() (err error) {
 			return
 		}
 
+		// Check the story owner.
+		if !flagAllOwners {
+			for _, ownerId := range story.OwnerIds {
+				if ownerId == me.Id {
+					goto CheckState
+				}
+			}
+			// No matching owner found, skip the ref.
+			continue
+		}
+
+		// Check the story state.
+	CheckState:
 		switch story.State {
 		case pivotal.StoryStateAccepted:
 			filteredRefs = append(filteredRefs, ref)

@@ -21,6 +21,12 @@ var (
 	ErrApiCall               = errors.New("Pivotal Tracker: API call failed")
 )
 
+func Me() (*pivotal.Me, error) {
+	client := pivotal.NewClient(config.PivotalTracker.ApiToken())
+	me, _, err := client.Me.Get()
+	return me, err
+}
+
 func ListStories(filter string) ([]*pivotal.Story, error) {
 	var (
 		token     = config.PivotalTracker.ApiToken()
