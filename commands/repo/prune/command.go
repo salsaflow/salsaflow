@@ -3,9 +3,10 @@ package pruneCmd
 import (
 	// Stdlib
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 
 	// Internal
 	"github.com/tchap/git-trunk/app"
@@ -59,7 +60,6 @@ func run(cmd *gocli.Command, args []string) {
 	}
 }
 
-// XXX: THIS IS TERRIBLY UGLY, REWRITE!
 func runMain() (err error) {
 	var (
 		msg    string
@@ -84,19 +84,22 @@ func runMain() (err error) {
 
 	// Get the list of story references.
 	msg = "Collect all story branches"
-	local, remote, stderr, err := pt.ListStoryRefs()
+	localRefs, remoteRefs, stderr, err := pt.ListGitStoryRefs()
 	if err != nil {
 		return
 	}
 
-	if flagLocalOnly {
-		remote = nil
-	}
-	if flagRemoteOnly {
-		local = nil
+	var refs []string
+	switch {
+	case flagLocalOnly:
+		refs = localRefs
+	case flagRemoteOnly:
+		refs = remoteRefs
+	default:
+		refs = append(localRefs, remoteRefs...)
 	}
 
-	if len(local) == 0 && len(remote) == 0 {
+	if len(refs) == 0 {
 		msg = ""
 		log.Println("\nNo relevant story branches found, exiting...")
 		return
@@ -106,11 +109,7 @@ func runMain() (err error) {
 	msg = "Fetch the associated stories"
 	log.Run(msg)
 	idSet := make(map[int]struct{})
-	for _, ref := range local {
-		id, _ := pt.RefToStoryId(ref)
-		idSet[id] = struct{}{}
-	}
-	for _, ref := range remote {
+	for _, ref := range refs {
 		id, _ := pt.RefToStoryId(ref)
 		idSet[id] = struct{}{}
 	}
@@ -132,92 +131,83 @@ func runMain() (err error) {
 
 	// Filter the branches according to the story state.
 	msg = "Filter the branches according to the story state"
-	var (
-		newLocal  []string
-		newRemote []string
-	)
-	for _, ref := range local {
+	var filteredRefs []string
+	for _, ref := range refs {
 		id, _ := pt.RefToStoryId(ref)
 		story, ok := storyMap[id]
 		if !ok {
-			err = fmt.Errorf("story with id=%v not found", id)
+			err = fmt.Errorf("story with id %v not found", id)
 			return
 		}
 
 		switch story.State {
 		case pivotal.StoryStateAccepted:
-			newLocal = append(newLocal, ref)
+			filteredRefs = append(filteredRefs, ref)
 		case pivotal.StoryStateDelivered:
 			if flagIncludeDelivered {
-				newLocal = append(newLocal, ref)
+				filteredRefs = append(filteredRefs, ref)
 			}
 		}
 	}
-	local = newLocal
+	refs = filteredRefs
 
-	for _, ref := range remote {
-		id, _ := pt.RefToStoryId(ref)
-		story, ok := storyMap[id]
-		if !ok {
-			err = fmt.Errorf("story with id=%v not found", id)
-			return
-		}
-
-		switch story.State {
-		case pivotal.StoryStateAccepted:
-			newRemote = append(newRemote, ref)
-		case pivotal.StoryStateDelivered:
-			if flagIncludeDelivered {
-				newRemote = append(newRemote, ref)
-			}
-		}
-	}
-	remote = newRemote
-
-	if len(local) == 0 && len(remote) == 0 {
+	if len(refs) == 0 {
 		msg = ""
 		log.Println("\nThere are no branches to be deleted, exiting...")
 		return
 	}
 
-	// Prompt the user to confirm the branches.
+	// Sort the refs.
+	sort.Sort(sort.StringSlice(refs))
+
+	// Prompt the user to confirm the delete operation.
 	var (
 		toDeleteLocally  []string
 		toDeleteRemotely []string
 		ok               bool
 	)
-	if len(local) != 0 {
+
+	// Go through the local branches.
+	if strings.HasPrefix(refs[0], "refs/heads/") {
 		fmt.Println("\n---> Local branches\n")
 	}
-	for _, ref := range local {
+	for len(refs) > 0 {
+		ref := refs[0]
+		if !strings.HasPrefix(ref, "refs/heads/") {
+			break
+		}
 		branch := ref[len("refs/heads/"):]
-		q := fmt.Sprintf("Delete local branch '%v'?", ref[len("refs/heads/"):])
-		ok, err = prompt.Confirm(q)
+		question := fmt.Sprintf("Delete local branch '%v'", branch)
+		ok, err = prompt.Confirm(question)
 		if err != nil {
 			return
 		}
 		if ok {
 			toDeleteLocally = append(toDeleteLocally, branch)
 		}
+		refs = refs[1:]
 	}
-	if len(remote) != 0 {
+
+	// All that is left are remote branches.
+	if len(refs) != 0 {
 		fmt.Println("\n---> Remote branches\n")
 	}
-	for _, ref := range remote {
-		branch := ref[len("refs/remotes/"):]
-		q := fmt.Sprintf("Delete remote branch '%v'?", branch)
-		ok, err = prompt.Confirm(q)
+	for _, ref := range refs {
+		branch := ref[len("refs/remotes/origin/"):]
+		question := fmt.Sprintf("Delete remote branch '%v'", branch)
+		ok, err = prompt.Confirm(question)
 		if err != nil {
 			return
 		}
 		if ok {
-			toDeleteRemotely = append(toDeleteRemotely, branch[len(config.OriginName)+1:])
+			toDeleteRemotely = append(toDeleteRemotely, branch)
 		}
 	}
 	fmt.Println()
 
 	if len(toDeleteLocally) == 0 && len(toDeleteRemotely) == 0 {
-		err = errors.New("No branches selected, operation canceled...")
+		msg = ""
+		fmt.Println("No branches selected, exiting...")
 		return
 	}
 
@@ -227,6 +217,7 @@ func runMain() (err error) {
 		log.Run(msg)
 
 		// Remember the position of the branches to be deleted.
+		// This is used in case we need to perform a rollback.
 		var (
 			currentPositions []string
 			hexsha           string

@@ -13,18 +13,12 @@ import (
 	"github.com/tchap/git-trunk/git"
 )
 
-type GitBranch struct {
-	LocalName    string
-	UpstreamName string
-	Remote       string
-}
-
 var (
-	localStoryBranchMatcher  = "^refs/heads/story/.+/[0-9]+$"
-	remoteStoryBranchMatcher = "^refs/remotes/" + config.OriginName + "/story/.+/[0-9]+$"
+	localRefMatcher  = "^refs/heads/story/.+/[0-9]+$"
+	remoteRefMatcher = "^refs/remotes/" + config.OriginName + "/story/.+/[0-9]+$"
 )
 
-func ListStoryRefs() (localRefs, remoteRefs []string, stderr *bytes.Buffer, err error) {
+func ListGitStoryRefs() (localRefs, remoteRefs []string, stderr *bytes.Buffer, err error) {
 	stdout, stderr, err := git.Git("show-ref")
 	if err != nil {
 		return
@@ -34,8 +28,8 @@ func ListStoryRefs() (localRefs, remoteRefs []string, stderr *bytes.Buffer, err 
 		local  []string
 		remote []string
 
-		localMatcher  = regexp.MustCompile(localStoryBranchMatcher)
-		remoteMatcher = regexp.MustCompile(remoteStoryBranchMatcher)
+		localMatcher  = regexp.MustCompile(localRefMatcher)
+		remoteMatcher = regexp.MustCompile(remoteRefMatcher)
 	)
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
