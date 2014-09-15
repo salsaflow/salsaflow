@@ -1,0 +1,35 @@
+#!/bin/bash
+set -e
+
+if [[ "$1" == "AreYouWhoIthinkYouAreHuh" ]]; then
+  echo "IAmGitFlowWebhookYaDoofus!"
+  exit 0
+fi
+
+commit_msg_file=$1
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+story_id=$(echo ${current_branch} | rev | cut -d"/" -f 1 | rev)
+if ! echo "${story_id}" | grep -E "[0-9]+" >/dev/null; then
+  exit 0
+fi
+
+STORY_ID_REGEX="^story-id:[[:space:]]*[0-9]+$"
+CHANGE_ID_REGEX="^change-id:[[:space:]]*[0-9a-zA-Z]+$"
+
+function add_line {
+  local line="$1"
+  # Add `line` before first line starting with `#`.
+  # SED unfortunately on some platforms cannot print newlines so we're using `tr` in
+  # a hacky way to amend that.
+  new_content=$(cat "${commit_msg_file}" | sed "1,/^#.*/s/^#.*/~${line}/" | tr "~" "\n")
+  echo "${new_content}" >${commit_msg_file}
+}
+
+if ! grep -E -i ${STORY_ID_REGEX} ${commit_msg_file}; then
+  add_line "story-id: ${story_id}"
+fi
+if ! grep -E -i ${CHANGE_ID_REGEX} ${commit_msg_file}; then
+  uuid=$(python -c 'import uuid; print str(uuid.uuid1())'| sed -e 's/-//g')
+  uuid=$(echo ${uuid:0:10})
+  add_line "change-id: ${uuid}"
+fi

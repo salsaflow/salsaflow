@@ -1,0 +1,251 @@
+#!/bin/bash
+set -e;
+set -o pipefail;
+
+[[ -n ${DEBUG} ]] && set -x
+
+# The usual prelude
+# =================
+
+. git-flow2-rainbow.sh
+. git-flow2-spinner.sh
+. git-flow2-common.sh
+
+ensure_repo_is_initialized
+
+PROJECT_ID=$(ensure_pt "project_id") || {
+  echo "${PROJECT_ID}"
+  exit 1
+}
+
+PIVOTAL_TOKEN=$(ensure_pt "token" "global") || {
+  echo "${PIVOTAL_TOKEN}"
+  exit 1
+}
+export PIVOTAL_TOKEN="${PIVOTAL_TOKEN}"
+
+# Make sure we're spliting strings by newlines.
+export IFS=$'\n'
+
+trap cleanup EXIT
+
+function cleanup {
+  if [[ "$?" -ne "0" ]]; then
+    echo
+    echo "Something was wrong. I'm bailing out. Have a nice day!"
+  fi
+  stop_spinner 0
+}
+
+# Usual prelude done
+# ==================
+
+function rollback_branch {
+  local new_branch="$1"
+
+  git checkout develop >/dev/null
+  [[ -n "${new_branch}" ]] && git branch -D ${new_branch}
+}
+
+function set_me_as_pt_story_owner {
+  local story_id=$1
+  local new_branch=$2
+
+  start_spinner "Setting you as the owner of story ${story_id}..."
+  pt_user_id=$(curl -s -X GET -H "X-TrackerToken: ${PIVOTAL_TOKEN}" "https://www.pivotaltracker.com/services/v5/me" 2>/dev/null | \
+    underscore extract id)
+
+  if [[ -z "${pt_user_id}" ]]; then
+    print_scream
+    echo "${__bold}Oops... Could not determine your Pivotal Tracker user id.${__normal}"
+    [[ -n "${new_branch}" ]] && rollback_branch ${new_branch}
+    exit 1
+  fi
+
+  # Set the story owner field to me.
+  # PT reports errors in JSON output with HTTP 200 so we have to parse what we get.
+  __out=$(curl -X PUT -H "X-TrackerToken: ${PIVOTAL_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "{\"owner_ids\": [${pt_user_id}]}" \
+    --silent \
+    "https://www.pivotaltracker.com/services/v5/projects/${PROJECT_ID}/stories/${story_id}") || {
+    echo "Something went wront when trying to access Pivotal Tracker server."
+    exit 1
+  }
+  stop_spinner 0
+
+  # Check if there were errors.
+  pt_error=$(echo ${__out} | underscore select ".error" --outfmt text)
+  if [[ -n "${pt_error}" ]]; then
+    echo 
+    echo "${__bold}Oops, I could not set the story owner to you.${__normal}"
+    print_scream
+    echo "Please set yourself as the owner of in the web UI using the following link:"
+    echo "https://www.pivotaltracker.com/n/projects/${PROJECT_ID}/stories/${story_id}" 
+    echo
+    echo "original error: ${pt_error}"
+  fi
+}
+
+function start_story {
+  local story_id=$1
+
+  # Instruct PT backend to update the story.
+  start_spinner "Setting story #${story_id} state to 'started'"
+  echo
+  __out=$(pivotal_tools start story ${story_id} --project-id ${PROJECT_ID}) || {
+    echo
+    echo "${__bold}Pivotal Tracker reported an error.${__normal}"
+    print_scream
+    echo "${__bold}${__out}${__normal}"
+    exit 1
+  }
+  stop_spinner 0
+}
+
+
+
+# Deal with Pivotal Tracker
+# =========================
+
+echogreen "Enter Pivotal Tracker"
+
+start_spinner "Loading stories from Pivotal tracker"
+# Get all relevant stories from PT.
+# TODO: This only gets first 100 stories.
+stories=$(pivotal_tools show stories --number 100  --project-id ${PROJECT_ID}) || {
+  # Handle failure.
+  echo -e "${stories}"
+  exit 1
+}
+stop_spinner 0
+
+echo
+
+if [[ ${stories} == "None" ]]; then
+  echo "Hm, looks like there are no stories to choose from."
+  echo "Add some to backlog or current and run me again!"
+  echo "Have a nice day!"
+  exit 0
+fi
+
+# We're only interested in features and bugs that are started or unstarted.
+stories_array=($(echo -e "${stories}" | \
+  grep -E "(feature|bug)[[:space:]]+(started|unstarted)[[:space:]]+\[" | \
+  grep -v "unscheduled[^[]*\["))
+
+echo "I will now list all the suitable stories in Pivotal Tracker I've found."
+
+for i in "${!stories_array[@]}"; do
+  if [ "$i" -le "9" ]; then
+    # OCD padding.
+    echo "[$i]:  ${stories_array[$i]} [$i]";
+  else
+    echo "[$i]: ${stories_array[$i]} [$i]";
+  fi;
+done
+
+flush_stdio
+
+# Prompt user to select a story.
+read -p "Please choose a story to start: " story_index
+case $story_index in
+  [0-9]* ) echo ;;
+  * ) echo "Non-numeric value detected. Exiting now."; exit 0;;
+esac
+
+check_bounds ${story_index} ${#stories_array[@]} "0" || {
+  echo "Selected index is out of bounds. Run me again and choose better next time!"
+  exit 1;
+}
+
+# Parse story string to get the story id.
+story_id=`echo ${stories_array[$story_index]} | cut -d' ' -f1 | tr -d \#`
+
+# Make sure the story is pointed.
+if echo "${stories_array[$story_index]}" | grep -E "feature.*\[[[:space:]]+\]" >/dev/null; then
+  echo "Story must be estimated in order to be started."
+  echo "Point story #${story_id} and run me again!"
+  exit 1
+fi
+
+# Check if there are any story branches for this story already.
+# =============================================================
+
+[[ -n "${DEBUG}" ]] && echo -e "matching branches:\n `git branch -a | grep ${story_id}`"
+
+matching_branches=$(\
+  git branch -a | grep ${story_id} | \
+  sed 's~^\*\ ~  ~;s~^[ ]*~~'| sed "s~remotes/[^/]*/~~" | \
+  uniq
+) || echo ""
+
+[[ -n "${DEBUG}" ]] && echo -e "matches:" ${matching_branches}
+
+if [[ -n "${matching_branches}" ]]; then
+  echo
+  echo "Wait wait wait. Existing branch(es) found for story ${story_id}."
+  for branch in "${matching_branches}"; do echo " - ${branch}"; done
+  echo
+  echo "Just checkout one of them and work there."
+
+  start_story "${story_id}"
+  set_me_as_pt_story_owner "${story_id}" ""
+
+  echo "I wish you a good day."
+  exit 0
+fi
+
+# The Git Part
+# ============
+
+echogreen "Enter Git"
+
+flush_stdio
+
+echo "I'll ask you to input a human readable slug now."
+echo "It will be used to create the feature branch."
+read -p "Please insert the slug: " human_name
+
+if [[ -z ${human_name} ]]; then
+  echo "You can't use an empty slug."
+  exit 1
+fi
+
+story_slug=`slugify_string "${human_name}"`
+new_branch="story/${story_slug}/${story_id}"
+
+echo
+echo "This will create a branch called '${new_branch}'"
+read -p "You cool with that? [y/n] " -n 1 -r
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+  echo
+  echo "I will exit now. If you want to try again, just run me again."
+  echo "Have a nice day."
+  exit 0
+fi
+
+echo; echo
+echo "I will now checkout develop..."
+# Let's not bother user by being verbose => `stdout` to `/dev/null`.
+git checkout develop >/dev/null
+
+echo
+
+echo "Creating branch '${new_branch}' now..."
+git checkout -b ${new_branch}
+
+# The Pivotal Tracker Part
+# ========================
+
+echo
+echogreen "Enter Pivotal Tracker"
+
+start_story "${story_id}"
+set_me_as_pt_story_owner "${story_id}" "${new_branch}"
+
+# Aaaaand we're good!
+echo
+echogreen "That's All Folks"
+echo "Nicely done! Story is started and branch is created. And you're on it."
+echo "Have a nice day!"

@@ -1,0 +1,137 @@
+#!/bin/bash
+set -e
+
+[[ -n "${DEBUG}" ]] && set -x
+
+origIFS=$IFS
+
+. git-flow2-rainbow.sh
+. git-flow2-spinner.sh
+. git-flow2-common.sh
+
+trap cleanup EXIT
+
+ACTION_REQUIRED=""
+
+function cleanup {
+  if [[ "$?" -ne "0" ]]; then
+    echo
+    echo "I'm bailing out. Have a nice day!"
+  fi
+  stop_spinner 0
+}
+
+function mark_action_required {
+  ACTION_REQUIRED="true"
+  echo "${__bold}>>> Action required! <<< ${__normal}"
+}
+
+BRANCHES="develop"
+
+start_spinner "Fetching from origin..."
+err=$(git fetch -a 2>&1 >/dev/null) || {
+  stop_spinner 1
+  echo "${err}"
+  exit 1
+}
+stop_spinner 0
+
+
+echo
+echored "Check Required Branches"
+echo "Making sure required branches exist: master ${BRANCHES}"
+
+if ! does_branch_exist "master"; then
+  echo "${__bold}Oh noes, 'master' branch is missing!${__normal}"
+  print_scream
+  echo "I need master branch to exist."
+  echo "Please make sure there is one and run me again!"
+  exit 1
+fi
+
+for branch in ${BRANCHES}; do
+  if ! git branch -a | grep -q -E "/?${branch}"; then
+    echo
+    echo "No branch '${branch}' found. Will create one for you for free."
+    git branch ${branch} master
+    echo
+  else
+    echo -n "Branch '${branch}' found. "; print_checkmark
+  fi
+done
+
+echo
+echo -n "Sweet, all the required branches exist! "; print_checkmark;
+
+echo
+echored "Local Config"
+
+if ! git show develop:gitflow.yml 2>/dev/null >/dev/null; then
+  mark_action_required
+  echo "Please make sure there's a 'pivotal_tracker' section with "
+  echo "'project_id: <PT PROJECT ID>' in 'gitflow.yml' file in branch 'develop'"
+  echo "Example setting:"
+  echo
+  echo -e "  pivotal_tracker:\n    project_id: MY_PT_PROJECT_ID"
+else
+  echo -n "Looks good. "; print_checkmark
+fi
+
+echo
+echored "Global Config"
+
+if [[ ! -f "${HOME}/.gitflow.yml" ]]; then
+  mark_action_required
+  echo "I can't find the file '${HOME}/.gitflow.yml'."
+  echo "No hard feelings but I need it. So please create it."
+  echo "And make sure there's a 'pivotal_tracker' section with 'token' property "
+  echo "that has your Pivotal Tracker API token as the value."
+  echo "Example setting: "
+  echo
+  echo -e "  pivotal_tracker:\n    token: MY_PT_API_TOKEN"
+else
+  echo -n "Looks good. "; print_checkmark
+fi
+
+
+echo
+echored "Git Commit Hook"
+
+root="$(git rev-parse --show-toplevel)"
+hook_path="$root/.git/hooks/commit-msg"
+hook_executable="$(which git-trunk-hooks-commit-msg)"
+
+if [[ ! -f "${hook_path}" ]]; then
+  test_output=""
+else
+  test_output=$(eval "${hook_path}" "AreYouWhoIthinkYouAreHuh")
+fi
+
+if [[ "${test_output}" == "IAmGitFlowWebhookYaDoofus!" ]]; then
+  echo -n "Looks good. "; print_checkmark
+else
+  echo "We did not detect our webhook in your repo."
+  read -p "Shall we proceed and create or replace your current commit-msg hook with our GitFlow hook? [y/N]: " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    mark_action_required
+    echo "I need the hook in order to do my job. So I will exit now."
+    echo "Please make sure '${hook_executable}' runs as your commit-msg hook and run me again!"
+  else
+    cp "$hook_executable" "$hook_path"
+    echo -n "Sweet, hook installed. "; print_checkmark
+  fi
+fi
+
+echo
+echored "Outcome"
+
+if [[ -n "${ACTION_REQUIRED}" ]]; then
+  echo "Some required settings were not in place."
+  echo "Please fix that and run me again!"
+  exit 1
+else
+  echo "Everything is fine, repo is initialized!"
+  git config ${GIT_CFG_INITIALIZED} true 
+  exit 0
+fi
