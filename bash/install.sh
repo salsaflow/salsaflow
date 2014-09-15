@@ -10,9 +10,10 @@ if [ -z "$REPO_NAME" ] ; then
 fi
 
 if [ -z "$REPO_HOME" ] ; then
-  REPO_HOME="http://github.com/realyze/gitflow2.git"
+  REPO_HOME="http://github.com/salsita/gitflow2.git"
 fi
 
+BASH_DIR="bash"
 EXEC_FILES="git-flow2 git-flow2-feature-start git-flow2-review-update git-flow2-post-reviews git-flow2-init"
 SCRIPT_FILES="git-flow2-spinner.sh git-flow2-rainbow.sh git-flow2-common.sh"
 GO_FILES="git-trunk git-trunk-hooks-commit-msg"
@@ -59,10 +60,10 @@ case "$1" in
     fi
     install -v -d -m 0755 "$INSTALL_PREFIX"
     for exec_file in $EXEC_FILES ; do
-      install -v -m 0755 "$REPO_NAME/$exec_file" "$INSTALL_PREFIX"
+      install -v -m 0755 "$REPO_NAME/$BASH_DIR/$exec_file" "$INSTALL_PREFIX"
     done
     for script_file in $SCRIPT_FILES ; do
-      install -v -m 0644 "$REPO_NAME/$script_file" "$INSTALL_PREFIX"
+      install -v -m 0644 "$REPO_NAME/$BASH_DIR/$script_file" "$INSTALL_PREFIX"
     done
     GIT_TRUNK="git-trunk.${GIT_TRUNK_VERSION}.darwin-amd64-osx10.9"
     if [[ ! -f "${GIT_TRUNK}.zip" ]]; then
