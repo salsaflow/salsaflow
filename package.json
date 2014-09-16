@@ -1,6 +1,6 @@
 {
   "name": "gitflow2",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "GitFlow 2 Tool",
   "main": "index.js",
   "scripts": {
