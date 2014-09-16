@@ -50,7 +50,7 @@ case "$1" in
       echo "Using existing repo: $REPO_NAME"
     else
       echo "Cloning repo from GitHub to $REPO_NAME"
-      git clone "$REPO_HOME" "$REPO_NAME"
+      git clone --branch master --single-branch "$REPO_HOME" "$REPO_NAME"
     fi
     echo "Installing python requirements"
     pip install -r "$REPO_NAME/$BASH_DIR/requirements.txt" \
