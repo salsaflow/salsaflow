@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"sync"
 
 	// Internal
 	"github.com/salsita/SalsaFlow/git-trunk/git"
@@ -29,23 +30,56 @@ var (
 )
 
 func MustLoad() {
-	// Read the config files from the disk.
-	localConfig, stderr, err := readLocalConfig()
-	if err != nil {
-		log.FailWithContext("Read local configuration file", stderr)
-		log.Fatalln("\nError:", err)
-	}
-	localConfigContent = localConfig.Bytes()
+	// Let's go async!
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-	globalConfig, err := readGlobalConfig()
-	if err != nil {
-		log.Fail("Read global configuration file")
-		log.Fatalln("\nError:", err)
+	// Read the config files from the disk.
+	go func() {
+		defer wg.Done()
+		msg := "Read project configuration file"
+		localConfig, stderr, err := readLocalConfig()
+		if err != nil {
+			log.FailWithContext(msg, stderr)
+			log.Fatalln("\nError:", err)
+		}
+		localConfigContent = localConfig.Bytes()
+	}()
+
+	go func() {
+		defer wg.Done()
+		msg := "Read global configuration file"
+		globalConfig, err := readGlobalConfig()
+		if err != nil {
+			die(msg, err)
+		}
+		globalConfigContent = globalConfig.Bytes()
+	}()
+
+	// Wait for the files to be read.
+	wg.Wait()
+
+	// Parse the local config to know what config modules to bootstrap.
+	msg := "Parse project configuration file"
+	var config struct {
+		IssueTracker string `yaml:"issue_tracker"`
 	}
-	globalConfigContent = globalConfig.Bytes()
+	if err := yaml.Unmarshal(localConfigContent, &config); err != nil {
+		die(msg, err)
+	}
+	if config.IssueTracker == "" {
+		die(msg, &ErrKeyNotSet{"issue_tracker"})
+	}
 
 	// Initialize the modules.
-	mustInitPivotalTracker()
+	switch config.IssueTracker {
+	case sectionPivotalTracker:
+		mustInitPivotalTracker()
+	case sectionJira:
+		mustInitJira()
+	default:
+		die(msg, &ErrKeyInvalid{"issue_tracker", config.IssueTracker})
+	}
 }
 
 func readLocalConfig() (content, stderr *bytes.Buffer, err error) {

@@ -1,114 +1,142 @@
 package config
 
 import (
-	"github.com/salsita/SalsaFlow/git-trunk/log"
+	"errors"
 )
 
 const (
-	DefaultPointMeLabel  = "point me"
-	DefaultReviewedLabel = "reviewed"
-	DefaultVerifiedLabel = "qa+"
+	sectionPivotalTracker = "pivotal_tracker"
+
+	ptDefaultPointMeLabel  = "point me"
+	ptDefaultReviewedLabel = "reviewed"
+	ptDefaultVerifiedLabel = "qa+"
 )
 
-var DefaultSkipLabels = []string{"dupe", "wontfix"}
-
-var PivotalTracker PivotalTrackerConfig
-
-var ptLocalConfig struct {
-	PT struct {
-		ProjectId int `yaml:"project_id"`
-		Labels    struct {
-			PointMeLabel    string   `yaml:"point_me"`
-			ReviewedLabel   string   `yaml:"reviewed"`
-			VerifiedLabel   string   `yaml:"verified"`
-			SkipCheckLabels []string `yaml:"skip_release_check"`
-		} `yaml:"labels"`
-	} `yaml:"pivotal_tracker"`
-}
-
-var ptLocal = &ptLocalConfig.PT
-
-var ptGlobalConfig struct {
-	PT struct {
-		Token string `yaml:"token"`
-	} `yaml:"pivotal_tracker"`
-}
-
-var ptGlobal = &ptGlobalConfig.PT
+var ptDefaultSkipLabels = []string{"dupe", "wontfix"}
 
 func mustInitPivotalTracker() {
-	if err := fillLocalConfig(&ptLocalConfig); err != nil {
-		log.Fail("Load local Pivotal Tracker configuration")
-		log.Fatalln("\nError:", err)
-	}
+	mustInitPivotalTrackerGlobal()
+	mustInitPivotalTrackerLocal()
+}
 
-	if err := fillGlobalConfig(&ptGlobalConfig); err != nil {
-		log.Fail("Load global Pivotal Tracker configuration")
-		log.Fatalln("\nError:", err)
-	}
+// Global configuration --------------------------------------------------------
 
-	if ptLocal.Labels.PointMeLabel == "" {
-		ptLocal.Labels.PointMeLabel = DefaultPointMeLabel
-	}
-	if ptLocal.Labels.ReviewedLabel == "" {
-		ptLocal.Labels.ReviewedLabel = DefaultReviewedLabel
-	}
-	if ptLocal.Labels.VerifiedLabel == "" {
-		ptLocal.Labels.VerifiedLabel = DefaultVerifiedLabel
-	}
-	ptLocal.Labels.SkipCheckLabels = append(ptLocal.Labels.SkipCheckLabels, DefaultSkipLabels...)
+type ptGlobalConfig struct {
+	Token string `yaml:"token"`
+}
 
-	if err := ptValidateLocalConfig(); err != nil {
-		log.Fail("Validate local Pivotal Tracker configuration")
-		log.Fatalln("\nError:", err)
-	}
-
-	if err := ptValidateGlobalConfig(); err != nil {
-		log.Fail("Validate global Pivotal Tracker configuration")
-		log.Fatalln("\nError:", err)
+func (config *ptGlobalConfig) Validate() error {
+	switch {
+	case config.Token == "":
+		return &ErrKeyNotSet{sectionPivotalTracker + ".token"}
+	default:
+		return nil
 	}
 }
+
+var ptGlobalWrapper struct {
+	C *ptGlobalConfig `yaml:"pivotal_tracker"`
+}
+
+func mustInitPivotalTrackerGlobal() {
+	msg := "Parse global Pivotal Tracker configuration"
+	if err := fillGlobalConfig(&ptGlobalWrapper); err != nil {
+		die(msg, err)
+	}
+
+	if ptGlobalWrapper.C == nil {
+		die(msg, errors.New("Pivotal Tracker global configuration section missing"))
+	}
+
+	if err := ptGlobalWrapper.C.Validate(); err != nil {
+		die(msg, err)
+	}
+}
+
+// Local configuration ---------------------------------------------------------
+
+type ptLocalConfig struct {
+	ProjectId int `yaml:"project_id"`
+	Labels    struct {
+		PointMeLabel    string   `yaml:"point_me"`
+		ReviewedLabel   string   `yaml:"reviewed"`
+		VerifiedLabel   string   `yaml:"verified"`
+		SkipCheckLabels []string `yaml:"skip_release_check"`
+	} `yaml:"labels"`
+}
+
+func (config *ptLocalConfig) Validate() error {
+	switch {
+	case config.ProjectId == 0:
+		return &ErrKeyNotSet{sectionPivotalTracker + ".project_id"}
+	case config.Labels.PointMeLabel == "":
+		return &ErrKeyNotSet{sectionPivotalTracker + ".labels.point_me"}
+	case config.Labels.ReviewedLabel == "":
+		return &ErrKeyNotSet{sectionPivotalTracker + ".labels.reviewed"}
+	case config.Labels.VerifiedLabel == "":
+		return &ErrKeyNotSet{sectionPivotalTracker + ".labels.verified"}
+	default:
+		return nil
+	}
+}
+
+var ptLocalWrapper struct {
+	C *ptLocalConfig `yaml:"pivotal_tracker"`
+}
+
+func mustInitPivotalTrackerLocal() {
+	msg := "Parse local Pivotal Tracker configuration"
+	if err := fillLocalConfig(&ptLocalWrapper); err != nil {
+		die(msg, err)
+	}
+
+	config := ptLocalWrapper.C
+	if config == nil {
+		die(msg, errors.New("Pivotal Tracker local configuration section missing"))
+	}
+
+	if config.Labels.PointMeLabel == "" {
+		config.Labels.PointMeLabel = ptDefaultPointMeLabel
+	}
+	if config.Labels.ReviewedLabel == "" {
+		config.Labels.ReviewedLabel = ptDefaultReviewedLabel
+	}
+	if config.Labels.VerifiedLabel == "" {
+		config.Labels.VerifiedLabel = ptDefaultVerifiedLabel
+	}
+	config.Labels.SkipCheckLabels = append(config.Labels.SkipCheckLabels, ptDefaultSkipLabels...)
+
+	if err := config.Validate(); err != nil {
+		die(msg, err)
+	}
+}
+
+// Config proxy object ---------------------------------------------------------
+
+var PivotalTracker PivotalTrackerConfig
 
 type PivotalTrackerConfig struct{}
 
 func (pt *PivotalTrackerConfig) ProjectId() int {
-	return ptLocal.ProjectId
+	return ptLocalWrapper.C.ProjectId
 }
 
 func (pt *PivotalTrackerConfig) PointMeLabel() string {
-	return ptLocal.Labels.PointMeLabel
+	return ptLocalWrapper.C.Labels.PointMeLabel
 }
 
 func (pt *PivotalTrackerConfig) ReviewedLabel() string {
-	return ptLocal.Labels.ReviewedLabel
+	return ptLocalWrapper.C.Labels.ReviewedLabel
 }
 
 func (pt *PivotalTrackerConfig) VerifiedLabel() string {
-	return ptLocal.Labels.VerifiedLabel
+	return ptLocalWrapper.C.Labels.VerifiedLabel
 }
 
 func (pt *PivotalTrackerConfig) SkipCheckLabels() []string {
-	return ptLocal.Labels.SkipCheckLabels
+	return ptLocalWrapper.C.Labels.SkipCheckLabels
 }
 
 func (pt *PivotalTrackerConfig) ApiToken() string {
-	return ptGlobal.Token
-}
-
-func ptValidateLocalConfig() error {
-	switch {
-	case ptLocal.ProjectId == 0:
-		return &ErrFieldNotSet{"PivotalTracker.ProjectId"}
-	default:
-		return nil
-	}
-}
-
-func ptValidateGlobalConfig() error {
-	switch {
-	case ptGlobal.Token == "":
-		return &ErrFieldNotSet{"PivotalTracker.Token"}
-	default:
-		return nil
-	}
+	return ptGlobalWrapper.C.Token
 }
