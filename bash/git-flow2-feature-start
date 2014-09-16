@@ -121,19 +121,19 @@ stories=$(pivotal_tools show stories --number 100  --project-id ${PROJECT_ID}) |
 }
 stop_spinner 0
 
+# We're only interested in features and bugs that are started or unstarted.
+stories_array=($(echo -e "${stories}" | \
+  grep -E "(feature|bug)[[:space:]]+(started|unstarted)[[:space:]]+\[" | \
+  grep -v "unscheduled[^[]*\[" || true))
+
 echo
 
-if [[ ${stories} == "None" ]]; then
+if [[ "${#stories_array[@]}" -eq "0" ]]; then
   echo "Hm, looks like there are no stories to choose from."
   echo "Add some to backlog or current and run me again!"
   echo "Have a nice day!"
   exit 0
 fi
-
-# We're only interested in features and bugs that are started or unstarted.
-stories_array=($(echo -e "${stories}" | \
-  grep -E "(feature|bug)[[:space:]]+(started|unstarted)[[:space:]]+\[" | \
-  grep -v "unscheduled[^[]*\["))
 
 echo "I will now list all the suitable stories in Pivotal Tracker I've found."
 
@@ -179,7 +179,7 @@ matching_branches=$(\
   git branch -a | grep ${story_id} | \
   sed 's~^\*\ ~  ~;s~^[ ]*~~'| sed "s~remotes/[^/]*/~~" | \
   uniq
-) || echo ""
+) || true
 
 [[ -n "${DEBUG}" ]] && echo -e "matches:" ${matching_branches}
 
