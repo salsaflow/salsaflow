@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	LocalConfigFileName  = "gitflow.yml"
-	GlobalConfigFileName = ".gitflow.yml"
+	LocalConfigFileName  = "salsaflow.yml"
+	GlobalConfigFileName = ".salsaflow.yml"
 
 	ConfigBranch = TrunkBranch
 )

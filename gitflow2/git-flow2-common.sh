@@ -16,7 +16,7 @@ function flush_stdio {
 function handle_missing_config {
   echo "${__bold}Oh noes! Missing gitflow config!${__normal}"
   print_scream
-  echo "So listen...we kinda expect you to have a ${__bold}gitflow.yml${__normal} file in a branch called "
+  echo "So listen...we kinda expect you to have a ${__bold}salsaflow.yml${__normal} file in a branch called "
   echo "${__bold}gitflow-config${__normal} in your repo. And you don't seem to have it. So please add it."
   echo
   echo "Have a nice day!"
@@ -57,11 +57,11 @@ function ensure_pt {
 
   local global_cfg=""
   
-  if [[ -f "${HOME}/.gitflow.yml" ]]; then
-    global_cfg=$(cat "${HOME}/.gitflow.yml")
+  if [[ -f "${HOME}/.salsaflow.yml" ]]; then
+    global_cfg=$(cat "${HOME}/.salsaflow.yml")
   fi
 
-  local local_cfg=$(git show ${CONFIG_BRANCH}:gitflow.yml) || {
+  local local_cfg=$(git show ${CONFIG_BRANCH}:salsaflow.yml) || {
     handle_missing_config
   }
 
@@ -75,9 +75,9 @@ function ensure_pt {
     echo "${__bold}Oh noes! Missing gitflow config '${field}'!${__normal}"
     print_scream
     if [[ -z "${global}" ]]; then
-      echo "Add '${field}' to the 'pivotal_tracker' section of your gitflow.yml file in the gitflow-config branch!"
+      echo "Add '${field}' to the 'pivotal_tracker' section of your salsaflow.yml file in the gitflow-config branch!"
     else
-      echo "Add '${field}' to the 'pivotal_tracker' section of ${HOME}/.gitflow.yml file!"
+      echo "Add '${field}' to the 'pivotal_tracker' section of ${HOME}/.salsaflow.yml file!"
     fi
     exit 1
   fi
