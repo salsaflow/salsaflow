@@ -58,7 +58,7 @@ function set_me_as_pt_story_owner {
   if [[ -z "${pt_user_id}" ]]; then
     print_scream
     echo "${__bold}Oops... Could not determine your Pivotal Tracker user id.${__normal}"
-    [[ -n "${new_branch}" ]] && rollback_branch ${new_branch}
+    rollback_branch ${new_branch}
     exit 1
   fi
 
@@ -70,6 +70,7 @@ function set_me_as_pt_story_owner {
     --silent \
     "https://www.pivotaltracker.com/services/v5/projects/${PROJECT_ID}/stories/${story_id}") || {
     echo "Something went wront when trying to access Pivotal Tracker server."
+    rollback_branch ${new_branch}
     exit 1
   }
   stop_spinner 0
