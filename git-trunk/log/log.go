@@ -72,19 +72,27 @@ func (l Logger) Fail(msg string) {
 	l.logf("[FAIL]     %v\n", msg)
 }
 
+func (l Logger) Rollback(msg string) {
+	l.logf("[ROLLBACK] %v\n", msg)
+}
+
+func (l Logger) NewLine(msg string) {
+	l.logf("           %v\n", msg)
+}
+
 func (l Logger) FailWithContext(msg string, stderr *bytes.Buffer) {
 	if msg != "" {
 		l.Fail(msg)
 	}
+	l.Stderr(stderr)
+}
+
+func (l Logger) Stderr(stderr *bytes.Buffer) {
 	if stderr != nil && stderr.Len() != 0 {
 		l.Println("<<<<< stderr")
 		l.Print(stderr)
 		l.Println(">>>>> stderr")
 	}
-}
-
-func (l Logger) Rollback(msg string) {
-	l.logf("[ROLLBACK] %v\n", msg)
 }
 
 func (l Logger) Print(v ...interface{}) {
@@ -134,12 +142,20 @@ func Fail(msg string) {
 	V(Info).Fail(msg)
 }
 
+func Rollback(msg string) {
+	V(Info).Rollback(msg)
+}
+
+func NewLine(msg string) {
+	V(Info).NewLine(msg)
+}
+
 func FailWithContext(msg string, stderr *bytes.Buffer) {
 	V(Info).FailWithContext(msg, stderr)
 }
 
-func Rollback(msg string) {
-	V(Info).Rollback(msg)
+func Stderr(stderr *bytes.Buffer) {
+	V(Info).Stderr(stderr)
 }
 
 func Print(v ...interface{}) {

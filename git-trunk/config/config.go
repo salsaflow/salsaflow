@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"sync"
 
 	// Internal
 	"github.com/salsita/SalsaFlow/git-trunk/git"
@@ -29,35 +28,52 @@ var (
 	globalConfigContent []byte
 )
 
+type readResult struct {
+	msg    string
+	stderr *bytes.Buffer
+	err    error
+}
+
 func MustLoad() {
 	// Let's go async!
-	var wg sync.WaitGroup
-	wg.Add(2)
+	resCh := make(chan *readResult, 2)
 
 	// Read the config files from the disk.
 	go func() {
-		defer wg.Done()
 		msg := "Read project configuration file"
 		localConfig, stderr, err := readLocalConfig()
 		if err != nil {
-			log.FailWithContext(msg, stderr)
-			log.Fatalln("\nError:", err)
+			resCh <- &readResult{msg, stderr, err}
+			return
 		}
 		localConfigContent = localConfig.Bytes()
+		resCh <- nil
 	}()
 
 	go func() {
-		defer wg.Done()
 		msg := "Read global configuration file"
 		globalConfig, err := readGlobalConfig()
 		if err != nil {
-			die(msg, err)
+			resCh <- &readResult{msg, nil, err}
+			return
 		}
 		globalConfigContent = globalConfig.Bytes()
+		resCh <- nil
 	}()
 
 	// Wait for the files to be read.
-	wg.Wait()
+	var failed bool
+	for i := 0; i < cap(resCh); i++ {
+		if res := <-resCh; res != nil && res.err != nil {
+			log.Fail(res.msg)
+			log.NewLine("(" + res.err.Error() + ")")
+			log.Stderr(res.stderr)
+			failed = true
+		}
+	}
+	if failed {
+		log.Fatalln("\nError: failed to load configuration")
+	}
 
 	// Parse the local config to know what config modules to bootstrap.
 	msg := "Parse project configuration file"
