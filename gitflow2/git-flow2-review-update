@@ -63,7 +63,7 @@ function update_review_request {
   new_descr=$(echo -e "${last_commit_log}\n${descr}")
   echo "Updating the review"
 
-  rbt post -r ${rid} --description "${new_descr}"
+  rbt post -r ${rid} --description "${new_descr}" ${sha_id}
 }
 
 
@@ -95,6 +95,9 @@ function draw_motivational_dude {
   echo "                          \`--'       \`\`--..__       "
   echo "                                             \`\`--    "
 }
+
+# SHA ID of the update commit.
+sha_id=$(git log -1 --pretty=format:%h)
 
 
 last_commit_log="$(git log -1 --pretty=format:\"%s%n%b\")"
@@ -141,8 +144,9 @@ if [[ ${#rids[@]} -eq "0" ]]; then
   echo
   echo "But anyway, I will post a new review now."
   rbt post --branch "${story_id}" \
-    --summary "$(git log -1 --pretty=format:\"%s\")" \
-    --description "$(git log -1 --pretty=format:\"%b\")"
+    --summary "$(git log -1 --pretty=format:%s)" \
+    --description "$(git log -1 --pretty=format:%b)" \
+    ${sha_id}
   echo
   echo "Have a nice day!"
   exit 0
