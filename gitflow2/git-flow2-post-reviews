@@ -62,25 +62,12 @@ stop_spinner 0
 
 echo; echogreen "Enter Rebase"
 
-
-function print_scream {
-  echo -e "     .----------.   " 
-  echo -e "    /  .-.  .-.  \  "
-  echo -e "   /   | |  | |   \ "
-  echo -e "   \   \`-'  \`-'  _/ "
-  echo -e "   /\     .--.  / | "
-  echo -e "   \ |   /  /  / /  "
-  echo -e "   / |  \`--'  /\ \  "
-  echo -e "    /\`-------'  \ \ "
-}
-
 echo -e "Rebasing ${BRANCH} on top of develop..."
 git rebase develop || {
-  echo -e "${__bold}Oh noes! Looks like rebase failed.${__normal}\n"
-  print_scream
-  echo -e "\nBut you'll be fine. Really.\n${__bold}Follow git's instructions above \
+  panic \ 
+    "Oh noes! Looks like rebase failed." \
+    "But you'll be fine. Really.\n${__bold}Follow git's instructions above \
 and when you're done, just run me again.${__normal}"
-  exit 1
 }
 
 echo; echo -e "Sweet, ${BRANCH} is now totally rebased on top of develop!"

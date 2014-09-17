@@ -26,6 +26,18 @@ function handle_missing_config {
 }
 
 
+function panic {
+  local header=$1
+  local msg=$2
+
+  echo "${__bold}${header}${__normal}"
+  print_scream
+  echo "${msg}"
+
+  exit 1
+}
+
+
 function print_checkmark {
   echo -e "\xE2\x9C\x93"
 }

@@ -10,6 +10,7 @@ set -o pipefail;
 . git-flow2-rainbow.sh
 . git-flow2-spinner.sh
 . git-flow2-common.sh
+. git-flow2-pivotal.sh
 
 ensure_repo_is_initialized
 
@@ -47,63 +48,30 @@ function rollback_branch {
   [[ -n "${new_branch}" ]] && git branch -D ${new_branch}
 }
 
-function set_me_as_pt_story_owner {
+
+function update_pt_story {
   local story_id=$1
-  local new_branch=$2
+  local branch_to_rollback=$2
+
+  start_spinner "Setting story #${story_id} state to 'started'"
+  __out=$(pt_start_story "${PROJECT_ID}" "${story_id}") || {
+    [[ -n "${branch_to_rollback}" ]] && rollback_branch ${branch_to_rollback}
+    panic "Pivotal Tracker reported an error." "${__out}"
+  }
+  stop_spinner 0
 
   start_spinner "Setting you as the owner of story ${story_id}..."
-  pt_user_id=$(curl -s -X GET -H "X-TrackerToken: ${PIVOTAL_TOKEN}" "https://www.pivotaltracker.com/services/v5/me" 2>/dev/null | \
-    underscore extract id)
-
-  if [[ -z "${pt_user_id}" ]]; then
-    print_scream
-    echo "${__bold}Oops... Could not determine your Pivotal Tracker user id.${__normal}"
-    rollback_branch ${new_branch}
-    exit 1
-  fi
-
-  # Set the story owner field to me.
-  # PT reports errors in JSON output with HTTP 200 so we have to parse what we get.
-  __out=$(curl -X PUT -H "X-TrackerToken: ${PIVOTAL_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "{\"owner_ids\": [${pt_user_id}]}" \
-    --silent \
-    "https://www.pivotaltracker.com/services/v5/projects/${PROJECT_ID}/stories/${story_id}") || {
-    echo "Something went wront when trying to access Pivotal Tracker server."
-    rollback_branch ${new_branch}
-    exit 1
-  }
-  stop_spinner 0
-
-  # Check if there were errors.
-  pt_error=$(echo ${__out} | underscore select ".error" --outfmt text)
-  if [[ -n "${pt_error}" ]]; then
-    echo 
-    echo "${__bold}Oops, I could not set the story owner to you.${__normal}"
-    print_scream
-    echo "Please set yourself as the owner of in the web UI using the following link:"
-    echo "https://www.pivotaltracker.com/n/projects/${PROJECT_ID}/stories/${story_id}" 
-    echo
-    echo "original error: ${pt_error}"
-  fi
-}
-
-function start_story {
-  local story_id=$1
-
-  # Instruct PT backend to update the story.
-  start_spinner "Setting story #${story_id} state to 'started'"
-  echo
-  __out=$(pivotal_tools start story ${story_id} --project-id ${PROJECT_ID}) || {
-    echo
-    echo "${__bold}Pivotal Tracker reported an error.${__normal}"
-    print_scream
-    echo "${__bold}${__out}${__normal}"
-    exit 1
+  __out=$(pt_set_me_as_story_owner "${PROJECT_ID}" "${story_id}") || {
+    [[ -n "${branch_to_rollback}" ]] && rollback_branch ${branch_to_rollback}
+      echo
+      echo "${__bold}Oops, I could not set the story owner to you.${__normal}"
+      echo "Please set yourself as the owner of in the web UI using the following link:"
+      echo "https://www.pivotaltracker.com/n/projects/${PROJECT_ID}/stories/${story_id}"
+      echo
+      [[ -n "${DEBUG}" ]] && echo "original error: ${__out}"
   }
   stop_spinner 0
 }
-
 
 
 # Deal with Pivotal Tracker
@@ -241,9 +209,7 @@ git checkout -b ${new_branch}
 
 echo
 echogreen "Enter Pivotal Tracker"
-
-start_story "${story_id}"
-set_me_as_pt_story_owner "${story_id}" "${new_branch}"
+update_pt_story ${story_id} ${new_branch}
 
 # Aaaaand we're good!
 echo

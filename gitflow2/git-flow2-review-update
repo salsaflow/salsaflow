@@ -23,12 +23,11 @@ function cleanup {
   stop_spinner 0
 }
 
-# Mae sure user has `underscore-cli` installed.
+# Make sure user has `underscore-cli` installed.
 _=$(underscore --version 2>/dev/null) || {
-  print_scream
-  echo "${__bold}Looks like you don't have underscore-cli installed!${__normal}"
-  echo "Run 'npm install -g underscore-cli' like, right now!"
-  exit 1
+  panic \
+    "Looks like you don't have underscore-cli installed!" \
+    "Run 'npm install -g underscore-cli' like, right now!"
 }
 
 
@@ -38,14 +37,16 @@ STORY_ID_RX="s|.*\([0-9]\{8,9\}\).*|\1|"
 
 function handle_missing_story_id {
   last_commit_sha=$(git log -1 --pretty=format:"%h")
-  echo "${__bold}Oh noes, I could not update your review!${__normal}"
-  print_scream
-  echo "${__bold}Story id not found in commit message for '${last_commit_sha}'${__normal}."
-  echo
-  echo "Please use 'git commit --amend' to add a 'story-id: <PT story id>' line."
-  echo "That's what I use to figure out what story your commit relates to and I can "
-  echo "find the relevant review to update."
-  exit 1
+  function __msg {
+    echo "${__bold}Story id not found in commit message for '${last_commit_sha}'${__normal}."
+    echo
+    echo "Please use 'git commit --amend' to add a 'story-id: <PT story id>' line."
+    echo "That's what I use to figure out what story your commit relates to and I can "
+    echo "find the relevant review to update."
+  }
+  panic \
+    "Oh noes, I could not update your review!" \
+    __msg
 }
 
 
@@ -116,13 +117,11 @@ start_spinner "Loading ReviewBoard repositories..."
 # We need to limit number review request update candidates. So we want to know the
 # RB repo id. This is how we find it.
 rb_repo_id=$(rbt api-get /repositories --max-results=200 | \
-  underscore extract 'repositories' | \
-  underscore find "value.path.indexOf('${github_repo}') >= 0" | \
-  underscore extract 'id' --outfmt text) || {
-
+    underscore extract 'repositories' 2>/dev/null | \
+    underscore find "value.path.indexOf('${github_repo}') >= 0" | \
+    underscore extract 'id' --outfmt text 2>/dev/null) || {
   echo
-  echo "Failed to load ReviewBoard repositories..."
-  exit 1
+  panic "Failed to load ReviewBoard repositories..."
 }
 stop_spinner 0
 
