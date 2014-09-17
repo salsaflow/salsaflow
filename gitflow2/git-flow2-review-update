@@ -46,7 +46,7 @@ function handle_missing_story_id {
   }
   panic \
     "Oh noes, I could not update your review!" \
-    __msg
+    "$(__msg)"
 }
 
 
