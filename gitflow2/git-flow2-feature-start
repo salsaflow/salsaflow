@@ -82,7 +82,8 @@ echogreen "Enter Pivotal Tracker"
 start_spinner "Loading stories from Pivotal tracker"
 # Get all relevant stories from PT.
 # TODO: This only gets first 100 stories.
-stories=$(pivotal_tools show stories --number 100  --project-id ${PROJECT_ID}) || {
+stories=$(pivotal_tools show stories --ignore-unestimated --number 100  \
+    --project-id ${PROJECT_ID}) || {
   # Handle failure.
   echo -e "${stories}"
   exit 1
@@ -130,13 +131,6 @@ check_bounds ${story_index} ${#stories_array[@]} "0" || {
 
 # Parse story string to get the story id.
 story_id=`echo ${stories_array[$story_index]} | cut -d' ' -f1 | tr -d \#`
-
-# Make sure the story is pointed.
-if echo "${stories_array[$story_index]}" | grep -E "feature.*\[[[:space:]]+\]" >/dev/null; then
-  echo "Story must be estimated in order to be started."
-  echo "Point story #${story_id} and run me again!"
-  exit 1
-fi
 
 # Check if there are any story branches for this story already.
 # =============================================================
