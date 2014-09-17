@@ -198,7 +198,7 @@ func runMain() (err error) {
 	if !flagFuture.Zero() {
 		futureVersion = &flagFuture
 	} else {
-		futureVersion = ver.IncrementPatch()
+		futureVersion = ver.IncrementMinor()
 	}
 
 	// Create release on top of trunk.

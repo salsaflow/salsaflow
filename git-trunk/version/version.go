@@ -56,6 +56,10 @@ func (ver *Version) Zero() bool {
 	return ver.Major == 0 && ver.Minor == 0 && ver.Patch == 0
 }
 
+func (ver *Version) IncrementMinor() *Version {
+	return &Version{ver.Major, ver.Minor + 1, 0}
+}
+
 func (ver *Version) IncrementPatch() *Version {
 	return &Version{ver.Major, ver.Minor, ver.Patch + 1}
 }
