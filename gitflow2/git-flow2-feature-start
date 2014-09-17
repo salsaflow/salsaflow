@@ -137,24 +137,29 @@ story_id=`echo ${stories_array[$story_index]} | cut -d' ' -f1 | tr -d \#`
 
 [[ -n "${DEBUG}" ]] && echo -e "matching branches:\n `git branch -a | grep ${story_id}`"
 
-matching_branches=$(\
+matching_branches=($(\
   git branch -a | grep ${story_id} | \
   sed 's~^\*\ ~  ~;s~^[ ]*~~'| sed "s~remotes/[^/]*/~~" | \
   uniq
-) || true
+)) || true
 
-[[ -n "${DEBUG}" ]] && echo -e "matches:" ${matching_branches}
-
-if [[ -n "${matching_branches}" ]]; then
+echo
+if [[ "${#matching_branches[@]}" -eq "1" ]]; then
+  echo "Single existing matching branch found: '${matching_branches[0]}'."
+  echo "I will now checkout that branch."
   echo
-  echo "Wait wait wait. Existing branch(es) found for story ${story_id}."
-  for branch in "${matching_branches}"; do echo " - ${branch}"; done
+  git checkout ${matching_branches[0]}
+  echo
+  update_pt_story ${story_id}
+  echo "I wish you a good day."
+  exit 0
+elif [[ "${#matching_branches[@]}" -gt "0" ]]; then
+  echo "Wait wait wait. Multiple existing branches found for story ${story_id}."
+  for i in "${!matching_branches[@]}"; do echo " - ${matching_branches[i]}"; done
   echo
   echo "Just checkout one of them and work there."
-
-  start_story "${story_id}"
-  set_me_as_pt_story_owner "${story_id}" ""
-
+  echo
+  update_pt_story ${story_id}
   echo "I wish you a good day."
   exit 0
 fi
