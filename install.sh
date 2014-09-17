@@ -15,7 +15,7 @@ fi
 
 BASH_DIR="gitflow2"
 EXEC_FILES="git-flow2 git-flow2-feature-start git-flow2-review-update git-flow2-post-reviews git-flow2-init"
-SCRIPT_FILES="git-flow2-spinner.sh git-flow2-rainbow.sh git-flow2-common.sh"
+SCRIPT_FILES="git-flow2-spinner.sh git-flow2-rainbow.sh git-flow2-common.sh git-flow2-pivotal.sh"
 GO_FILES="git-trunk git-trunk-hook-commit-msg"
 
 GIT_TRUNK_VERSION="0.2.0"
