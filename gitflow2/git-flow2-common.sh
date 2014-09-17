@@ -8,6 +8,8 @@ __normal=`tput sgr0`
 GIT_CFG_SECTION='gitflow2'
 GIT_CFG_INITIALIZED="${GIT_CFG_SECTION}.initialized"
 CONFIG_BRANCH="develop"
+CONFIG_FILE='salsaflow.yml'
+CONFIG_FILE_GLOBAL="${HOME}/.salsaflow.yml"
 
 function flush_stdio {
   while read -e -t 1; do : ; done
@@ -16,7 +18,7 @@ function flush_stdio {
 function handle_missing_config {
   echo "${__bold}Oh noes! Missing gitflow config!${__normal}"
   print_scream
-  echo "So listen...we kinda expect you to have a ${__bold}salsaflow.yml${__normal} file in a branch called "
+  echo "So listen...we kinda expect you to have a ${__bold}${CONFIG_FILE}${__normal} file in a branch called "
   echo "${__bold}gitflow-config${__normal} in your repo. And you don't seem to have it. So please add it."
   echo
   echo "Have a nice day!"
@@ -50,18 +52,17 @@ function does_branch_exist {
 }
 
 
-
 function ensure_pt {
   local field="$1"
   local global="$2"
 
   local global_cfg=""
   
-  if [[ -f "${HOME}/.salsaflow.yml" ]]; then
-    global_cfg=$(cat "${HOME}/.salsaflow.yml")
+  if [[ -f "${CONFIG_FILE_GLOBAL}" ]]; then
+    global_cfg=$(cat "${CONFIG_FILE_GLOBAL}")
   fi
 
-  local local_cfg=$(git show ${CONFIG_BRANCH}:salsaflow.yml) || {
+  local local_cfg=$(git show ${CONFIG_BRANCH}:${CONFIG_FILE}) || {
     handle_missing_config
   }
 
@@ -75,9 +76,10 @@ function ensure_pt {
     echo "${__bold}Oh noes! Missing gitflow config '${field}'!${__normal}"
     print_scream
     if [[ -z "${global}" ]]; then
-      echo "Add '${field}' to the 'pivotal_tracker' section of your salsaflow.yml file in the gitflow-config branch!"
+      echo "Add '${field}' to the 'pivotal_tracker' section of your"
+      echo "${CONFIG_FILE} file in the ${CONFIG_BRANCH} branch!"
     else
-      echo "Add '${field}' to the 'pivotal_tracker' section of ${HOME}/.salsaflow.yml file!"
+      echo "Add '${field}' to the 'pivotal_tracker' section of ${CONFIG_FILE_GLOBAL} file!"
     fi
     exit 1
   fi
