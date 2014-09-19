@@ -56,7 +56,7 @@ func runMain() (err error) {
 	defer func() {
 		// Print error details.
 		if err != nil {
-			log.FailWithContext(msg, stderr)
+			log.FailWithDetails(msg, stderr)
 		}
 
 		// Checkout the original branch.
@@ -67,7 +67,7 @@ func runMain() (err error) {
 		log.Run(msg)
 		out, ex := git.Checkout(currentBranch)
 		if ex != nil {
-			log.FailWithContext(msg, out)
+			log.FailWithDetails(msg, out)
 			return
 		}
 	}()
@@ -147,7 +147,7 @@ func runMain() (err error) {
 			log.Rollback(taskMsg)
 			out, ex := git.DeleteTag(tag)
 			if ex != nil {
-				log.FailWithContext(taskMsg, out)
+				log.FailWithDetails(taskMsg, out)
 			}
 		}
 	}(msg)
@@ -170,7 +170,7 @@ func runMain() (err error) {
 			log.Rollback(taskMsg)
 			out, ex := git.ResetKeep(config.ClientBranch, origClient)
 			if ex != nil {
-				log.FailWithContext(taskMsg, out)
+				log.FailWithDetails(taskMsg, out)
 			}
 		}
 	}(msg)
@@ -189,7 +189,7 @@ func runMain() (err error) {
 			out, ex := git.Branch(
 				config.ReleaseBranch, config.OriginName+"/"+config.ReleaseBranch)
 			if ex != nil {
-				log.FailWithContext(taskMsg, out)
+				log.FailWithDetails(taskMsg, out)
 			}
 		}
 	}(msg)

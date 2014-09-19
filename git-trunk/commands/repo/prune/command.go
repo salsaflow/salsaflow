@@ -81,7 +81,7 @@ func runMain() (err error) {
 	defer func() {
 		// Print error details.
 		if err != nil {
-			log.FailWithContext(msg, stderr)
+			log.FailWithDetails(msg, stderr)
 		}
 	}()
 
@@ -310,7 +310,7 @@ func runMain() (err error) {
 				for i, branchName := range toDeleteLocally {
 					out, ex := git.ResetKeep(branchName, currentPositions[i])
 					if ex != nil {
-						log.FailWithContext(msg, out)
+						log.FailWithDetails(msg, out)
 					}
 				}
 			}

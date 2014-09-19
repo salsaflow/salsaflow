@@ -50,7 +50,7 @@ func runMain(ref string) (err error) {
 	defer func() {
 		// Print error details.
 		if err != nil {
-			log.FailWithContext(msg, stderr)
+			log.FailWithDetails(msg, stderr)
 		}
 
 		// Checkout the original branch.
@@ -61,7 +61,7 @@ func runMain(ref string) (err error) {
 		log.Run(msg)
 		out, ex := git.Checkout(currentBranch)
 		if ex != nil {
-			log.FailWithContext(msg, out)
+			log.FailWithDetails(msg, out)
 			return
 		}
 	}()
@@ -102,7 +102,7 @@ func runMain(ref string) (err error) {
 			log.Rollback(msg)
 			out, ex := git.ResetKeep(config.MasterBranch, origMaster)
 			if ex != nil {
-				log.FailWithContext(taskMsg, out)
+				log.FailWithDetails(taskMsg, out)
 			}
 		}
 	}(msg)

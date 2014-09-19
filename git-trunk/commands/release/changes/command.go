@@ -83,7 +83,7 @@ func runMain() (err error) {
 	defer func() {
 		// Print error details.
 		if err != nil && !porcelain {
-			log.FailWithContext(msg, stderr)
+			log.FailWithDetails(msg, stderr)
 		}
 	}()
 
