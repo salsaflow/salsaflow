@@ -35,8 +35,8 @@ type Commit struct {
 }
 
 // ListStoryCommits returns the list of all commits that are associated with the given story.
-func ListStoryCommits(storyId int) (commits []*Commit, stderr *bytes.Buffer, err error) {
-	return GrepCommits(fmt.Sprintf("Story-Id: %v", storyId))
+func ListStoryCommits(storyId string) (commits []*Commit, stderr *bytes.Buffer, err error) {
+	return GrepCommits("Story-Id: " + storyId)
 }
 
 func GrepCommits(filter string) (commits []*Commit, stderr *bytes.Buffer, err error) {

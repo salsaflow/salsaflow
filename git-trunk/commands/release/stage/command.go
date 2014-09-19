@@ -11,11 +11,10 @@ import (
 	"github.com/salsita/SalsaFlow/git-trunk/config"
 	"github.com/salsita/SalsaFlow/git-trunk/git"
 	"github.com/salsita/SalsaFlow/git-trunk/log"
-	"github.com/salsita/SalsaFlow/git-trunk/utils/pivotaltracker"
+	"github.com/salsita/SalsaFlow/git-trunk/modules"
 	"github.com/salsita/SalsaFlow/git-trunk/version"
 
 	// Other
-	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 	"gopkg.in/tchap/gocli.v1"
 )
 
@@ -56,7 +55,7 @@ func runMain() (err error) {
 	defer func() {
 		// Print error details.
 		if err != nil {
-			log.FailWithContext(msg, stderr)
+			log.FailWithDetails(msg, stderr)
 		}
 
 		// Checkout the original branch.
@@ -67,7 +66,7 @@ func runMain() (err error) {
 		log.Run(msg)
 		out, ex := git.Checkout(currentBranch)
 		if ex != nil {
-			log.FailWithContext(msg, out)
+			log.FailWithDetails(msg, out)
 			return
 		}
 	}()
@@ -110,25 +109,21 @@ func runMain() (err error) {
 		return
 	}
 
-	// Read the current release version string.
+	// Read the current release version.
 	msg = "Read the current release version"
-	ver, stderr, err := version.ReadFromBranch(config.ReleaseBranch)
+	releaseVersion, stderr, err := version.ReadFromBranch(config.ReleaseBranch)
 	if err != nil {
 		return
 	}
 
-	// Fetch the relevant Pivotal Tracker stories.
-	msg = "Fetch Pivotal Tracker stories"
+	// Instantiate an issue tracker release and ensure it is deliverable.
+	msg = "Fetch stories from the issue tracker"
 	log.Run(msg)
-	stories, err := pivotaltracker.ListReleaseStories(ver.String())
+	release, err := modules.GetIssueTracker().RunningRelease(releaseVersion)
 	if err != nil {
 		return
 	}
-
-	// Make sure that all the stories are reviewed and QA'd.
-	msg = "Make sure that all the stories are deliverable"
-	log.Run(msg)
-	stderr, err = pivotaltracker.ReleaseDeliverable(stories)
+	err = release.EnsureDeliverable()
 	if err != nil {
 		return
 	}
@@ -136,7 +131,7 @@ func runMain() (err error) {
 	// Tag the release branch with the associated version string.
 	msg = "Tag the release branch with the associated version string"
 	log.Run(msg)
-	tag := ver.ReleaseTagString()
+	tag := releaseVersion.ReleaseTagString()
 	stderr, err = git.Tag(tag, config.ReleaseBranch)
 	if err != nil {
 		return
@@ -147,7 +142,7 @@ func runMain() (err error) {
 			log.Rollback(taskMsg)
 			out, ex := git.DeleteTag(tag)
 			if ex != nil {
-				log.FailWithContext(taskMsg, out)
+				log.FailWithDetails(taskMsg, out)
 			}
 		}
 	}(msg)
@@ -170,7 +165,7 @@ func runMain() (err error) {
 			log.Rollback(taskMsg)
 			out, ex := git.ResetKeep(config.ClientBranch, origClient)
 			if ex != nil {
-				log.FailWithContext(taskMsg, out)
+				log.FailWithDetails(taskMsg, out)
 			}
 		}
 	}(msg)
@@ -189,28 +184,22 @@ func runMain() (err error) {
 			out, ex := git.Branch(
 				config.ReleaseBranch, config.OriginName+"/"+config.ReleaseBranch)
 			if ex != nil {
-				log.FailWithContext(taskMsg, out)
+				log.FailWithDetails(taskMsg, out)
 			}
 		}
 	}(msg)
 
-	// Deliver the stories in Pivotal Tracker.
-	msg = "Deliver the stories"
-	log.Run(msg)
-	stories, stderr, err = pivotaltracker.SetStoriesState(stories, pivotal.StoryStateDelivered)
+	// Deliver the release in the issue tracker.
+	msg = ""
+	action, err := release.Deliver()
 	if err != nil {
 		return
 	}
-	defer func(taskMsg string) {
-		// On error, set the story state back to Finished.
+	defer func() {
 		if err != nil {
-			_, out, ex := pivotaltracker.SetStoriesState(
-				stories, pivotal.StoryStateFinished)
-			if ex != nil {
-				log.FailWithContext(taskMsg, out)
-			}
+			action.Rollback()
 		}
-	}(msg)
+	}()
 
 	// Push to create the tag, reset client and delete release in the remote repository.
 	msg = "Push to create the tag, reset client and delete release"

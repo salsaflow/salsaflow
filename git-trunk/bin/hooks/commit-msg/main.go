@@ -13,7 +13,7 @@ import (
 	// Internal
 	"github.com/salsita/SalsaFlow/git-trunk/git"
 	"github.com/salsita/SalsaFlow/git-trunk/log"
-	"github.com/salsita/SalsaFlow/git-trunk/utils/uuid"
+	"github.com/salsita/SalsaFlow/git-trunk/uuid"
 )
 
 const (

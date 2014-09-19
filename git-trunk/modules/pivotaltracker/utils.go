@@ -9,7 +9,6 @@ import (
 	"text/tabwriter"
 
 	// Internal
-	"github.com/salsita/SalsaFlow/git-trunk/config"
 	"github.com/salsita/SalsaFlow/git-trunk/version"
 
 	// Other
@@ -21,16 +20,16 @@ var (
 	ErrApiCall               = errors.New("Pivotal Tracker: API call failed")
 )
 
-func Me() (*pivotal.Me, error) {
-	client := pivotal.NewClient(config.PivotalTracker.ApiToken())
+func fetchMe() (*pivotal.Me, error) {
+	client := pivotal.NewClient(config.ApiToken())
 	me, _, err := client.Me.Get()
 	return me, err
 }
 
-func ListStories(filter string) ([]*pivotal.Story, error) {
+func listStories(filter string) ([]*pivotal.Story, error) {
 	var (
-		token     = config.PivotalTracker.ApiToken()
-		projectId = config.PivotalTracker.ProjectId()
+		token     = config.ApiToken()
+		projectId = config.ProjectId()
 	)
 	client := pivotal.NewClient(token)
 	stories, _, err := client.Stories.List(projectId, filter)
@@ -42,65 +41,50 @@ type storyGetResult struct {
 	err   error
 }
 
-func ListStoriesById(ids []int) ([]*pivotal.Story, *bytes.Buffer, error) {
-	// Prepare the PT client.
-	var (
-		token     = config.PivotalTracker.ApiToken()
-		projectId = config.PivotalTracker.ProjectId()
-	)
-	client := pivotal.NewClient(token)
-
-	// Send all the request at once.
-	retCh := make(chan *storyGetResult, len(ids))
-	for i, identifier := range ids {
-		go func(i, id int) {
-			story, _, err := client.Stories.Get(projectId, id)
-			retCh <- &storyGetResult{story, err}
-		}(i, identifier)
-	}
-
-	// Wait for the requests to return.
-	var (
-		stories = make([]*pivotal.Story, 0, len(ids))
-		stderr  = new(bytes.Buffer)
-		err     error
-	)
-	for i := 0; i < cap(retCh); i++ {
-		ret := <-retCh
-		if ret.err == nil {
-			stories = append(stories, ret.story)
-		} else {
-			fmt.Fprintln(stderr, ret.err)
-			err = ErrApiCall
+func listStoriesById(ids []string) ([]*pivotal.Story, error) {
+	var filter bytes.Buffer
+	for _, id := range ids {
+		if filter.Len() != 0 {
+			if _, err := filter.WriteString("OR "); err != nil {
+				return nil, err
+			}
+		}
+		if _, err := filter.WriteString("id:"); err != nil {
+			return nil, err
+		}
+		if _, err := filter.WriteString(id); err != nil {
+			return nil, err
 		}
 	}
-
-	return stories, stderr, err
+	return listStories(filter.String())
 }
 
-func ListReleaseCandidateStories() ([]*pivotal.Story, error) {
+func listNextReleaseStories() ([]*pivotal.Story, error) {
 	filter := fmt.Sprintf(
 		"type:%v,%v state:%v -label:/%v/",
 		pivotal.StoryTypeFeature,
 		pivotal.StoryTypeBug,
 		pivotal.StoryStateFinished,
 		"release-"+version.MatcherString)
-	return ListStories(filter)
+	return listStories(filter)
 }
 
-func ListReleaseStories(version string) ([]*pivotal.Story, error) {
+func listStoriesByRelease(release *version.Version) ([]*pivotal.Story, error) {
 	filter := fmt.Sprintf(
 		"type:%v,%v state:%v label:%v",
 		pivotal.StoryTypeFeature,
 		pivotal.StoryTypeBug,
 		pivotal.StoryStateFinished,
-		ReleaseLabel(version),
+		releaseLabel(release),
 	)
-	return ListStories(filter)
+	return listStories(filter)
 }
 
-func ReleaseDeliverable(stories []*pivotal.Story) (stderr *bytes.Buffer, err error) {
-	var out bytes.Buffer
+func releaseDeliverable(stories []*pivotal.Story) (ok bool, details *bytes.Buffer) {
+	var (
+		deliverable = true
+		out         bytes.Buffer
+	)
 	tw := tabwriter.NewWriter(&out, 0, 8, 2, '\t', 0)
 	io.WriteString(tw, "\n")
 	io.WriteString(tw, "Story URL\tError\n")
@@ -109,39 +93,39 @@ func ReleaseDeliverable(stories []*pivotal.Story) (stderr *bytes.Buffer, err err
 StoryLoop:
 	for _, story := range stories {
 		// Skip the check when the relevant label is there.
-		for _, label := range config.PivotalTracker.SkipCheckLabels() {
-			if StoryLabeled(story, label) {
+		for _, label := range config.SkipCheckLabels() {
+			if storyLabeled(story, label) {
 				continue StoryLoop
 			}
 		}
 
 		// Otherwise make sure the story is accepted.
-		if !StoryLabeled(story, config.PivotalTracker.ReviewedLabel()) {
+		if !storyLabeled(story, config.ReviewedLabel()) {
 			fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the reviewer")
-			err = ErrReleaseNotDeliverable
+			deliverable = false
 		}
-		if !StoryLabeled(story, config.PivotalTracker.VerifiedLabel()) {
+		if !storyLabeled(story, config.VerifiedLabel()) {
 			fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the QA")
-			err = ErrReleaseNotDeliverable
+			deliverable = false
 		}
 	}
 
 	io.WriteString(tw, "\n")
-	if err != nil {
+	if !deliverable {
 		tw.Flush()
-		stderr = &out
+		return false, &out
 	}
-	return
+	return true, nil
 }
 
-func SetStoriesState(stories []*pivotal.Story, state string) ([]*pivotal.Story, *bytes.Buffer, error) {
+func setStoriesState(stories []*pivotal.Story, state string) ([]*pivotal.Story, *bytes.Buffer, error) {
 	updateRequest := &pivotal.Story{State: state}
 	return updateStories(stories, func(story *pivotal.Story) *pivotal.Story {
 		return updateRequest
 	})
 }
 
-func AddLabel(stories []*pivotal.Story, label string) ([]*pivotal.Story, *bytes.Buffer, error) {
+func addLabel(stories []*pivotal.Story, label string) ([]*pivotal.Story, *bytes.Buffer, error) {
 	return updateStories(stories, func(story *pivotal.Story) *pivotal.Story {
 		// Make sure the label is not already there.
 		labels := story.Labels
@@ -158,7 +142,7 @@ func AddLabel(stories []*pivotal.Story, label string) ([]*pivotal.Story, *bytes.
 	})
 }
 
-func RemoveLabel(stories []*pivotal.Story, label string) ([]*pivotal.Story, *bytes.Buffer, error) {
+func removeLabel(stories []*pivotal.Story, label string) ([]*pivotal.Story, *bytes.Buffer, error) {
 	return updateStories(stories, func(story *pivotal.Story) *pivotal.Story {
 		// Drop the label that matches.
 		labels := make([]*pivotal.Label, 0, len(story.Labels))
@@ -180,7 +164,7 @@ func RemoveLabel(stories []*pivotal.Story, label string) ([]*pivotal.Story, *byt
 	})
 }
 
-func StoryLabeled(story *pivotal.Story, label string) bool {
+func storyLabeled(story *pivotal.Story, label string) bool {
 	for _, lab := range story.Labels {
 		if lab.Name == label {
 			return true
@@ -189,8 +173,8 @@ func StoryLabeled(story *pivotal.Story, label string) bool {
 	return false
 }
 
-func ReleaseLabel(version string) string {
-	return "release-" + version
+func releaseLabel(release *version.Version) string {
+	return "release-" + release.String()
 }
 
 type storyUpdateFunc func(story *pivotal.Story) (updateRequest *pivotal.Story)
@@ -203,8 +187,8 @@ type storyUpdateResult struct {
 func updateStories(stories []*pivotal.Story, updateFunc storyUpdateFunc) ([]*pivotal.Story, *bytes.Buffer, error) {
 	// Prepare the PT client.
 	var (
-		token     = config.PivotalTracker.ApiToken()
-		projectId = config.PivotalTracker.ProjectId()
+		token     = config.ApiToken()
+		projectId = config.ProjectId()
 	)
 	client := pivotal.NewClient(token)
 

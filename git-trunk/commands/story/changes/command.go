@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"text/tabwriter"
 
 	// Internal
@@ -70,7 +69,7 @@ func run(cmd *gocli.Command, args []string) {
 	}
 }
 
-func runMain(storyIdString string) (err error) {
+func runMain(storyId string) (err error) {
 	var (
 		msg    string
 		stderr *bytes.Buffer
@@ -78,16 +77,12 @@ func runMain(storyIdString string) (err error) {
 	defer func() {
 		// Print error details.
 		if err != nil {
-			log.FailWithContext(msg, stderr)
+			log.FailWithDetails(msg, stderr)
 		}
 	}()
 
 	// Get the list of all relevant story commits.
 	msg = "Get the list of relevant story commits"
-	storyId, err := strconv.Atoi(storyIdString)
-	if err != nil {
-		return
-	}
 	commits, stderr, err := git.ListStoryCommits(storyId)
 	if err != nil {
 		return

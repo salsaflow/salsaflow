@@ -1,6 +1,9 @@
-install: format
+go-install: format
 	go install github.com/salsita/SalsaFlow/git-trunk
 	go install github.com/salsita/SalsaFlow/git-trunk/bin/hooks/commit-msg
+
+install: go-install
+	sudo cp ../../../../../bin/git-trunk /usr/local/bin/git-trunk
 
 update-deps:
 	go get -u gopkg.in/tchap/gocli.v1
