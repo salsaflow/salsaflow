@@ -26,7 +26,7 @@ function mark_action_required {
   echo "${__bold}>>> Action required! <<< ${__normal}"
 }
 
-BRANCHES="develop"
+BRANCHES="${TRUNK_BRANCH}"
 
 start_spinner "Fetching from origin..."
 err=$(git fetch -a 2>&1 >/dev/null) || {
@@ -66,10 +66,10 @@ echo -n "Sweet, all the required branches exist! "; print_checkmark;
 echo
 echored "Local Config"
 
-if ! git show develop:${CONFIG_FILE} 2>/dev/null >/dev/null; then
+if ! git show ${TRUNK_BRANCH}:${CONFIG_FILE} 2>/dev/null >/dev/null; then
   mark_action_required
   echo "Please make sure there's a 'pivotal_tracker' section with "
-  echo "'project_id: <PT PROJECT ID>' in '${CONFIG_FILE}' file in branch 'develop'"
+  echo "'project_id: <PT PROJECT ID>' in '${CONFIG_FILE}' file in branch '${TRUNK_BRANCH}'"
   echo "Example setting:"
   echo
   echo -e "  pivotal_tracker:\n    project_id: MY_PT_PROJECT_ID"

@@ -10,6 +10,7 @@ GIT_CFG_INITIALIZED="${GIT_CFG_SECTION}.initialized"
 CONFIG_BRANCH="develop"
 CONFIG_FILE='salsaflow.yml'
 CONFIG_FILE_GLOBAL="${HOME}/.salsaflow.yml"
+TRUNK_BRANCH="develop"
 
 function flush_stdio {
   while read -e -t 1; do : ; done

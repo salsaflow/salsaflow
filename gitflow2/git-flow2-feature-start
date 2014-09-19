@@ -44,7 +44,7 @@ function cleanup {
 function rollback_branch {
   local new_branch="$1"
 
-  git checkout develop >/dev/null
+  git checkout ${TRUNK_BRANCH} >/dev/null
   [[ -n "${new_branch}" ]] && git branch -D ${new_branch}
 }
 
@@ -194,9 +194,9 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 echo; echo
-echo "I will now checkout develop..."
+echo "I will now checkout ${TRUNK_BRANCH}..."
 # Let's not bother user by being verbose => `stdout` to `/dev/null`.
-git checkout develop >/dev/null
+git checkout ${TRUNK_BRANCH} >/dev/null
 
 echo
 
