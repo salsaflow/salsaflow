@@ -3,23 +3,18 @@ package startCmd
 import (
 	// Stdlib
 	"bytes"
-	"errors"
 	"fmt"
-	"io"
 	"os"
-	"text/tabwriter"
 
 	// Internal
 	"github.com/salsita/SalsaFlow/git-trunk/app"
 	"github.com/salsita/SalsaFlow/git-trunk/config"
 	"github.com/salsita/SalsaFlow/git-trunk/git"
 	"github.com/salsita/SalsaFlow/git-trunk/log"
-	"github.com/salsita/SalsaFlow/git-trunk/prompt"
-	pt "github.com/salsita/SalsaFlow/git-trunk/utils/pivotaltracker"
+	"github.com/salsita/SalsaFlow/git-trunk/modules"
 	"github.com/salsita/SalsaFlow/git-trunk/version"
 
 	// Other
-	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 	"gopkg.in/tchap/gocli.v1"
 )
 
@@ -90,68 +85,28 @@ func runMain() (err error) {
 		}
 	}()
 
-	// Fetch the Pivotal Tracker candidate stories.
-	msg = "Fetch Pivotal Tracker stories"
+	// Read the current trunk version string.
+	msg = "Read the current trunk version string"
+	trunkVersion, stderr, err := version.ReadFromBranch(config.TrunkBranch)
+	if err != nil {
+		return
+	}
+
+	// Get the issue tracker instance and ensure that a new release can be started.
+	msg = "Fetch stories from the issue tracker"
 	log.Run(msg)
-	stories, err := pt.ListReleaseCandidateStories()
-	if err != nil {
-		return err
-	}
-
-	// Exit if there are not candidate stories.
-	if len(stories) == 0 {
-		msg = ""
-		err = errors.New("No candidate stories found in Pivotal Tracker")
-		return
-	}
-
-	// Check point-me label.
-	var (
-		pmLabel   = config.PivotalTracker.PointMeLabel()
-		pmStories []*pivotal.Story
-	)
-	for _, story := range stories {
-		if pt.StoryLabeled(story, pmLabel) {
-			pmStories = append(pmStories, story)
-		}
-	}
-	if len(pmStories) != 0 {
-		tw := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
-		fmt.Fprintf(tw, "\nThe following stories are labeled '%v':\n\n", pmLabel)
-		io.WriteString(tw, "Story Name\tStory URL\n")
-		io.WriteString(tw, "========= \t=========\n")
-		for _, story := range stories {
-			fmt.Fprintf(tw, "%v\t%v\n", story.Name, story.URL)
-		}
-		io.WriteString(tw, "\n")
-		tw.Flush()
-
-		ok, ex := prompt.Confirm("Are you sure you want to continue?")
-		if ex != nil {
-			err = ex
-			return
-		}
-		if !ok {
-			msg = ""
-			err = errors.New("Operation canceled")
-			return
-		}
-	}
-
-	// Prompt the user to confirm the release.
-	confirmed, err := prompt.ConfirmStories(
-		"The following stories will be included in the next release:",
-		stories)
+	release, err := modules.GetIssueTracker().NextRelease(trunkVersion)
 	if err != nil {
 		return
 	}
-	if !confirmed {
-		// Don't print the fail message.
-		msg = ""
-		err = errors.New("Operation canceled")
+	ok, err := release.PromptUserToConfirmStart()
+	if err != nil {
 		return
 	}
-	fmt.Println()
+	if !ok {
+		fmt.Println("\nYour wish is my command, exiting now...")
+		return
+	}
 
 	// Remember the current branch.
 	msg = "Remember the current branch"
@@ -185,23 +140,15 @@ func runMain() (err error) {
 		return
 	}
 
-	// Read the trunk version string.
-	msg = "Read the current trunk version string"
-	log.Run(msg)
-	ver, stderr, err := version.ReadFromBranch(config.TrunkBranch)
-	if err != nil {
-		return
-	}
-
-	// Get the future version string.
-	var futureVersion *version.Version
+	// Get the next trunk version (the future release version).
+	var nextTrunkVersion *version.Version
 	if !flagFuture.Zero() {
-		futureVersion = &flagFuture
+		nextTrunkVersion = &flagFuture
 	} else {
-		futureVersion = ver.IncrementMinor()
+		nextTrunkVersion = trunkVersion.IncrementMinor()
 	}
 
-	// Create release on top of trunk.
+	// Create the release branch on top of the trunk branch.
 	msg = "Create the release branch on top of the trunk branch"
 	log.Run(msg)
 	stderr, err = git.Branch(config.ReleaseBranch, config.TrunkBranch)
@@ -218,14 +165,14 @@ func runMain() (err error) {
 		}
 	}(msg)
 
-	// Commit the future version string to the trunk branch.
-	msg = "Commit the future version string into the trunk branch"
+	// Update the trunk version string.
+	msg = "Update the trunk version string"
 	log.Run(msg)
 	origTrunk, stderr, err := git.Hexsha("refs/heads/" + config.TrunkBranch)
 	if err != nil {
 		return
 	}
-	stderr, err = futureVersion.CommitToBranch(config.TrunkBranch)
+	stderr, err = nextTrunkVersion.CommitToBranch(config.TrunkBranch)
 	if err != nil {
 		return
 	}
@@ -234,30 +181,24 @@ func runMain() (err error) {
 			log.Rollback(taskMsg)
 			out, ex := git.ResetKeep(config.TrunkBranch, origTrunk)
 			if ex != nil {
-				log.FailWithContext(taskMsg, out)
+				log.FailWithDetails(taskMsg, out)
 			}
 		}
 	}(msg)
 
-	// Add release labels to the relevant stories.
-	msg = "Label the stories with the release label"
-	log.Run(msg)
-	stories, stderr, err = pt.AddLabel(stories, pt.ReleaseLabel(ver.String()))
+	// Start the release in the issue tracker.
+	msg = ""
+	action, err := release.Start()
 	if err != nil {
 		return
 	}
-	defer func(taskMsg string) {
-		// On error, remove the release labels again.
+	defer func() {
 		if err != nil {
-			log.Rollback(taskMsg)
-			_, out, ex := pt.RemoveLabel(stories, pt.ReleaseLabel(ver.String()))
-			if ex != nil {
-				log.FailWithContext(taskMsg, out)
-			}
+			action.Rollback()
 		}
-	}(msg)
+	}()
 
-	// Push trunk and release.
+	// Push the modified branches.
 	msg = "Push the modified branches"
 	log.Run(msg)
 	stderr, err = git.Push(

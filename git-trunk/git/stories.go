@@ -1,25 +1,22 @@
-package pivotaltracker
+package git
 
 import (
 	// Stdlib
 	"bufio"
 	"bytes"
 	"regexp"
-	"strconv"
 	"strings"
-
-	// Internal
-	"github.com/salsita/SalsaFlow/git-trunk/config"
-	"github.com/salsita/SalsaFlow/git-trunk/git"
 )
+
+const OriginName = "origin"
 
 var (
-	localRefMatcher  = "^refs/heads/story/.+/[0-9]+$"
-	remoteRefMatcher = "^refs/remotes/" + config.OriginName + "/story/.+/[0-9]+$"
+	localRefMatcher  = "^refs/heads/story/.+/.+$"
+	remoteRefMatcher = "^refs/remotes/" + OriginName + "/story/.+/.+$"
 )
 
-func ListGitStoryRefs() (localRefs, remoteRefs []string, stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := git.Git("show-ref")
+func ListStoryRefs() (localRefs, remoteRefs []string, stderr *bytes.Buffer, err error) {
+	stdout, stderr, err := Git("show-ref")
 	if err != nil {
 		return
 	}
@@ -51,15 +48,14 @@ func ListGitStoryRefs() (localRefs, remoteRefs []string, stderr *bytes.Buffer, e
 	return local, remote, nil, nil
 }
 
-func RefToStoryId(ref string) (storyId int, err error) {
-	matcher := regexp.MustCompile("story/.+/([0-9]+)$")
+func RefToStoryId(ref string) (storyId string, err error) {
+	matcher := regexp.MustCompile("story/.+/(.+)$")
 	parts := matcher.FindStringSubmatch(ref)
 	if len(parts) != 2 {
-		return 0, &ErrNotStoryBranch{ref}
+		return "", &ErrNotStoryBranch{ref}
 	}
 
-	storyId, _ = strconv.Atoi(parts[1])
-	return
+	return parts[1], nil
 }
 
 type ErrNotStoryBranch struct {

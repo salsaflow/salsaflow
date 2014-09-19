@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	// Internal
+	"github.com/salsita/SalsaFlow/git-trunk/errors"
 	"github.com/salsita/SalsaFlow/git-trunk/git"
 	"github.com/salsita/SalsaFlow/git-trunk/log"
 
@@ -22,6 +23,8 @@ const (
 
 	ConfigBranch = TrunkBranch
 )
+
+var IssueTrackerName string
 
 var (
 	localConfigContent  []byte
@@ -65,9 +68,7 @@ func MustLoad() {
 	var failed bool
 	for i := 0; i < cap(resCh); i++ {
 		if res := <-resCh; res != nil && res.err != nil {
-			log.Fail(res.msg)
-			log.NewLine("(" + res.err.Error() + ")")
-			log.Stderr(res.stderr)
+			errors.NewError(res.msg, res.stderr, res.err).Log(log.V(log.Info))
 			failed = true
 		}
 	}
@@ -87,15 +88,8 @@ func MustLoad() {
 		die(msg, &ErrKeyNotSet{"issue_tracker"})
 	}
 
-	// Initialize the modules.
-	switch config.IssueTracker {
-	case sectionPivotalTracker:
-		mustInitPivotalTracker()
-	case sectionJira:
-		mustInitJira()
-	default:
-		die(msg, &ErrKeyInvalid{"issue_tracker", config.IssueTracker})
-	}
+	// Set the issue tracker name.
+	IssueTrackerName = config.IssueTracker
 }
 
 func readLocalConfig() (content, stderr *bytes.Buffer, err error) {
@@ -127,10 +121,10 @@ func readGlobalConfig() (content *bytes.Buffer, err error) {
 	return &p, nil
 }
 
-func fillLocalConfig(v interface{}) error {
+func FillLocalConfig(v interface{}) error {
 	return yaml.Unmarshal(localConfigContent, v)
 }
 
-func fillGlobalConfig(v interface{}) error {
+func FillGlobalConfig(v interface{}) error {
 	return yaml.Unmarshal(globalConfigContent, v)
 }

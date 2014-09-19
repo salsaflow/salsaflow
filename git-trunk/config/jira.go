@@ -36,7 +36,7 @@ var jiraGlobalWrapper struct {
 
 func mustInitJiraGlobal() {
 	msg := "Parse global Jira configuration"
-	if err := fillGlobalConfig(&jiraGlobalWrapper); err != nil {
+	if err := FillGlobalConfig(&jiraGlobalWrapper); err != nil {
 		die(msg, err)
 	}
 
@@ -77,7 +77,7 @@ var jiraLocalWrapper struct {
 
 func mustInitJiraLocal() {
 	msg := "Parse local Jira configuration"
-	if err := fillLocalConfig(&jiraLocalWrapper); err != nil {
+	if err := FillLocalConfig(&jiraLocalWrapper); err != nil {
 		die(msg, err)
 	}
 

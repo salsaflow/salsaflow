@@ -9,6 +9,9 @@ import (
 	"github.com/salsita/SalsaFlow/git-trunk/errors"
 	"github.com/salsita/SalsaFlow/git-trunk/log"
 	"github.com/salsita/SalsaFlow/git-trunk/modules/common"
+
+	// Internal: modules
+	"github.com/salsita/SalsaFlow/git-trunk/modules/pivotaltracker"
 )
 
 // IssueTracker instantiation --------------------------------------------------
@@ -23,8 +26,9 @@ var issueTracker common.IssueTracker
 
 func mustInitIssueTracker() {
 	// Register all available issue trackers here.
-	// This is empty for now since there are no issue tracker implemented.
-	factories := map[string]IssueTrackerFactory{}
+	factories := map[string]IssueTrackerFactory{
+		pivotaltracker.Id: pivotaltracker.Factory,
+	}
 
 	// Choose the issue tracker based on the configuration.
 	var (

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"text/tabwriter"
 
 	// Internal
@@ -70,7 +69,7 @@ func run(cmd *gocli.Command, args []string) {
 	}
 }
 
-func runMain(storyIdString string) (err error) {
+func runMain(storyId string) (err error) {
 	var (
 		msg    string
 		stderr *bytes.Buffer

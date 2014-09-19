@@ -16,7 +16,7 @@ import (
 	"gopkg.in/tchap/gocli.v1"
 )
 
-const version = "0.1.5"
+const version = "0.2.1"
 
 func main() {
 	// Initialise the application.

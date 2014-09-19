@@ -13,26 +13,22 @@ import (
 	"github.com/salsita/SalsaFlow/git-trunk/config"
 	"github.com/salsita/SalsaFlow/git-trunk/git"
 	"github.com/salsita/SalsaFlow/git-trunk/log"
+	"github.com/salsita/SalsaFlow/git-trunk/modules"
 	"github.com/salsita/SalsaFlow/git-trunk/prompt"
-	pt "github.com/salsita/SalsaFlow/git-trunk/utils/pivotaltracker"
 
 	// Other
-	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 	"gopkg.in/tchap/gocli.v1"
 )
 
 var Command = &gocli.Command{
 	UsageLine: `
-  prune [-include_delivered] [-all_owners]
-        [-local_only] [-remote_only]`,
+  prune [-local_only] [-remote_only]`,
 	Short: "prune delivered story branches",
 	Long: `
   Delete local and remote branches that are associated with stories
-  that were accepted (or delivered, that depends on the flags).
+  that are potentially finished are can be pruned.
 
-  Usually only the branches owned by the caller are offered for deletion.
-  That can be changed by -all_owners. If that flag is specified,
-  all story branches in the repository are offered for deletion.
+  Only the branches owned by the caller are offered for deletion.
 	`,
 	Action: run,
 }
@@ -45,10 +41,6 @@ var (
 )
 
 func init() {
-	Command.Flags.BoolVar(&flagIncludeDelivered, "include_delivered", flagIncludeDelivered,
-		"prune Delivered story branches as well")
-	Command.Flags.BoolVar(&flagAllOwners, "all_owners", flagAllOwners,
-		"include story branches from everybody")
 	Command.Flags.BoolVar(&flagLocalOnly, "local_only", flagLocalOnly,
 		"prune local branches only")
 	Command.Flags.BoolVar(&flagRemoteOnly, "remote_only", flagRemoteOnly,
@@ -66,11 +58,6 @@ func run(cmd *gocli.Command, args []string) {
 	if err := runMain(); err != nil {
 		log.Fatalln("\nError: " + err.Error())
 	}
-}
-
-type storiesFetchResult struct {
-	stderr *bytes.Buffer
-	err    error
 }
 
 func runMain() (err error) {
@@ -97,7 +84,8 @@ func runMain() (err error) {
 
 	// Get the list of story references.
 	msg = "Collect all story branches"
-	localRefs, remoteRefs, stderr, err := pt.ListGitStoryRefs()
+	log.Run(msg)
+	localRefs, remoteRefs, stderr, err := git.ListStoryRefs()
 	if err != nil {
 		return
 	}
@@ -114,109 +102,32 @@ func runMain() (err error) {
 
 	if len(refs) == 0 {
 		msg = ""
-		log.Println("\nNo relevant story branches found, exiting...")
+		log.Println("\nNo story branches found, exiting...")
 		return
 	}
 
-	// Get the associated stories.
-	msg = "Fetch the associated Pivotal Tracker stories"
-	log.Go(msg)
-	var (
-		storyMap     = make(map[int]*pivotal.Story)
-		storiesResCh = make(chan *storiesFetchResult, 1)
-	)
-	go func(taskMsg string) {
-		idSet := make(map[int]struct{})
-		for _, ref := range refs {
-			id, _ := pt.RefToStoryId(ref)
-			idSet[id] = struct{}{}
-		}
-
-		ids := make([]int, 0, len(idSet))
-		for id := range idSet {
-			ids = append(ids, id)
-		}
-
-		stories, stderr, err := pt.ListStoriesById(ids)
-		if err != nil {
-			storiesResCh <- &storiesFetchResult{stderr, err}
-			log.Fail(msg)
-		}
-
-		for _, story := range stories {
-			storyMap[story.Id] = story
-		}
-
-		storiesResCh <- &storiesFetchResult{}
-		log.Ok(taskMsg)
-	}(msg)
-
-	// Filter the branches according to the story state and owner.
-	msg = "Fetch your Pivotal Tracker user record"
-	var (
-		me      *pivotal.Me
-		meResCh = make(chan error, 1)
-	)
-	if !flagAllOwners {
-		log.Go(msg)
-		go func(taskMsg string) {
-			var err error
-			me, err = pt.Me()
-			if err == nil {
-				log.Ok(msg)
-			} else {
-				log.Fail(msg)
-			}
-			meResCh <- err
-		}(msg)
-	}
-
-	// Wait for the stories to arrive.
-	if res := <-storiesResCh; res.err != nil {
-		stderr, err = res.stderr, res.err
-		return
-	}
-	// Wait for the me record to arrive.
-	if !flagAllOwners {
-		if ex := <-meResCh; ex != nil {
-			err = ex
-			return
-		}
-	}
-
-	msg = "Filter the branches according to the story state and owner"
-	var filteredRefs []string
+	// Collect all the story IDs.
+	idMap := make(map[string]struct{})
 	for _, ref := range refs {
-		id, _ := pt.RefToStoryId(ref)
-		story, ok := storyMap[id]
-		if !ok {
-			err = fmt.Errorf("story with id %v not found", id)
-			return
-		}
-
-		// Check the story owner.
-		if !flagAllOwners {
-			for _, ownerId := range story.OwnerIds {
-				if ownerId == me.Id {
-					goto CheckState
-				}
-			}
-			// No matching owner found, skip the ref.
-			continue
-		}
-
-		// Check the story state.
-	CheckState:
-		switch story.State {
-		case pivotal.StoryStateAccepted:
-			filteredRefs = append(filteredRefs, ref)
-		case pivotal.StoryStateDelivered:
-			if flagIncludeDelivered {
-				filteredRefs = append(filteredRefs, ref)
-			}
-		}
+		// This cannot fail here since we got the refs using ListStoryRefs.
+		id, _ := git.RefToStoryId(ref)
+		idMap[id] = struct{}{}
 	}
-	refs = filteredRefs
+
+	var ids []string
+	for id := range idMap {
+		ids = append(ids, id)
+	}
+
+	// Get the list of active story IDs.
+	filteredIds, err := modules.GetIssueTracker().ListActiveStoryIds(ids)
+	if err != nil {
+		return
+	}
+	ids = filteredIds
+
+	// Drop the active refs.
+	refs = dropActiveRefs(refs, ids)
 
 	if len(refs) == 0 {
 		msg = ""
@@ -328,4 +239,24 @@ func runMain() (err error) {
 		stderr, err = git.Push(config.OriginName, refs...)
 	}
 	return
+}
+
+func dropActiveRefs(refs, activeIds []string) (inactiveRefs []string) {
+	var suffixes []string
+	for _, id := range activeIds {
+		suffixes = append(suffixes, "/"+id)
+	}
+
+	var inactive []string
+RefLoop:
+	for _, ref := range refs {
+		for _, suffix := range suffixes {
+			if strings.HasSuffix(ref, suffix) {
+				continue RefLoop
+			}
+		}
+		inactive = append(inactive, ref)
+	}
+
+	return inactive
 }

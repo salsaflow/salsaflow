@@ -3,11 +3,9 @@ package changesCmd
 import (
 	// Stdlib
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"text/tabwriter"
 
 	// Internal
@@ -17,7 +15,7 @@ import (
 	"github.com/salsita/SalsaFlow/git-trunk/flag"
 	"github.com/salsita/SalsaFlow/git-trunk/git"
 	"github.com/salsita/SalsaFlow/git-trunk/log"
-	"github.com/salsita/SalsaFlow/git-trunk/utils/pivotaltracker"
+	"github.com/salsita/SalsaFlow/git-trunk/modules"
 	"github.com/salsita/SalsaFlow/git-trunk/version"
 
 	// Other
@@ -96,50 +94,60 @@ func runMain() (err error) {
 
 	// Get the current release version string.
 	msg = "Get the current release version string"
-	ver, stderr, err := version.ReadFromBranch(config.ReleaseBranch)
+	releaseVersion, stderr, err := version.ReadFromBranch(config.ReleaseBranch)
 	if err != nil {
 		return
 	}
 
 	// Get the stories associated with the current release.
-	msg = "Fetch Pivotal Tracker stories"
+	msg = "Fetch stories from the issue tracker"
 	if !porcelain {
 		log.Run(msg)
 	}
-	stories, err := pivotaltracker.ListStories("label:release-" + ver.String())
+	release, err := modules.GetIssueTracker().RunningRelease(releaseVersion)
+	if err != nil {
+		return
+	}
+	ids, err := release.ListStoryIds()
 	if err != nil {
 		return
 	}
 
 	// Just return in case there are no relevant stories found.
-	if len(stories) == 0 {
+	if len(ids) == 0 {
 		msg = ""
-		err = errors.New("no relevant stories found")
+		fmt.Println("\nNo relevant stories found, exiting...")
 		return
 	}
 
 	// Get the list of all relevant story commits.
-	msg = "Get the list of relevant commits"
+	msg = "Collect the relevant commits"
+	if !porcelain {
+		log.Run(msg)
+	}
 	var (
-		cs      []*git.Commit
-		commits = make([]*git.Commit, 0, len(stories))
+		commits     []*git.Commit
+		storyGroups []*changes.StoryChangeGroup
 	)
-	for _, story := range stories {
-		cs, stderr, err = git.ListStoryCommits(story.Id)
+	for _, id := range ids {
+		commits, stderr, err = git.ListStoryCommits(id)
 		if err != nil {
 			return
 		}
-		commits = append(commits, cs...)
+		if len(commits) == 0 {
+			continue
+		}
+		storyGroups = append(storyGroups, &changes.StoryChangeGroup{
+			StoryId: id,
+			Changes: changes.GroupCommitsByChangeId(commits),
+		})
 	}
 
 	// Just return in case there are no relevant commits found.
-	if len(commits) == 0 {
-		err = errors.New("no relevant story commits found")
+	if len(storyGroups) == 0 {
+		fmt.Println("\nNo relevant commits found, exiting...")
 		return
 	}
-
-	// Create the story change groups.
-	storyGroups := changes.GroupChangesByStoryId(changes.GroupCommitsByChangeId(commits))
 
 	// Dump the change details into the console.
 	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
@@ -150,7 +158,7 @@ func runMain() (err error) {
 		io.WriteString(tw, "=====\t======\t==========\t=============\t============\n")
 	}
 	for _, group := range storyGroups {
-		storyId := strconv.Itoa(group.StoryId)
+		storyId := group.StoryId
 
 		for _, change := range group.Changes {
 			changeId := change.ChangeId
