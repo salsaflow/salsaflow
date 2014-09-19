@@ -49,7 +49,7 @@ function rollback_branch {
 }
 
 
-function update_pt_story {
+function start_pt_story {
   local story_id=$1
   local branch_to_rollback=$2
 
@@ -150,16 +150,16 @@ if [[ "${#matching_branches[@]}" -eq "1" ]]; then
   echo
   git checkout ${matching_branches[0]}
   echo
-  update_pt_story ${story_id}
+  start_pt_story ${story_id}
   echo "I wish you a good day."
   exit 0
-elif [[ "${#matching_branches[@]}" -gt "0" ]]; then
+elif [[ "${#matching_branches[@]}" -gt "1" ]]; then
   echo "Wait wait wait. Multiple existing branches found for story ${story_id}."
   for i in "${!matching_branches[@]}"; do echo " - ${matching_branches[i]}"; done
   echo
   echo "Just checkout one of them and work there."
   echo
-  update_pt_story ${story_id}
+  start_pt_story ${story_id}
   echo "I wish you a good day."
   exit 0
 fi
@@ -208,7 +208,7 @@ git checkout -b ${new_branch}
 
 echo
 echogreen "Enter Pivotal Tracker"
-update_pt_story ${story_id} ${new_branch}
+start_pt_story ${story_id} ${new_branch}
 
 # Aaaaand we're good!
 echo
