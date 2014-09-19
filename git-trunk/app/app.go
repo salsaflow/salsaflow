@@ -8,6 +8,7 @@ import (
 	"github.com/salsita/SalsaFlow/git-trunk/config"
 	flags "github.com/salsita/SalsaFlow/git-trunk/flag"
 	"github.com/salsita/SalsaFlow/git-trunk/log"
+	"github.com/salsita/SalsaFlow/git-trunk/modules"
 )
 
 var (
@@ -25,4 +26,7 @@ func MustInit() {
 
 	// Load the workflow configuration.
 	config.MustLoad()
+
+	// Bootstrap the modules.
+	modules.MustBootstrap()
 }
