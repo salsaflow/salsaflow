@@ -124,8 +124,8 @@ func runMain() (fatalErr error) {
 	// Check config files (local and global).
 	if _, _, err = config.ReadLocalConfig(); err != nil {
 		errorWithInfo{
-			error: "Local config could not be read.",
-			info: fmt.Sprintf("I could not read config from file %s in branch %s",
+			"Local config could not be read.",
+			fmt.Sprintf("I could not read config from file %s in branch %s",
 				config.LocalConfigFileName, config.ConfigBranch),
 		}.Print()
 		success = false
@@ -134,8 +134,8 @@ func runMain() (fatalErr error) {
 	log.Run("Checking global config.")
 	if _, err := config.ReadGlobalConfig(); err != nil {
 		errorWithInfo{
-			error: "Global config could not be read.",
-			info: fmt.Sprintf("I could not read config from file %s.",
+			"Global config could not be read.",
+			fmt.Sprintf("I could not read config from file %s.",
 				config.GlobalConfigFileName),
 		}.Print()
 		success = false
@@ -143,9 +143,11 @@ func runMain() (fatalErr error) {
 
 	// Verify our git hook is installed and used.
 	log.Run("Checking git hook.")
-	if fatalErr, _success := checkGitHook(); fatalErr != nil {
+	fatalErr, _success := checkGitHook()
+	if fatalErr != nil {
+		return
+	} else {
 		success = _success && success
-		return fatalErr
 	}
 
 	return
@@ -154,8 +156,6 @@ func runMain() (fatalErr error) {
 // Check whether SalsaFlow git hook is used. Prompts user to install our hook if it
 // isn't.
 func checkGitHook() (fatalErr error, success bool) {
-	success = false
-
 	// Handles unexpected error.
 	defer func() {
 		if fatalErr != nil {
@@ -205,15 +205,13 @@ func checkGitHook() (fatalErr error, success bool) {
 			// User stubbornly refuses to let us overwrite their webhook. Inform the init
 			// has failed and let them do their thing.
 			errorWithInfo{
-				error: "Our commit-msg webhook not detected.",
-				info: fmt.Sprintf("I need the hook in order to do my job. Please make "+
+				"Our commit-msg webhook not detected.",
+				fmt.Sprintf("I need the hook in order to do my job. Please make "+
 					"sure file %s runs as your commit-msg hook and run me again!", hookBin),
 			}.Print()
-			return
+			return nil, false
 		}
 	}
 
-	success = true
-
-	return
+	return nil, true
 }
