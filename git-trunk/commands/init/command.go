@@ -79,7 +79,7 @@ func runMain() (err error) {
 		}
 	}()
 
-	// Handles expected init expectedErrors or success (i.e., no expected expectedErrors).
+	// Handles expected init errors or success (i.e., no expected errors).
 	defer func() {
 		if len(expectedErrors) > 0 {
 			for _, err := range expectedErrors {
