@@ -92,6 +92,8 @@ func runMain() (err error) {
 	// Check git branches.
 	var branchExists bool
 
+	log.Run("Checking git branches.")
+
 	branchExists, stderr, err = git.RefExists(config.MasterBranch)
 	if err != nil {
 		return
@@ -110,7 +112,7 @@ func runMain() (err error) {
 		return
 	}
 	if !branchExists {
-		log.Go(fmt.Sprintf("No branch %s found. Will create one for you for free!",
+		log.Run(fmt.Sprintf("No branch %s found. Will create one for you for free!",
 			config.TrunkBranch))
 		stderr, err = git.Branch(config.TrunkBranch, config.MasterBranch)
 		if err != nil {
@@ -119,6 +121,7 @@ func runMain() (err error) {
 		}
 	}
 
+	log.Run("Checking local config.")
 	// Check config files (local and global).
 	if _, _, err = config.ReadLocalConfig(); err != nil {
 		info := errorWithInfo{
@@ -127,20 +130,19 @@ func runMain() (err error) {
 				config.LocalConfigFileName, config.ConfigBranch),
 		}
 		expectedErrors = append(expectedErrors, info)
-	} else {
-		log.Ok("Checked local config.")
 	}
+
+	log.Run("Checking global config.")
 	if _, err := config.ReadGlobalConfig(); err != nil {
 		expectedErrors = append(expectedErrors, errorWithInfo{
 			error: "Global config could not be read.",
 			info: fmt.Sprintf("I could not read config from file %s.",
 				config.GlobalConfigFileName),
 		})
-	} else {
-		log.Ok("Checked global config.")
 	}
 
 	// Verify our git hook is installed and used.
+	log.Run("Checking git hook.")
 	err, stderr, expectedErrors = checkGitHook()
 
 	return nil
@@ -184,7 +186,7 @@ func checkGitHook() (err error, stderr *bytes.Buffer, expectedErrors []errorWith
 			if err != nil {
 				return
 			}
-			log.Ok("Sweet, hook installed!")
+			log.Run("Hook installed. Sweet.")
 		} else {
 			// User stubbornly refuses to let us overwrite their webhook. Inform the init
 			// has failed and let them do their thing.
@@ -195,8 +197,6 @@ func checkGitHook() (err error, stderr *bytes.Buffer, expectedErrors []errorWith
 			})
 			return
 		}
-	} else {
-		log.Ok("Checked git hook.")
 	}
 
 	return nil, nil, expectedErrors
