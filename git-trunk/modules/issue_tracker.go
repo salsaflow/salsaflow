@@ -2,6 +2,7 @@ package modules
 
 import (
 	// Stdlib
+	"bytes"
 	"fmt"
 
 	// Internal
@@ -25,6 +26,13 @@ func GetIssueTracker() common.IssueTracker {
 var issueTracker common.IssueTracker
 
 func mustInitIssueTracker() {
+	var logger = log.V(log.Info)
+	if err := initIssueTracker(); err != nil {
+		err.Fatal(logger)
+	}
+}
+
+func initIssueTracker() *errors.Error {
 	// Register all available issue trackers here.
 	factories := map[string]IssueTrackerFactory{
 		pivotaltracker.Id: pivotaltracker.Factory,
@@ -33,7 +41,6 @@ func mustInitIssueTracker() {
 	// Choose the issue tracker based on the configuration.
 	var (
 		taskName = "Instantiate the selected issue tracker plugin"
-		logger   = log.V(log.Info)
 	)
 	factory, ok := factories[config.IssueTrackerName]
 	if !ok {
@@ -43,23 +50,21 @@ func mustInitIssueTracker() {
 			ids = append(ids, id)
 		}
 
-		// Print the error output into the console.
-		logger.Lock()
-		defer logger.Unlock()
-		logger.Fail(taskName)
-		logger.NewLine(
-			fmt.Sprintf("(unknown issue tracker: %v)", config.IssueTrackerName))
-		logger.NewLine(
-			fmt.Sprintf("(available issue trackers: %v)", ids))
-		logger.Fatalln("\nError: failed to instantiate the issue tracker plugin")
+		var b bytes.Buffer
+		fmt.Fprintf(&b, "(unknown issue tracker: %v)", config.IssueTrackerName)
+		fmt.Fprintf(&b, "(available issue trackers: %v)", ids)
+		fmt.Fprintf(&b, "\nError: failed to instantiate the issue tracker plugin")
+		return errors.NewError(taskName, &b, nil)
 	}
 
 	// Try to instantiate the issue tracker.
 	tracker, err := factory()
 	if err != nil {
-		errors.NewError(taskName, nil, err).Fatal(logger)
+		return errors.NewError(taskName, nil, err)
 	}
 
 	// Set the global issue tracker instance, at last.
 	issueTracker = tracker
+
+	return nil
 }
