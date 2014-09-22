@@ -11,7 +11,6 @@ import (
 	// Internal
 	"github.com/salsita/SalsaFlow/git-trunk/errors"
 	"github.com/salsita/SalsaFlow/git-trunk/git"
-	"github.com/salsita/SalsaFlow/git-trunk/log"
 
 	// Other
 	"gopkg.in/yaml.v1"
@@ -37,7 +36,7 @@ type readResult struct {
 	err    error
 }
 
-func MustLoad() {
+func Load() (err *errors.Error) {
 	// Let's go async!
 	resCh := make(chan *readResult, 2)
 
@@ -65,15 +64,10 @@ func MustLoad() {
 	}()
 
 	// Wait for the files to be read.
-	var failed bool
 	for i := 0; i < cap(resCh); i++ {
 		if res := <-resCh; res != nil && res.err != nil {
-			errors.NewError(res.msg, res.stderr, res.err).Log(log.V(log.Info))
-			failed = true
+			return &errors.Error{"Error: failed to load configuration", nil, res.err}
 		}
-	}
-	if failed {
-		log.Fatalln("\nError: failed to load configuration")
 	}
 
 	// Parse the local config to know what config modules to bootstrap.
@@ -82,14 +76,16 @@ func MustLoad() {
 		IssueTracker string `yaml:"issue_tracker"`
 	}
 	if err := yaml.Unmarshal(localConfigContent, &config); err != nil {
-		die(msg, err)
+		return errors.NewError(msg, nil, err)
 	}
 	if config.IssueTracker == "" {
-		die(msg, &ErrKeyNotSet{"issue_tracker"})
+		return errors.NewError(msg, nil, &ErrKeyNotSet{"issue_tracker"})
 	}
 
 	// Set the issue tracker name.
 	IssueTrackerName = config.IssueTracker
+
+	return nil
 }
 
 func ReadLocalConfig() (content, stderr *bytes.Buffer, err error) {

@@ -99,63 +99,61 @@ func runMain() (err error) {
 		log.Println("\nSwell, your repo is initialized!")
 	}()
 
-	{ // Check git branches.
-		var branchExists bool
+	// Check git branches.
+	var branchExists bool
 
-		branchExists, stderr, err = git.RefExists(config.MasterBranch)
-		if err != nil {
-			return
+	branchExists, stderr, err = git.RefExists(config.MasterBranch)
+	if err != nil {
+		return
+	}
+	if !branchExists {
+		info := errorWithInfo{
+			fmt.Sprintf("Branch %s not detected", config.MasterBranch),
+			fmt.Sprintf("I need branch %s to exist. Please make sure there is one "+
+				"and run me again!", config.MasterBranch),
 		}
-		if !branchExists {
-			info := errorWithInfo{
-				fmt.Sprintf("Branch %s not detected", config.MasterBranch),
-				fmt.Sprintf("I need branch %s to exist. Please make sure there is one "+
-					"and run me again!", config.MasterBranch),
-			}
-			expectedErrors = append(expectedErrors, info)
-		}
+		expectedErrors = append(expectedErrors, info)
+	}
 
-		branchExists, stderr, err = git.RefExists(config.TrunkBranch)
+	branchExists, stderr, err = git.RefExists(config.TrunkBranch)
+	if err != nil {
+		return
+	}
+	if !branchExists {
+		log.Go(fmt.Sprintf("No branch %s found. Will create one for you for free!",
+			config.TrunkBranch))
+		stderr, err = git.Branch(config.TrunkBranch, config.MasterBranch)
 		if err != nil {
+			// TODO
 			return
-		}
-		if !branchExists {
-			log.Go(fmt.Sprintf("No branch %s found. Will create one for you for free!",
-				config.TrunkBranch))
-			stderr, err = git.Branch(config.TrunkBranch, config.MasterBranch)
-			if err != nil {
-				// TODO
-				return
-			}
 		}
 	}
 
-	{ // Check config files (local and global).
-		if _, _, err = config.ReadLocalConfig(); err != nil {
-			info := errorWithInfo{
-				error: "Local config could not be read.",
-				info: fmt.Sprintf("I could not read config from file %s in branch %s",
-					config.LocalConfigFileName, config.ConfigBranch),
-			}
-			expectedErrors = append(expectedErrors, info)
-		} else {
-			log.Ok("Checked local config.")
+	// Check config files (local and global).
+	if _, _, err = config.ReadLocalConfig(); err != nil {
+		info := errorWithInfo{
+			error: "Local config could not be read.",
+			info: fmt.Sprintf("I could not read config from file %s in branch %s",
+				config.LocalConfigFileName, config.ConfigBranch),
 		}
-		if _, err := config.ReadGlobalConfig(); err != nil {
-			expectedErrors = append(expectedErrors, errorWithInfo{
-				error: "Global config could not be read.",
-				info: fmt.Sprintf("I could not read config from file %s.",
-					config.GlobalConfigFileName),
-			})
-		} else {
-			log.Ok("Checked global config.")
-		}
+		expectedErrors = append(expectedErrors, info)
+	} else {
+		log.Ok("Checked local config.")
+	}
+	if _, err := config.ReadGlobalConfig(); err != nil {
+		expectedErrors = append(expectedErrors, errorWithInfo{
+			error: "Global config could not be read.",
+			info: fmt.Sprintf("I could not read config from file %s.",
+				config.GlobalConfigFileName),
+		})
+	} else {
+		log.Ok("Checked global config.")
 	}
 
 	// Verify our git hook is installed and used.
 	err, stderr, expectedErrors = checkGitHook()
 
-	return
+	return nil
 }
 
 // Check whether SalsaFlow git hook is used. Prompts user to install our hook if it
@@ -211,5 +209,5 @@ func checkGitHook() (err error, stderr *bytes.Buffer, expectedErrors []errorWith
 		log.Ok("Checked git hook.")
 	}
 
-	return
+	return nil, nil, expectedErrors
 }
