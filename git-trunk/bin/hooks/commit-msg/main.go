@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	stateDropEmptyLines = iota + 1
-	stateAppendContent
+	stateContent = iota + 1
+	stateTags
 )
 
 const diffSeparator = "# ------------------------ >8 ------------------------"
@@ -53,7 +53,7 @@ func run(msgPath string) error {
 
 	// Read and parse the commit message.
 	var (
-		state        = stateDropEmptyLines
+		state        = stateContent
 		changeIdSeen bool
 		storyIdSeen  bool
 		lines        []string
@@ -64,14 +64,35 @@ ScanLoop:
 		line := scanner.Text()
 		trimmedLine := strings.TrimSpace(line)
 
-		if state == stateDropEmptyLines {
-			if trimmedLine == "" {
-				continue ScanLoop
+		// Keep appending content until a tag is encountered.
+		if state == stateContent {
+			switch {
+			case strings.HasPrefix(trimmedLine, "Change-Id:"):
+				if changeIdSeen {
+					return errors.New("multiple Change-Id tags detected")
+				}
+				changeIdSeen = true
+				state = stateTags
+
+			case strings.HasPrefix(trimmedLine, "Story-Id:"):
+				if storyIdSeen {
+					return errors.New("multiple Story-Id tags detected")
+				}
+				storyIdSeen = true
+				state = stateTags
 			}
-			state = stateAppendContent
+
+			lines = append(lines, line)
+			continue ScanLoop
 		}
 
-		if state == stateAppendContent {
+		// In case Change-Id or Story-Id is already there, consume the rest of the input
+		// in a similar way as the previous state, just drop empty lines and comments.
+		if state == stateTags {
+			if trimmedLine == "" {
+				continue
+			}
+
 			switch {
 			case strings.HasPrefix(trimmedLine, "Change-Id:"):
 				if changeIdSeen {
@@ -117,8 +138,8 @@ ScanLoop:
 		return nil
 	}
 
-	// Append a newline if it's not already there.
-	if lines[len(lines)-1] != "\n" {
+	// Append a newline if there are no tags yet.
+	if state != stateTags && lines[len(lines)-1] != "\n" {
 		lines = append(lines, "")
 	}
 
