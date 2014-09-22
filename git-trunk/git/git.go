@@ -1,11 +1,14 @@
 package git
 
 import (
+	// Stdlib
 	"bytes"
 	"errors"
 	"fmt"
-	"os/exec"
 	"strings"
+
+	// Internal
+	"github.com/salsita/SalsaFlow/git-trunk/shell"
 )
 
 var ErrDirtyRepository = errors.New("the repository is dirty")
@@ -213,12 +216,6 @@ func RepositoryRootAbsolutePath() (path string, stderr *bytes.Buffer, err error)
 }
 
 func Git(args ...string) (stdout, stderr *bytes.Buffer, err error) {
-	stdout = new(bytes.Buffer)
-	stderr = new(bytes.Buffer)
-	args = append([]string{"--no-pager"}, args...)
-	cmd := exec.Command("git", args...)
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-	err = cmd.Run()
-	return
+	args = append([]string{"git", "--no-pager"}, args...)
+	return shell.Run(args...)
 }

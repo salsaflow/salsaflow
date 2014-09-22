@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"strings"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/salsita/SalsaFlow/git-trunk/git"
 	"github.com/salsita/SalsaFlow/git-trunk/log"
 	"github.com/salsita/SalsaFlow/git-trunk/prompt"
+	"github.com/salsita/SalsaFlow/git-trunk/shell"
 
 	"gopkg.in/tchap/gocli.v1"
 )
@@ -39,16 +39,6 @@ func run(cmd *gocli.Command, args []string) {
 	if err := runMain(); err != nil {
 		log.Fatalln("\nError: " + err.Error())
 	}
-}
-
-func shell(args ...string) (stdout, stderr *bytes.Buffer, err error) {
-	stdout = new(bytes.Buffer)
-	stderr = new(bytes.Buffer)
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-	err = cmd.Run()
-	return
 }
 
 // Expected init error.
@@ -166,7 +156,7 @@ func checkGitHook() (err error, stderr *bytes.Buffer, expectedErrors []errorWith
 
 	hookPath := path.Join(repoRoot, ".git", "hooks", "commit-msg")
 	// Ping the git hook with our secret argument.
-	stdout, _, _ := shell(hookPath, config.SecretGitHookFilename)
+	stdout, _, _ := shell.Run(hookPath, config.SecretGitHookFilename)
 	secret := strings.TrimSpace(stdout.String())
 
 	// Check if we got the expected response.
