@@ -34,7 +34,8 @@ func run(cmd *gocli.Command, args []string) {
 		os.Exit(2)
 	}
 
-	app.MustInit()
+	// Ignore errors here (we'll sort them out in runMain).
+	app.Init()
 
 	if err := runMain(); err != nil {
 		log.Fatalln("\nError: " + err.Error())
@@ -52,29 +53,19 @@ type errorWithInfo struct {
 // Print (formatted) expected error with advice on how to fix it.
 func (err errorWithInfo) Print() {
 	log.Fail(err.error)
-	log.Println(err.info)
+	log.Println(err.info + "\n")
 }
 
-func runMain() (err error) {
+func runMain() (fatalErr error) {
 	var (
-		expectedErrors []errorWithInfo
-		stderr         *bytes.Buffer
+		success bool = true
+		stderr  *bytes.Buffer
+		err     error
 	)
-
-	// Handles unexpected error.
-	defer func() {
-		if err != nil {
-			asciiart.PrintScream("Oh noes, an error happened!", "I'm bailing out.")
-			log.FailWithDetails(err.Error(), stderr)
-		}
-	}()
 
 	// Handles expected init errors or success (i.e., no expected errors).
 	defer func() {
-		if len(expectedErrors) > 0 {
-			for _, err := range expectedErrors {
-				err.Print()
-			}
+		if !success {
 			return
 		}
 
@@ -89,70 +80,93 @@ func runMain() (err error) {
 		log.Println("\nSwell, your repo is initialized!")
 	}()
 
+	// Handles unexpected error.
+	defer func() {
+		if fatalErr != nil {
+			asciiart.PrintScream("Oh noes, an error happened!", "")
+			log.FailWithDetails(fatalErr.Error(), stderr)
+			log.Fatal()
+		}
+	}()
+
 	// Check git branches.
 	var branchExists bool
 
 	log.Run("Checking git branches.")
 
-	branchExists, stderr, err = git.RefExists(config.MasterBranch)
-	if err != nil {
+	branchExists, stderr, fatalErr = git.RefExists(config.MasterBranch)
+	if fatalErr != nil {
 		return
 	}
 	if !branchExists {
-		info := errorWithInfo{
+		errorWithInfo{
 			fmt.Sprintf("Branch %s not detected", config.MasterBranch),
 			fmt.Sprintf("I need branch %s to exist. Please make sure there is one "+
 				"and run me again!", config.MasterBranch),
-		}
-		expectedErrors = append(expectedErrors, info)
-	}
-
-	branchExists, stderr, err = git.RefExists(config.TrunkBranch)
-	if err != nil {
-		return
-	}
-	if !branchExists {
-		log.Run(fmt.Sprintf("No branch %s found. Will create one for you for free!",
-			config.TrunkBranch))
-		stderr, err = git.Branch(config.TrunkBranch, config.MasterBranch)
-		if err != nil {
-			// TODO
+		}.Print()
+		success = false
+	} else {
+		branchExists, stderr, fatalErr = git.RefExists(config.TrunkBranch)
+		if fatalErr != nil {
 			return
 		}
+		if !branchExists {
+			log.Run(fmt.Sprintf("No branch %s found. Will create one for you for free!",
+				config.TrunkBranch))
+			stderr, fatalErr = git.Branch(config.TrunkBranch, config.MasterBranch)
+			if fatalErr != nil {
+				// TODO
+				return
+			}
+		}
 	}
-
 	log.Run("Checking local config.")
 	// Check config files (local and global).
 	if _, _, err = config.ReadLocalConfig(); err != nil {
-		info := errorWithInfo{
+		errorWithInfo{
 			error: "Local config could not be read.",
 			info: fmt.Sprintf("I could not read config from file %s in branch %s",
 				config.LocalConfigFileName, config.ConfigBranch),
-		}
-		expectedErrors = append(expectedErrors, info)
+		}.Print()
+		success = false
 	}
 
 	log.Run("Checking global config.")
 	if _, err := config.ReadGlobalConfig(); err != nil {
-		expectedErrors = append(expectedErrors, errorWithInfo{
+		errorWithInfo{
 			error: "Global config could not be read.",
 			info: fmt.Sprintf("I could not read config from file %s.",
 				config.GlobalConfigFileName),
-		})
+		}.Print()
+		success = false
 	}
 
 	// Verify our git hook is installed and used.
 	log.Run("Checking git hook.")
-	err, stderr, expectedErrors = checkGitHook()
+	if fatalErr, _success := checkGitHook(); fatalErr != nil {
+		success = _success && success
+		return fatalErr
+	}
 
-	return nil
+	return
 }
 
 // Check whether SalsaFlow git hook is used. Prompts user to install our hook if it
 // isn't.
-func checkGitHook() (err error, stderr *bytes.Buffer, expectedErrors []errorWithInfo) {
-	repoRoot, stderr, err := git.RepositoryRootAbsolutePath()
-	if err != nil {
+func checkGitHook() (fatalErr error, success bool) {
+	success = false
+
+	// Handles unexpected error.
+	defer func() {
+		if fatalErr != nil {
+			asciiart.PrintScream("Oh noes, an error happened!", "")
+			log.FailWithDetails(fatalErr.Error(), nil)
+			log.Fatal()
+		}
+	}()
+
+	repoRoot, _, fatalErr := git.RepositoryRootAbsolutePath()
+	if fatalErr != nil {
 		return
 	}
 
@@ -166,38 +180,40 @@ func checkGitHook() (err error, stderr *bytes.Buffer, expectedErrors []errorWith
 		var confirmed bool
 		log.Warn("We did not detect our webhook in your repo.")
 		log.Println("")
-		confirmed, err = prompt.Confirm("Shall we proceed and create or replace " +
+		confirmed, fatalErr = prompt.Confirm("Shall we proceed and create or replace " +
 			"your current commit-msg hook with our GitFlow hook?")
 		fmt.Println("")
-		if err != nil {
+		if fatalErr != nil {
 			return
 		}
 		// Get the directory our executable is in (we expect the git hook binary to be
 		// installed in the same directory).
 		var binDir string
-		binDir, err = osext.ExecutableFolder()
-		if err != nil {
+		binDir, fatalErr = osext.ExecutableFolder()
+		if fatalErr != nil {
 			return
 		}
 		hookBin := path.Join(binDir, "git-trunk-hooks-commit-msg")
 		if confirmed {
 			// Copy the git hook binary to the githook directory.
-			err = CopyFile(path.Join(binDir, "git-trunk-hooks-commit-msg"), hookPath)
-			if err != nil {
+			fatalErr = CopyFile(path.Join(binDir, "git-trunk-hooks-commit-msg"), hookPath)
+			if fatalErr != nil {
 				return
 			}
 			log.Run("Hook installed. Sweet.")
 		} else {
 			// User stubbornly refuses to let us overwrite their webhook. Inform the init
 			// has failed and let them do their thing.
-			expectedErrors = append(expectedErrors, errorWithInfo{
+			errorWithInfo{
 				error: "Our commit-msg webhook not detected.",
 				info: fmt.Sprintf("I need the hook in order to do my job. Please make "+
 					"sure file %s runs as your commit-msg hook and run me again!", hookBin),
-			})
+			}.Print()
 			return
 		}
 	}
 
-	return nil, nil, expectedErrors
+	success = true
+
+	return
 }
