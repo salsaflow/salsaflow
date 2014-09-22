@@ -7,9 +7,19 @@ import (
 // IssueTracker interface ------------------------------------------------------
 
 type IssueTracker interface {
-	ListActiveStoryIds(ids []string) (activeIds []string, err error)
+	CurrentUser() (User, error)
+	ActiveStoryIds(ids []string) (activeIds []string, err error)
 	NextRelease(*version.Version) (NextRelease, error)
 	RunningRelease(*version.Version) (RunningRelease, error)
+}
+
+type User interface {
+	GetId() string
+}
+
+type Story interface {
+	GetId() string
+	GetAssignees() []User
 }
 
 type NextRelease interface {
@@ -18,11 +28,7 @@ type NextRelease interface {
 }
 
 type RunningRelease interface {
-	ListStoryIds() ([]string, error)
+	ListStories() ([]Story, error)
 	EnsureDeliverable() error
 	Deliver() (Action, error)
-}
-
-type Action interface {
-	Rollback() error
 }
