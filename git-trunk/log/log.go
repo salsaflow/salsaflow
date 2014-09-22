@@ -157,6 +157,14 @@ func (l Logger) UnsafeSkip(msg string) {
 	l.unsafeLogf("[SKIP]     %v\n", msg)
 }
 
+func (l Logger) Warn(msg string) {
+	l.logf("[WARN]     %v\n", msg)
+}
+
+func (l Logger) UnsafeWarn(msg string) {
+	l.unsafeLogf("[WARN]     %v\n", msg)
+}
+
 func (l Logger) Go(msg string) {
 	l.logf("[GO]       %v\n", msg)
 }
@@ -312,6 +320,14 @@ func Ok(msg string) {
 
 func UnsafeOk(msg string) {
 	V(Info).UnsafeOk(msg)
+}
+
+func Warn(msg string) {
+	V(Info).Warn(msg)
+}
+
+func UnsafeWarn(msg string) {
+	V(Info).UnsafeWarn(msg)
 }
 
 func Fail(msg string) {

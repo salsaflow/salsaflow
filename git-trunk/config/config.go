@@ -44,7 +44,7 @@ func MustLoad() {
 	// Read the config files from the disk.
 	go func() {
 		msg := "Read project configuration file"
-		localConfig, stderr, err := readLocalConfig()
+		localConfig, stderr, err := ReadLocalConfig()
 		if err != nil {
 			resCh <- &readResult{msg, stderr, err}
 			return
@@ -55,7 +55,7 @@ func MustLoad() {
 
 	go func() {
 		msg := "Read global configuration file"
-		globalConfig, err := readGlobalConfig()
+		globalConfig, err := ReadGlobalConfig()
 		if err != nil {
 			resCh <- &readResult{msg, nil, err}
 			return
@@ -92,12 +92,12 @@ func MustLoad() {
 	IssueTrackerName = config.IssueTracker
 }
 
-func readLocalConfig() (content, stderr *bytes.Buffer, err error) {
+func ReadLocalConfig() (content, stderr *bytes.Buffer, err error) {
 	// Return the file content as committed on the config branch.
 	return git.ShowByBranch(ConfigBranch, LocalConfigFileName)
 }
 
-func readGlobalConfig() (content *bytes.Buffer, err error) {
+func ReadGlobalConfig() (content *bytes.Buffer, err error) {
 	// Generate the global config file path.
 	me, err := user.Current()
 	if err != nil {
