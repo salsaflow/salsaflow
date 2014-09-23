@@ -20,7 +20,6 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/url"
 )
@@ -43,6 +42,9 @@ type Client struct {
 
 	// Me service.
 	Myself *MyselfService
+
+	// Issues
+	Issues *IssueService
 }
 
 func New(baseURL *url.URL, httpClient *http.Client) *Client {
@@ -52,6 +54,7 @@ func New(baseURL *url.URL, httpClient *http.Client) *Client {
 		UserAgent:  defaultUserAgent,
 	}
 	client.Myself = newMyselfService(client)
+	client.Issues = newIssueService(client)
 	return client
 }
 
