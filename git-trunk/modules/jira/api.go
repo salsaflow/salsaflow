@@ -2,11 +2,14 @@ package jira
 
 import (
 	// Stdlib
+	"bytes"
 	"net/http"
 
 	// Internal
 	"github.com/salsita/SalsaFlow/git-trunk/modules/jira/client"
 )
+
+// API client instantiation ----------------------------------------------------
 
 type BasicAuthRoundTripper struct {
 	next http.RoundTripper
@@ -23,7 +26,26 @@ func newClient() *client.Client {
 	})
 }
 
-func fetchMyself() (*client.User, error) {
-	myself, _, err := newClient().Myself.Get()
-	return myself, err
+// Various userful helper functions --------------------------------------------
+
+func listStoriesById(ids []string) ([]*client.Issue, error) {
+	var jql bytes.Buffer
+	for _, id := range ids {
+		if jql.Len() != 0 {
+			if _, err := jql.WriteString("OR "); err != nil {
+				return nil, err
+			}
+		}
+		if _, err := jql.WriteString("id="); err != nil {
+			return nil, err
+		}
+		if _, err := jql.WriteString(id); err != nil {
+			return nil, err
+		}
+	}
+
+	stories, _, err := newClient().Issues.Search(&client.SearchOptions{
+		JQL: jql.String(),
+	})
+	return stories, err
 }

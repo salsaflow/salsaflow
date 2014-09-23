@@ -1,8 +1,13 @@
 package jira
 
 import (
+	// Stdlib
+	"fmt"
+
 	// Internal
+	"github.com/salsita/SalsaFlow/git-trunk/log"
 	"github.com/salsita/SalsaFlow/git-trunk/modules/common"
+	"github.com/salsita/SalsaFlow/git-trunk/modules/jira/client"
 	"github.com/salsita/SalsaFlow/git-trunk/version"
 )
 
@@ -16,15 +21,15 @@ func Factory() (common.IssueTracker, error) {
 }
 
 func (tracker *issueTracker) CurrentUser() (common.User, error) {
-	data, err := fetchMyself()
+	resource, _, err := newClient().Myself.Get()
 	if err != nil {
 		return nil, err
 	}
-	return &myself{data}, nil
+	return &myself{resource}, nil
 }
 
 func (tracker *issueTracker) ActiveStoryIds(ids []string) (activeIds []string, err error) {
-	return onlyActiveStoryIds(ids)
+	return onlyActiveIssueIds(ids)
 }
 
 func (tracker *issueTracker) NextRelease(ver *version.Version) (common.NextRelease, error) {
@@ -35,6 +40,37 @@ func (tracker *issueTracker) RunningRelease(ver *version.Version) (common.Runnin
 	return newRunningRelease(ver)
 }
 
-func onlyActiveStoryIds(ids []string) (activeIds []string, err error) {
-	panic("Not implemented")
+func onlyActiveIssueIds(ids []string) (activeIds []string, err error) {
+	info := log.V(log.Info)
+
+	// Fetch the relevant issues
+	msg := "Fetch the relevant issues"
+	info.Run(msg)
+
+	issues, err := listStoriesById(ids)
+	if err != nil {
+		return nil, err
+	}
+
+	issueMap := make(map[string]*client.Issue)
+	for _, issue := range issues {
+		issueMap[issue.Id] = issue
+	}
+
+	// Filter the issues according to the issue state.
+	msg = "Filter the issues according to the issue state"
+	var active []string
+	for _, id := range ids {
+		_, ok := issueMap[id]
+		if !ok {
+			info.Fail(msg)
+			err = fmt.Errorf("issue with id %v not found", id)
+			return nil, err
+		}
+
+		// XXX: Implement this!
+		panic("Not implemented")
+	}
+
+	return active, nil
 }
