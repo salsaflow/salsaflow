@@ -18,24 +18,24 @@
 package client
 
 type User struct {
-	Self         string
-	Key          string
-	Name         string
-	EmailAddress string `json:"emailAddress"`
+	Self         string `json:"self,omitempty"`
+	Key          string `json:"key,omitempty"`
+	Name         string `json:"name,omitempty"`
+	EmailAddress string `json:"emailAddress,omitempty"`
 	AvatarURLs   struct {
-		Size16 string
-		Size24 string
-		Size32 string
-		Size48 string
-	} `json:"avatarUrls"`
-	DisplayName string `json:"displayName"`
-	Active      bool
-	TimeZone    string `json:"timeZone"`
+		Size16 string `json:"16x16,omitempty"`
+		Size24 string `json:"24x24,omitempty"`
+		Size32 string `json:"32x32,omitempty"`
+		Size48 string `json:"48x48,omitempty"`
+	} `json:"avatarUrls,omitempty"`
+	DisplayName string `json:"displayName,omitempty"`
+	Active      bool   `json:"active,omitempty"`
+	TimeZone    string `json:"timeZone,omitempty"`
 	Groups      struct {
-		Size  int
+		Size  int `json:"size,omitempty"`
 		Items []struct {
-			Name string
-			Self string
-		}
-	}
+			Name string `json:"name,omitempty"`
+			Self string `json:"self,omitempty"`
+		} `json:"items,omitempty"`
+	} `json:"groups,omitempty"`
 }
