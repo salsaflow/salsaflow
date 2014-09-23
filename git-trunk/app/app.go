@@ -21,18 +21,18 @@ func RegisterGlobalFlags(flags *flag.FlagSet) {
 	flags.Var(LogFlag, "log", "set logging verbosity; {trace|debug|verbose|info|off}")
 }
 
-func Init() (err *errors.Error) {
+func Init() *errors.Error {
 	// Set up logging.
 	log.SetV(log.MustStringToLevel(LogFlag.Value()))
 
 	// Load the workflow configuration.
-	if err = config.Load(); err != nil {
-		return
+	if err := config.Load(); err != nil {
+		return err
 	}
 
 	// Bootstrap the modules.
-	if err = modules.Bootstrap(); err != nil {
-		return
+	if err := modules.Bootstrap(); err != nil {
+		return err
 	}
 
 	return nil
