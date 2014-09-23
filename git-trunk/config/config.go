@@ -13,7 +13,7 @@ import (
 	"github.com/salsita/SalsaFlow/git-trunk/git"
 
 	// Other
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 )
 
 const (
