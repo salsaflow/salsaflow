@@ -4,6 +4,7 @@ import (
 	// Stdlib
 	"errors"
 	"net/url"
+	"strings"
 
 	// Internal
 	cfg "github.com/salsita/SalsaFlow/git-trunk/config"
@@ -18,7 +19,11 @@ func loadConfig() error {
 	if err := loadGlobalConfig(); err != nil {
 		return err
 	}
-	return loadLocalConfig()
+	if err := loadLocalConfig(); err != nil {
+		return err
+	}
+	config = mustNewJiraConfig()
+	return nil
 }
 
 // Global configuration --------------------------------------------------------
@@ -110,9 +115,24 @@ func loadLocalConfig() error {
 
 // Config proxy object ---------------------------------------------------------
 
-var config jiraConfig
+var config *jiraConfig
 
-type jiraConfig struct{}
+type jiraConfig struct {
+	baseURL *url.URL
+}
+
+func mustNewJiraConfig() *jiraConfig {
+	// Make sure the URL is absolute.
+	base := localWrapper.C.BaseURL
+	if !strings.HasSuffix(base, "/") {
+		base += "/"
+	}
+	baseURL, err := url.Parse(base)
+	if err != nil {
+		panic(err)
+	}
+	return &jiraConfig{baseURL}
+}
 
 /*
  * Global config
@@ -130,8 +150,8 @@ func (c *jiraConfig) Password() string {
  * Local config
  */
 
-func (c *jiraConfig) BaseURL() string {
-	return localWrapper.C.BaseURL
+func (c *jiraConfig) BaseURL() *url.URL {
+	return c.baseURL
 }
 
 func (c *jiraConfig) ProjectIdOrKey() string {
