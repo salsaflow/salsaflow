@@ -12,6 +12,7 @@ import (
 	"github.com/salsita/SalsaFlow/git-trunk/modules/common"
 
 	// Internal: modules
+	"github.com/salsita/SalsaFlow/git-trunk/modules/jira"
 	"github.com/salsita/SalsaFlow/git-trunk/modules/pivotaltracker"
 )
 
@@ -35,6 +36,7 @@ func mustInitIssueTracker() {
 func initIssueTracker() *errors.Error {
 	// Register all available issue trackers here.
 	factories := map[string]IssueTrackerFactory{
+		jira.Id:           jira.Factory,
 		pivotaltracker.Id: pivotaltracker.Factory,
 	}
 
