@@ -1,9 +1,6 @@
 package pivotaltracker
 
 import (
-	// Stdlib
-	"strconv"
-
 	// Internal
 	"github.com/salsita/SalsaFlow/git-trunk/errors"
 	"github.com/salsita/SalsaFlow/git-trunk/log"
@@ -26,12 +23,12 @@ func newRunningRelease(ver *version.Version) (*runningRelease, error) {
 	return &runningRelease{stories}, nil
 }
 
-func (release *runningRelease) ListStoryIds() ([]string, error) {
-	var ids []string
-	for _, story := range release.stories {
-		ids = append(ids, strconv.Itoa(story.Id))
+func (release *runningRelease) ListStories() ([]common.Story, error) {
+	var stories []common.Story
+	for _, s := range release.stories {
+		stories = append(stories, &story{s})
 	}
-	return ids, nil
+	return stories, nil
 }
 
 func (release *runningRelease) EnsureDeliverable() error {

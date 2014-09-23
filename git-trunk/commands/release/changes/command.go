@@ -108,13 +108,13 @@ func runMain() (err error) {
 	if err != nil {
 		return
 	}
-	ids, err := release.ListStoryIds()
+	stories, err := release.ListStories()
 	if err != nil {
 		return
 	}
 
 	// Just return in case there are no relevant stories found.
-	if len(ids) == 0 {
+	if len(stories) == 0 {
 		msg = ""
 		fmt.Println("\nNo relevant stories found, exiting...")
 		return
@@ -129,7 +129,8 @@ func runMain() (err error) {
 		commits     []*git.Commit
 		storyGroups []*changes.StoryChangeGroup
 	)
-	for _, id := range ids {
+	for _, story := range stories {
+		id := story.GetId()
 		commits, stderr, err = git.ListStoryCommits(id)
 		if err != nil {
 			return

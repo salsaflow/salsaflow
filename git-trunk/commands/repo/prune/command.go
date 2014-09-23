@@ -120,11 +120,11 @@ func runMain() (err error) {
 	}
 
 	// Get the list of active story IDs.
-	filteredIds, err := modules.GetIssueTracker().ListActiveStoryIds(ids)
+	activeIds, err := modules.GetIssueTracker().ActiveStoryIds(ids)
 	if err != nil {
 		return
 	}
-	ids = filteredIds
+	ids = activeIds
 
 	// Drop the active refs.
 	refs = dropActiveRefs(refs, ids)
