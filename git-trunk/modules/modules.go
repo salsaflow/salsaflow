@@ -1,5 +1,9 @@
 package modules
 
-func MustBootstrap() {
-	mustInitIssueTracker()
+import (
+	"github.com/salsita/SalsaFlow/git-trunk/errors"
+)
+
+func Bootstrap() *errors.Error {
+	return initIssueTracker()
 }

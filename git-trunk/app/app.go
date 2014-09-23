@@ -6,6 +6,7 @@ import (
 
 	// Internal
 	"github.com/salsita/SalsaFlow/git-trunk/config"
+	"github.com/salsita/SalsaFlow/git-trunk/errors"
 	flags "github.com/salsita/SalsaFlow/git-trunk/flag"
 	"github.com/salsita/SalsaFlow/git-trunk/log"
 	"github.com/salsita/SalsaFlow/git-trunk/modules"
@@ -20,13 +21,26 @@ func RegisterGlobalFlags(flags *flag.FlagSet) {
 	flags.Var(LogFlag, "log", "set logging verbosity; {trace|debug|verbose|info|off}")
 }
 
-func MustInit() {
+func Init() (err *errors.Error) {
 	// Set up logging.
 	log.SetV(log.MustStringToLevel(LogFlag.Value()))
 
 	// Load the workflow configuration.
-	config.MustLoad()
+	if err = config.Load(); err != nil {
+		return
+	}
 
 	// Bootstrap the modules.
-	modules.MustBootstrap()
+	if err = modules.Bootstrap(); err != nil {
+		return
+	}
+
+	return nil
+}
+
+func MustInit() {
+	var logger = log.V(log.Info)
+	if err := Init(); err != nil {
+		err.Fatal(logger)
+	}
 }
