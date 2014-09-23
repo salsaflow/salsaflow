@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"bitbucket.org/kardianos/osext"
@@ -83,7 +83,6 @@ func runMain() (fatalErr error) {
 	// Handles unexpected error.
 	defer func() {
 		if fatalErr != nil {
-			asciiart.PrintScream("Oh noes, an error happened!", "")
 			log.FailWithDetails(fatalErr.Error(), stderr)
 			log.Fatal()
 		}
@@ -99,27 +98,25 @@ func runMain() (fatalErr error) {
 		return
 	}
 	if !branchExists {
-		errorWithInfo{
-			fmt.Sprintf("Branch %s not detected", config.MasterBranch),
-			fmt.Sprintf("I need branch %s to exist. Please make sure there is one "+
-				"and run me again!", config.MasterBranch),
-		}.Print()
-		success = false
-	} else {
-		branchExists, stderr, fatalErr = git.RefExists(config.TrunkBranch)
+		log.Fail(fmt.Sprintf("Branch %s not detected", config.MasterBranch))
+		log.Fatalln(fmt.Sprintf("I need branch '%s' to exist. Please make sure there is one "+
+			"and run me again!", config.MasterBranch))
+	}
+
+	branchExists, stderr, fatalErr = git.RefExists(config.TrunkBranch)
+	if fatalErr != nil {
+		return
+	}
+	if !branchExists {
+		log.Run(fmt.Sprintf("No branch %s found. Will create one for you for free!",
+			config.TrunkBranch))
+		stderr, fatalErr = git.Branch(config.TrunkBranch, config.MasterBranch)
 		if fatalErr != nil {
+			// TODO
 			return
 		}
-		if !branchExists {
-			log.Run(fmt.Sprintf("No branch %s found. Will create one for you for free!",
-				config.TrunkBranch))
-			stderr, fatalErr = git.Branch(config.TrunkBranch, config.MasterBranch)
-			if fatalErr != nil {
-				// TODO
-				return
-			}
-		}
 	}
+
 	log.Run("Checking local config.")
 	// Check config files (local and global).
 	if _, _, err = config.ReadLocalConfig(); err != nil {
@@ -143,11 +140,9 @@ func runMain() (fatalErr error) {
 
 	// Verify our git hook is installed and used.
 	log.Run("Checking git hook.")
-	fatalErr, _success := checkGitHook()
-	if fatalErr != nil {
-		return
-	} else {
+	if fatalErr, _success := checkGitHook(); fatalErr != nil {
 		success = _success && success
+		return fatalErr
 	}
 
 	return
@@ -156,10 +151,11 @@ func runMain() (fatalErr error) {
 // Check whether SalsaFlow git hook is used. Prompts user to install our hook if it
 // isn't.
 func checkGitHook() (fatalErr error, success bool) {
+	success = false
+
 	// Handles unexpected error.
 	defer func() {
 		if fatalErr != nil {
-			asciiart.PrintScream("Oh noes, an error happened!", "")
 			log.FailWithDetails(fatalErr.Error(), nil)
 			log.Fatal()
 		}
@@ -170,7 +166,7 @@ func checkGitHook() (fatalErr error, success bool) {
 		return
 	}
 
-	hookPath := path.Join(repoRoot, ".git", "hooks", "commit-msg")
+	hookPath := filepath.Join(repoRoot, ".git", "hooks", "commit-msg")
 	// Ping the git hook with our secret argument.
 	stdout, _, _ := shell.Run(hookPath, config.SecretGitHookFilename)
 	secret := strings.TrimSpace(stdout.String())
@@ -193,10 +189,10 @@ func checkGitHook() (fatalErr error, success bool) {
 		if fatalErr != nil {
 			return
 		}
-		hookBin := path.Join(binDir, "git-trunk-hooks-commit-msg")
+		hookBin := filepath.Join(binDir, "git-trunk-hooks-commit-msg")
 		if confirmed {
 			// Copy the git hook binary to the githook directory.
-			fatalErr = CopyFile(path.Join(binDir, "git-trunk-hooks-commit-msg"), hookPath)
+			fatalErr = CopyFile(filepath.Join(binDir, "git-trunk-hooks-commit-msg"), hookPath)
 			if fatalErr != nil {
 				return
 			}
@@ -213,5 +209,7 @@ func checkGitHook() (fatalErr error, success bool) {
 		}
 	}
 
-	return nil, true
+	success = true
+
+	return
 }
