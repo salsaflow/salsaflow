@@ -54,18 +54,39 @@ func GrepCommits(filter string) (commits []*Commit, stderr *bytes.Buffer, err er
 		return nil, serr, err
 	}
 
-	// Parse git log output, which is a sequence of Git commits looking like
-	//
-	// commit $hexsha  $source
-	// Author: $author
-	// Date:   $date
-	//
-	//    $title
-	//
-	//    $body
-	//
-	//    Change-Id: $changeId
-	//    Story-Id: $storyId
+	return parseCommitLog(sout)
+}
+
+// Returns list of commit on branch `ref` compared to branch `parent`.
+func ListBranchCommits(ref string, parent string) (commits []*Commit, stderr *bytes.Buffer, err error) {
+	args := []string{
+		"log",
+		"--source",
+		"--abbrev-commit",
+		"--pretty=fuller",
+		parent + ".." + ref,
+	}
+	sout, serr, err := Git(args...)
+	if err != nil {
+		return nil, serr, err
+	}
+
+	return parseCommitLog(sout)
+}
+
+// Parse git log output, which is a sequence of Git commits looking like
+//
+// commit $hexsha  $source
+// Author: $author
+// Date:   $date
+//
+//    $title
+//
+//    $body
+//
+//    Change-Id: $changeId
+//    Story-Id: $storyId
+func parseCommitLog(sout *bytes.Buffer) (commits []*Commit, stderr *bytes.Buffer, err error) {
 
 	cs := make([]*Commit, 0)
 

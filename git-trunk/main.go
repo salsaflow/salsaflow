@@ -11,6 +11,7 @@ import (
 	"github.com/salsita/SalsaFlow/git-trunk/commands/init"
 	"github.com/salsita/SalsaFlow/git-trunk/commands/release"
 	"github.com/salsita/SalsaFlow/git-trunk/commands/repo"
+	"github.com/salsita/SalsaFlow/git-trunk/commands/review"
 	"github.com/salsita/SalsaFlow/git-trunk/commands/story"
 
 	// Other
@@ -37,6 +38,7 @@ func main() {
 	trunk.MustRegisterSubcommand(repoCmd.Command)
 	trunk.MustRegisterSubcommand(storyCmd.Command)
 	trunk.MustRegisterSubcommand(initCmd.Command)
+	trunk.MustRegisterSubcommand(reviewCmd.Command)
 
 	// Start processing signals.
 	signalCh := make(chan os.Signal, 1)

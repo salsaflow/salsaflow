@@ -27,3 +27,16 @@ func PrintScream(header, msg string) {
   /` + "`" + `-------'  \ \`)
 	log.Println(msg)
 }
+
+func PrintSnoopy() {
+	log.Println(`
+    ,-~~-.___.
+   / |  '     \
+  (  )         0    Let's do this!
+   \_/-, ,----'
+      ====           //
+     /  \-'~;    /~~~(O)
+    /  __/~|   /       |
+  =(  _____| (_________|
+	`)
+}
