@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -40,6 +41,54 @@ func Confirm(question string) (bool, error) {
 	}
 
 	return line == "y", nil
+}
+
+type InvalidInputError struct {
+	input string
+}
+
+func (i *InvalidInputError) Error() string {
+	return "Invalid input: " + i.input
+}
+
+type OutOfBoundsError struct {
+	input string
+}
+
+func (i *OutOfBoundsError) Error() string {
+	return "Index out of bounds: " + i.input
+}
+
+func PromptIndex(msg string, min, max int) (int, error) {
+	line, err := Prompt(msg)
+	if err != nil {
+		return -1, err
+	}
+
+	index, err := strconv.Atoi(line)
+	if err != nil {
+		return 0, &InvalidInputError{line}
+	}
+
+	if index < min || index > max {
+		return 0, &OutOfBoundsError{line}
+	}
+
+	return index, nil
+}
+
+func Prompt(msg string) (string, error) {
+	var line string
+
+	fmt.Print(msg)
+
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	line = strings.ToLower(scanner.Text())
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+	return line, nil
 }
 
 func ConfirmStories(headerLine string, stories []*pivotal.Story) (bool, error) {
