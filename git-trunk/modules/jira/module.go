@@ -74,3 +74,7 @@ func onlyActiveIssueIds(ids []string) (activeIds []string, err error) {
 
 	return active, nil
 }
+
+func (tracker *issueTracker) GetStartableStories() (stories []common.Story, err error) {
+	panic("Not implemented")
+}

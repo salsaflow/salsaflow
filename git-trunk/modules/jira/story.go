@@ -2,6 +2,7 @@ package jira
 
 import (
 	// Internal
+	"github.com/salsita/SalsaFlow/git-trunk/errors"
 	"github.com/salsita/SalsaFlow/git-trunk/modules/common"
 )
 
@@ -13,5 +14,17 @@ func (story *story) GetId() string {
 }
 
 func (story *story) GetAssignees() []common.User {
+	panic("Not implemented")
+}
+
+func (story *story) GetTitle() string {
+	panic("Not implemented")
+}
+
+func (story *story) Start() *errors.Error {
+	panic("Not implemented")
+}
+
+func (story *story) SetOwners([]common.User) *errors.Error {
 	panic("Not implemented")
 }
