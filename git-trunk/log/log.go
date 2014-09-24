@@ -173,6 +173,14 @@ func (l Logger) UnsafeGo(msg string) {
 	l.unsafeLogf("[GO]       %v\n", msg)
 }
 
+func (l Logger) Log(msg string) {
+	l.logf("[LOG]      %v\n", msg)
+}
+
+func (l Logger) UnsafeLog(msg string) {
+	l.unsafeLogf("[LOG]      %v\n", msg)
+}
+
 func (l Logger) Ok(msg string) {
 	l.logf("[OK]       %v\n", msg)
 }
@@ -296,6 +304,14 @@ func Run(msg string) {
 
 func UnsafeRun(msg string) {
 	V(Info).UnsafeRun(msg)
+}
+
+func Log(msg string) {
+	V(Info).Log(msg)
+}
+
+func UnsafeLog(msg string) {
+	V(Info).UnsafeLog(msg)
 }
 
 func Skip(msg string) {
