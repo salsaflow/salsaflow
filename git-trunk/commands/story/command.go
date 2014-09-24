@@ -2,6 +2,7 @@ package storyCmd
 
 import (
 	"github.com/salsita/SalsaFlow/git-trunk/commands/story/changes"
+	"github.com/salsita/SalsaFlow/git-trunk/commands/story/start"
 
 	"gopkg.in/tchap/gocli.v1"
 )
@@ -16,4 +17,5 @@ var Command = &gocli.Command{
 
 func init() {
 	Command.MustRegisterSubcommand(changesCmd.Command)
+	Command.MustRegisterSubcommand(startCmd.Command)
 }

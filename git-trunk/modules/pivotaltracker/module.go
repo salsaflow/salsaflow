@@ -82,3 +82,21 @@ func onlyActiveIds(ids []string) (activeIds []string, err error) {
 
 	return active, nil
 }
+
+func (tracker *issueTracker) GetStartableStories() (stories []common.Story, err error) {
+	pivotalStories, err := listStories("(type:bug OR type:feature) AND (state:unstarted OR state:started)")
+	if err != nil {
+		return nil, err
+	}
+	// Cast to `[]pivotaltracker.story`.
+	ptStories := make([]story, len(pivotalStories))
+	for i := range pivotalStories {
+		ptStories[i] = story{pivotalStories[i]}
+	}
+	// Cast to `[]common.Story`.
+	commonStories := make([]common.Story, len(ptStories))
+	for i := range ptStories {
+		commonStories[i] = &ptStories[i]
+	}
+	return commonStories, nil
+}
