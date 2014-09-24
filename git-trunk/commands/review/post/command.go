@@ -108,6 +108,7 @@ Here's what's going to happen:
 	for _, commit := range commits {
 		log.Printf("  %s (%s)", commit.SHA, commit.Title)
 	}
+	log.Println()
 
 	confirmed, err := prompt.Confirm("You cool with that?")
 	if err != nil {
