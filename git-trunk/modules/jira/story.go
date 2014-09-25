@@ -11,6 +11,9 @@ type story struct {
 
 func (story *story) GetId() string {
 	panic("Not implemented")
+
+func (story *story) GetReadableId() string {
+	return story.s.Key
 }
 
 func (story *story) GetAssignees() []common.User {

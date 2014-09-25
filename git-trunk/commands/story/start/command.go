@@ -85,7 +85,7 @@ func runMain() (err error) {
 
 	// List stories that can be started.
 	for i, story := range stories {
-		log.Printf("[%d]: %s -> %s\n", i, story.GetId(), story.GetTitle())
+		log.Printf("[%d]: %s -> %s\n", i, story.GetReadableId(), story.GetTitle())
 	}
 
 	// Prompt user to choose.

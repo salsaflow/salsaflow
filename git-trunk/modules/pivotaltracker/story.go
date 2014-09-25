@@ -20,6 +20,11 @@ func (story *story) GetId() string {
 	return strconv.Itoa(story.s.Id)
 }
 
+// Pivotal Tracker doesn't have readable id so this just returns normal id.
+func (story *story) GetReadableId() string {
+	return strconv.Itoa(story.s.Id)
+}
+
 func (story *story) GetAssignees() []common.User {
 	var users []common.User
 	for _, id := range story.s.OwnerIds {

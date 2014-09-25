@@ -21,9 +21,12 @@ type User interface {
 
 type Story interface {
 	GetId() string
+	GetReadableId() string
 	GetAssignees() []User
 	GetTitle() string
+
 	Start() *errors.Error
+
 	SetOwners([]User) *errors.Error
 }
 
