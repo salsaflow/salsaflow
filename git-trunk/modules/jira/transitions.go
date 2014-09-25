@@ -5,10 +5,28 @@ import (
 	"net/http"
 )
 
-var statuses = []struct {
+type jiraWorkflowEntity struct {
 	Id   string
 	Name string
-}{
+}
+
+var startableStates = []jiraWorkflowEntity{
+	{
+		"10107",
+		"Scheduled",
+	},
+	{
+		"3",
+		"In Progress",
+	},
+}
+
+var transitionStart = jiraWorkflowEntity{
+	"4",
+	"Start Progress",
+}
+
+var statuses = []jiraWorkflowEntity{
 	{
 		"6",
 		"Closed",
@@ -39,10 +57,7 @@ var statuses = []struct {
 	},
 }
 
-var transitions = []struct {
-	Id   string
-	Name string
-}{
+var transitions = []jiraWorkflowEntity{
 	{
 		"2",
 		"Close Issue",
