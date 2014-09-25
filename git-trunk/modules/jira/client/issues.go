@@ -26,6 +26,14 @@ import (
 	"github.com/google/go-querystring/query"
 )
 
+type IssueList struct {
+	Expand     string
+	StartAt    int
+	MaxResults int
+	Total      int
+	Issues     []*Issue
+}
+
 // Issue represents the issue resource as produces by the REST API.
 type Issue struct {
 	Id     string `json:"id,omitempty"`
@@ -75,16 +83,27 @@ func (service *IssueService) Search(opts *SearchOptions) ([]*Issue, *http.Respon
 		return nil, nil, err
 	}
 
-	var issues []*Issue
-	resp, err := service.client.Do(req, &issues)
+	var issueList IssueList
+	resp, err := service.client.Do(req, &issueList)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return issues, resp, nil
+	// TODO: Deal with pagination.
+	return issueList.Issues, resp, nil
 }
 
-// PerformTransition will perform the requested transition for the chosen issue.
+// Updates issue with `issueIdOrKey`.
+func (service *IssueService) Update(issueIdOrKey string, body interface{}) (*http.Response, error) {
+	u := fmt.Sprintf("api/2/issue/%v", issueIdOrKey)
+	req, err := service.client.NewRequest("PUT", u, &body)
+	if err != nil {
+		return nil, err
+	}
+	return service.client.Do(req, nil)
+}
+
+// Performs the requested transition for the chosen issue.
 func (service *IssueService) PerformTransition(issueIdOrKey, transitionId string) (*http.Response, error) {
 	u := fmt.Sprintf("api/2/issue/%v/transitions", issueIdOrKey)
 	var p struct {
