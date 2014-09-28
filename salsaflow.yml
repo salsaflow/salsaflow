@@ -1,3 +1,4 @@
-issue_tracker: "pivotal_tracker"
-pivotal_tracker:
-  project_id: 1166466
+issue_tracker: "jira"
+jira:
+  project_id_or_key: "SF"
+  base_url: "https://jira.salsitasoft.com/rest/"
