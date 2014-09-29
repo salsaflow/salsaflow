@@ -31,8 +31,8 @@ func (tracker *issueTracker) CurrentUser() (common.User, error) {
 	return &user{me}, nil
 }
 
-func (tracker *issueTracker) ActiveStoryIds(ids []string) (activeIds []string, err error) {
-	return onlyActiveIds(ids)
+func (tracker *issueTracker) SelectActiveStoryIds(ids []string) (activeIds []string, err error) {
+	return selectActiveIds(ids)
 }
 
 func (tracker *issueTracker) NextRelease(ver *version.Version) (common.NextRelease, error) {
@@ -43,7 +43,7 @@ func (tracker *issueTracker) RunningRelease(ver *version.Version) (common.Runnin
 	return newRunningRelease(ver)
 }
 
-func onlyActiveIds(ids []string) (activeIds []string, err error) {
+func selectActiveIds(ids []string) (activeIds []string, err error) {
 	info := log.V(log.Info)
 
 	// Fetch the relevant stories
@@ -83,7 +83,7 @@ func onlyActiveIds(ids []string) (activeIds []string, err error) {
 	return active, nil
 }
 
-func (tracker *issueTracker) GetStartableStories() (stories []common.Story, err error) {
+func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
 	pivotalStories, err := listStories("(type:bug OR type:feature) AND (state:unstarted OR state:started)")
 	if err != nil {
 		return nil, err

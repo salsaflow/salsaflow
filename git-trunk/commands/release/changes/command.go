@@ -108,7 +108,7 @@ func runMain() (err error) {
 	if err != nil {
 		return
 	}
-	stories, err := release.ListStories()
+	stories, err := release.Stories()
 	if err != nil {
 		return
 	}
@@ -130,7 +130,7 @@ func runMain() (err error) {
 		storyGroups []*changes.StoryChangeGroup
 	)
 	for _, story := range stories {
-		id := story.GetId()
+		id := story.Id()
 		commits, stderr, err = git.ListStoryCommits(id)
 		if err != nil {
 			return

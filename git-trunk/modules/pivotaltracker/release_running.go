@@ -23,7 +23,7 @@ func newRunningRelease(ver *version.Version) (*runningRelease, error) {
 	return &runningRelease{stories}, nil
 }
 
-func (release *runningRelease) ListStories() ([]common.Story, error) {
+func (release *runningRelease) Stories() ([]common.Story, error) {
 	var stories []common.Story
 	for _, s := range release.stories {
 		stories = append(stories, &story{s})

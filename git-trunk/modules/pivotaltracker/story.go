@@ -16,16 +16,16 @@ type story struct {
 	s *pivotal.Story
 }
 
-func (story *story) GetId() string {
+func (story *story) Id() string {
 	return strconv.Itoa(story.s.Id)
 }
 
 // Pivotal Tracker doesn't have readable id so this just returns normal id.
-func (story *story) GetReadableId() string {
+func (story *story) ReadableId() string {
 	return strconv.Itoa(story.s.Id)
 }
 
-func (story *story) GetAssignees() []common.User {
+func (story *story) Assignees() []common.User {
 	var users []common.User
 	for _, id := range story.s.OwnerIds {
 		users = append(users, userId(id))
@@ -33,7 +33,7 @@ func (story *story) GetAssignees() []common.User {
 	return users
 }
 
-func (story *story) GetTitle() string {
+func (story *story) Title() string {
 	return story.s.Name
 }
 
@@ -50,7 +50,7 @@ func (story *story) SetOwners(users []common.User) *errors.Error {
 	msg := "Updating PivotalTracker story"
 	ownerIds := make([]int, len(users))
 	for i, user := range users {
-		id, err := strconv.Atoi(user.GetId())
+		id, err := strconv.Atoi(user.Id())
 		if err != nil {
 			return errors.NewError(msg, nil, err)
 		}

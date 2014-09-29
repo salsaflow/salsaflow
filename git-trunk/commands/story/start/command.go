@@ -77,7 +77,7 @@ func runMain() (err error) {
 	}
 
 	log.Run("Loading stories from PM tool")
-	stories, err := modules.GetIssueTracker().GetStartableStories()
+	stories, err := modules.GetIssueTracker().StartableStories()
 	if err != nil {
 		handleError(err, nil)
 		return err
@@ -85,7 +85,7 @@ func runMain() (err error) {
 
 	// List stories that can be started.
 	for i, story := range stories {
-		log.Printf("[%d]: %s -> %s\n", i, story.GetReadableId(), story.GetTitle())
+		log.Printf("[%d]: %s -> %s\n", i, story.ReadableId(), story.Title())
 	}
 
 	// Prompt user to choose.
@@ -113,7 +113,7 @@ func runMain() (err error) {
 			handleError(err, nil)
 			return err
 		}
-		if storyId == selectedStory.GetId() {
+		if storyId == selectedStory.Id() {
 			re := regexp.MustCompile(".*/(story/.+/.+)$")
 			branchName := re.ReplaceAllString(ref, "$1")
 			matchingBranches[branchName] = true
@@ -146,7 +146,7 @@ func runMain() (err error) {
 			handleError(err, nil)
 			return err
 		}
-		branchName := fmt.Sprintf("story/%s/%s", slug.Slug(line), selectedStory.GetId())
+		branchName := fmt.Sprintf("story/%s/%s", slug.Slug(line), selectedStory.Id())
 		ok, err := prompt.Confirm(
 			fmt.Sprintf("The branch will be called '%s', OK?", branchName))
 		if err != nil {
@@ -179,7 +179,7 @@ func runMain() (err error) {
 		}(msg)
 	}
 
-	log.Run(fmt.Sprintf("Starting story %s", selectedStory.GetId()))
+	log.Run(fmt.Sprintf("Starting story %s", selectedStory.Id()))
 	if err := selectedStory.Start(); err != nil {
 		handleError(err, err.Stderr)
 		return err

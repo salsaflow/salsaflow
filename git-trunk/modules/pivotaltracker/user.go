@@ -12,12 +12,12 @@ type user struct {
 	me *pivotal.Me
 }
 
-func (u *user) GetId() string {
+func (u *user) Id() string {
 	return strconv.Itoa(u.me.Id)
 }
 
 type userId int
 
-func (id userId) GetId() string {
+func (id userId) Id() string {
 	return strconv.Itoa(int(id))
 }

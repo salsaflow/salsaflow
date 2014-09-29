@@ -120,7 +120,7 @@ func runMain() (err error) {
 	}
 
 	// Get the list of active story IDs.
-	activeIds, err := modules.GetIssueTracker().ActiveStoryIds(ids)
+	activeIds, err := modules.GetIssueTracker().SelectActiveStoryIds(ids)
 	if err != nil {
 		return
 	}

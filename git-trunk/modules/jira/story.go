@@ -8,27 +8,27 @@ import (
 )
 
 type story struct {
-	s *client.Issue
+	*client.Issue
 }
 
-func (story *story) GetId() string {
-	return story.s.Id
+func (story *story) Id() string {
+	return story.Issue.Id
 }
 
-func (story *story) GetReadableId() string {
-	return story.s.Key
+func (story *story) ReadableId() string {
+	return story.Issue.Key
 }
 
-func (story *story) GetAssignees() []common.User {
+func (story *story) Assignees() []common.User {
 	panic("Not implemented")
 }
 
-func (story *story) GetTitle() string {
-	return story.s.Fields.Summary
+func (story *story) Title() string {
+	return story.Issue.Fields.Summary
 }
 
 func (story *story) Start() *errors.Error {
-	_, err := newClient().Issues.PerformTransition(story.s.Id, transitionStart.Id)
+	_, err := newClient().Issues.PerformTransition(story.Issue.Id, transitionStart.Id)
 	if err != nil {
 		return errors.NewError("Starting JIRA story", nil, err)
 	}
@@ -43,9 +43,9 @@ func (story *story) SetOwners(users []common.User) *errors.Error {
 			} `json:"assignee"`
 		} `json:"fields"`
 	}
-	name := users[0].GetId()
+	name := users[0].Id()
 	data.Fields.Assignee.Name = name
-	_, err := newClient().Issues.Update(story.GetId(), data)
+	_, err := newClient().Issues.Update(story.Id(), data)
 	if err != nil {
 		return errors.NewError("Updating story", nil, err)
 	}

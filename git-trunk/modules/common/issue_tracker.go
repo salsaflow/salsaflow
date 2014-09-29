@@ -8,22 +8,36 @@ import (
 // IssueTracker interface ------------------------------------------------------
 
 type IssueTracker interface {
-	ActiveStoryIds(ids []string) (activeIds []string, err error)
+
+	// SelectActiveStoryIds returns the IDs associated with the stories
+	// that are being actively worked on, i.e. they are not closed yet.
+	SelectActiveStoryIds(ids []string) (activeIds []string, err error)
+
+	// CurrentUser returns the issue tracker account details of the current user.
+	// The account ID is taken from the global SalsaFlow configuration file.
 	CurrentUser() (User, error)
-	GetStartableStories() ([]Story, error)
+
+	// StartableStories returns the list of stories that can be started.
+	StartableStories() ([]Story, error)
+
+	// NextRelease is a factory method for creating release objects
+	// representing the releases that have not been started yet.
 	NextRelease(*version.Version) (NextRelease, error)
+
+	// RunningRelease is a factory method for creating release objects
+	// representing the releases that have been started.
 	RunningRelease(*version.Version) (RunningRelease, error)
 }
 
 type User interface {
-	GetId() string
+	Id() string
 }
 
 type Story interface {
-	GetId() string
-	GetReadableId() string
-	GetAssignees() []User
-	GetTitle() string
+	Id() string
+	ReadableId() string
+	Assignees() []User
+	Title() string
 
 	Start() *errors.Error
 
@@ -36,7 +50,7 @@ type NextRelease interface {
 }
 
 type RunningRelease interface {
-	ListStories() ([]Story, error)
+	Stories() ([]Story, error)
 	EnsureDeliverable() error
 	Deliver() (Action, error)
 }

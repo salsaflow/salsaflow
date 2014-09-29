@@ -22,15 +22,15 @@ func Factory() (common.IssueTracker, error) {
 }
 
 func (tracker *issueTracker) CurrentUser() (common.User, error) {
-	resource, _, err := newClient().Myself.Get()
+	data, _, err := newClient().Myself.Get()
 	if err != nil {
 		return nil, err
 	}
-	return &myself{resource}, nil
+	return &user{data}, nil
 }
 
-func (tracker *issueTracker) ActiveStoryIds(ids []string) (activeIds []string, err error) {
-	return onlyActiveIssueIds(ids)
+func (tracker *issueTracker) SelectActiveStoryIds(ids []string) (activeIds []string, err error) {
+	return selectActiveIssueIds(ids)
 }
 
 func (tracker *issueTracker) NextRelease(ver *version.Version) (common.NextRelease, error) {
@@ -41,7 +41,7 @@ func (tracker *issueTracker) RunningRelease(ver *version.Version) (common.Runnin
 	return newRunningRelease(ver)
 }
 
-func onlyActiveIssueIds(ids []string) (activeIds []string, err error) {
+func selectActiveIssueIds(ids []string) (activeIds []string, err error) {
 	info := log.V(log.Info)
 
 	// Fetch the relevant issues
@@ -76,7 +76,7 @@ func onlyActiveIssueIds(ids []string) (activeIds []string, err error) {
 	return active, nil
 }
 
-func (tracker *issueTracker) GetStartableStories() (stories []common.Story, err error) {
+func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
 	startableStateIds := make([]string, len(startableStates))
 	for i := range startableStates {
 		startableStateIds[i] = startableStates[i].Id

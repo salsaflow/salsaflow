@@ -13,7 +13,7 @@ func newRunningRelease(ver *version.Version) (*runningRelease, error) {
 	panic("Not implemented")
 }
 
-func (release *runningRelease) ListStories() ([]common.Story, error) {
+func (release *runningRelease) Stories() ([]common.Story, error) {
 	panic("Not implemented")
 }
 

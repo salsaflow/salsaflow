@@ -2,10 +2,10 @@ package jira
 
 import "github.com/salsita/SalsaFlow/git-trunk/modules/jira/client"
 
-type myself struct {
+type user struct {
 	*client.User
 }
 
-func (me *myself) GetId() string {
-	return me.Name
+func (u *user) Id() string {
+	return u.User.Name
 }
