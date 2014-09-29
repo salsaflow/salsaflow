@@ -21,6 +21,11 @@ const (
 	stateTags
 )
 
+var (
+	changeIdPattern = regexp.MustCompile("^(?i)Change-Id:")
+	storyIdPattern  = regexp.MustCompile("^(?i)Story-Id:")
+)
+
 const diffSeparator = "# ------------------------ >8 ------------------------"
 
 const (
@@ -67,14 +72,14 @@ ScanLoop:
 		// Keep appending content until a tag is encountered.
 		if state == stateContent {
 			switch {
-			case strings.HasPrefix(trimmedLine, "Change-Id:"):
+			case changeIdPattern.MatchString(trimmedLine):
 				if changeIdSeen {
 					return errors.New("multiple Change-Id tags detected")
 				}
 				changeIdSeen = true
 				state = stateTags
 
-			case strings.HasPrefix(trimmedLine, "Story-Id:"):
+			case storyIdPattern.MatchString(trimmedLine):
 				if storyIdSeen {
 					return errors.New("multiple Story-Id tags detected")
 				}
@@ -94,13 +99,13 @@ ScanLoop:
 			}
 
 			switch {
-			case strings.HasPrefix(trimmedLine, "Change-Id:"):
+			case changeIdPattern.MatchString(trimmedLine):
 				if changeIdSeen {
 					return errors.New("multiple Change-Id tags detected")
 				}
 				changeIdSeen = true
 
-			case strings.HasPrefix(trimmedLine, "Story-Id:"):
+			case storyIdPattern.MatchString(trimmedLine):
 				if storyIdSeen {
 					return errors.New("multiple Story-Id tags detected")
 				}
@@ -128,7 +133,7 @@ ScanLoop:
 		return err
 	}
 
-	// Return if the file is empty.
+	// Do nothing in case the file is empty.
 	if len(lines) == 0 {
 		return nil
 	}
