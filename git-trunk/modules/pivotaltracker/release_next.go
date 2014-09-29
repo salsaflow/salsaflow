@@ -93,17 +93,16 @@ func (release *nextRelease) Start() (common.Action, error) {
 	log.Run(msg)
 	stories, stderr, err := addLabel(release.stories, releaseLabel(release.ver))
 	if err != nil {
-		errs.NewError(msg, stderr, err).Log(log.V(log.Info))
-		return nil, err
+		return nil, errs.NewError(msg, stderr, err)
 	}
 	release.stories = stories
+
+	// Return the rollback action, which removes the release labels that were appended.
 	return common.ActionFunc(func() error {
-		// On error, remove the release labels again.
 		log.Rollback(msg)
 		stories, stderr, err := removeLabel(release.stories, releaseLabel(release.ver))
 		if err != nil {
-			errs.NewError(msg, stderr, err).Log(log.V(log.Info))
-			return err
+			return errs.NewError(msg, stderr, err)
 		}
 		release.stories = stories
 		return nil

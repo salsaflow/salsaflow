@@ -126,8 +126,8 @@ func runMain() (err error) {
 	}
 	ids = activeIds
 
-	// Drop the active refs.
-	refs = dropActiveRefs(refs, ids)
+	// Select only the refs that can be safely deleted.
+	refs = selectInactiveRefs(refs, ids)
 
 	if len(refs) == 0 {
 		msg = ""
@@ -241,7 +241,9 @@ func runMain() (err error) {
 	return
 }
 
-func dropActiveRefs(refs, activeIds []string) (inactiveRefs []string) {
+// selectInactiveRefs returns the list of refs that can be safely deleted.
+// A reference can be safely deleted when the associated story is closed.
+func selectInactiveRefs(refs, activeIds []string) (inactiveRefs []string) {
 	var suffixes []string
 	for _, id := range activeIds {
 		suffixes = append(suffixes, "/"+id)
