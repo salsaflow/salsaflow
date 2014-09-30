@@ -62,7 +62,7 @@ func (i *OutOfBoundsError) Error() string {
 func PromptIndex(msg string, min, max int) (int, error) {
 	line, err := Prompt(msg)
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 
 	index, err := strconv.Atoi(line)
@@ -78,17 +78,13 @@ func PromptIndex(msg string, min, max int) (int, error) {
 }
 
 func Prompt(msg string) (string, error) {
-	var line string
-
 	fmt.Print(msg)
-
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
-	line = strings.ToLower(scanner.Text())
 	if err := scanner.Err(); err != nil {
 		return "", err
 	}
-	return line, nil
+	return strings.ToLower(scanner.Text()), nil
 }
 
 func ConfirmStories(headerLine string, stories []*pivotal.Story) (bool, error) {
