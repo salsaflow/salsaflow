@@ -26,7 +26,9 @@ var Command = &gocli.Command{
   start`,
 	Short: "start a new story",
 	Long: `
-  Starts a new story, i.e., create a new branch off ` + config.TrunkBranch + ` or check out an existing branch containing the story id if there's already one. Then updates the story state in PM tool and sets you as the story owner.
+  Starts a new story, i.e., create a new branch off ` + config.TrunkBranch + `
+  or check out an existing branch containing the story id if there's already one.
+  Then updates the story state in PM tool and sets you as the story owner.
 	`,
 	Action: run,
 }
@@ -107,6 +109,7 @@ func runMain() (err error) {
 	log.Run("Check existing branches")
 	matchingBranches := make(map[string]bool)
 
+	stripRemotePrefixRe := regexp.MustCompile(".*/(story/.+/.+)$")
 	for _, ref := range append(localRefs, remoteRefs...) {
 		storyId, err := git.RefToStoryId(ref)
 		if err != nil {
@@ -114,8 +117,9 @@ func runMain() (err error) {
 			return err
 		}
 		if storyId == selectedStory.Id() {
-			re := regexp.MustCompile(".*/(story/.+/.+)$")
-			branchName := re.ReplaceAllString(ref, "$1")
+			// We found a matching story branch. Let's strip off the `remote/origin` etc
+			// part so that we have just the branch name.
+			branchName := stripRemotePrefixRe.ReplaceAllString(ref, "$1")
 			matchingBranches[branchName] = true
 		}
 	}

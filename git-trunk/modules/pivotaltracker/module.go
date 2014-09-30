@@ -88,15 +88,11 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 	if err != nil {
 		return nil, err
 	}
-	// Cast to `[]pivotaltracker.story`.
-	ptStories := make([]story, len(pivotalStories))
+
+	commonStories := make([]common.Story, len(pivotalStories))
 	for i := range pivotalStories {
-		ptStories[i] = story{pivotalStories[i]}
+		commonStories[i] = &story{pivotalStories[i]}
 	}
-	// Cast to `[]common.Story`.
-	commonStories := make([]common.Story, len(ptStories))
-	for i := range ptStories {
-		commonStories[i] = &ptStories[i]
-	}
+
 	return commonStories, nil
 }
