@@ -107,7 +107,7 @@ func runMain() (err error) {
 
 	// Get all story branches connected to `selectedStory` id.
 	log.Run("Check existing branches")
-	matchingBranches := make(map[string]bool)
+	matchingBranches := map[string]struct{}{}
 
 	stripRemotePrefixRe := regexp.MustCompile(".*/(story/.+/.+)$")
 	for _, ref := range append(localRefs, remoteRefs...) {
@@ -120,7 +120,7 @@ func runMain() (err error) {
 			// We found a matching story branch. Let's strip off the `remote/origin` etc
 			// part so that we have just the branch name.
 			branchName := stripRemotePrefixRe.ReplaceAllString(ref, "$1")
-			matchingBranches[branchName] = true
+			matchingBranches[branchName] = struct{}{}
 		}
 	}
 
