@@ -100,13 +100,12 @@ Here's what's going to happen:
 		log.FailWithDetails("Error when rebasing", stderr)
 		return err
 	}
-	log.Println("Sweet, branch '%s' is now totally rebased on top of %s!",
+	log.Printf("Sweet, branch '%s' is now totally rebased on top of %s!\n\n",
 		currentBranch, originTrunkBranch)
-	log.Println()
 
 	log.Println("I will now post reviews for the following commits:")
 	for _, commit := range commits {
-		log.Printf("  %s (%s)", commit.SHA, commit.Title)
+		log.Printf("  %s (%s)\n", commit.SHA, commit.Title)
 	}
 	log.Println()
 
