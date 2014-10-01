@@ -16,6 +16,7 @@ const (
 )
 
 func loadConfig() error {
+	// DO NOT SWITCH THE ORDER, IT MATTERS!
 	if err := loadGlobalConfig(); err != nil {
 		return err
 	}
@@ -29,6 +30,7 @@ func loadConfig() error {
 // Global configuration --------------------------------------------------------
 
 type globalConfig struct {
+	BaseURL  string `yaml:"base_url"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
 }
@@ -103,6 +105,11 @@ func loadLocalConfig() error {
 	if localWrapper.C == nil {
 		log.Fail(msg)
 		return errors.New("Jira local configuration section missing")
+	}
+
+	// Use the global base URL in case the local one is not set.
+	if localWrapper.C.BaseURL == "" {
+		localWrapper.C.BaseURL = globalWrapper.C.BaseURL
 	}
 
 	if err := localWrapper.C.Validate(); err != nil {
