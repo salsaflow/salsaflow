@@ -36,39 +36,19 @@ type readResult struct {
 	err    error
 }
 
-func Load() (err *errors.Error) {
-	// Let's go async!
-	resCh := make(chan *readResult, 2)
+func Load() *errors.Error {
 
-	// Read the config files from the disk.
-	go func() {
-		msg := "Read project configuration file"
-		localConfig, stderr, err := ReadLocalConfig()
-		if err != nil {
-			resCh <- &readResult{msg, stderr, err}
-			return
-		}
-		localConfigContent = localConfig.Bytes()
-		resCh <- nil
-	}()
-
-	go func() {
-		msg := "Read global configuration file"
-		globalConfig, err := ReadGlobalConfig()
-		if err != nil {
-			resCh <- &readResult{msg, nil, err}
-			return
-		}
-		globalConfigContent = globalConfig.Bytes()
-		resCh <- nil
-	}()
-
-	// Wait for the files to be read.
-	for i := 0; i < cap(resCh); i++ {
-		if res := <-resCh; res != nil && res.err != nil {
-			return &errors.Error{"Error: failed to load configuration", nil, res.err}
-		}
+	localConfig, stderr, err := readLocalConfig()
+	if err != nil {
+		return errors.NewError("Read local configuration file", stderr, err)
 	}
+	localConfigContent = localConfig.Bytes()
+
+	globalConfig, err := readGlobalConfig()
+	if err != nil {
+		return errors.NewError("Read global configuration file", stderr, err)
+	}
+	globalConfigContent = globalConfig.Bytes()
 
 	// Parse the local config to know what config modules to bootstrap.
 	msg := "Parse project configuration file"
@@ -88,12 +68,12 @@ func Load() (err *errors.Error) {
 	return nil
 }
 
-func ReadLocalConfig() (content, stderr *bytes.Buffer, err error) {
+func readLocalConfig() (content, stderr *bytes.Buffer, err error) {
 	// Return the file content as committed on the config branch.
 	return git.ShowByBranch(ConfigBranch, LocalConfigFileName)
 }
 
-func ReadGlobalConfig() (content *bytes.Buffer, err error) {
+func readGlobalConfig() (content *bytes.Buffer, err error) {
 	// Generate the global config file path.
 	me, err := user.Current()
 	if err != nil {

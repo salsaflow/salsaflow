@@ -77,7 +77,7 @@ func runMain() (fatalErr error) {
 			return
 		}
 		asciiart.PrintThumbsUp()
-		log.Println("\nSwell, your repo is initialized!")
+		log.Println("\nSwell! We have initialized your repo for great good.")
 	}()
 
 	// Handles unexpected error.
@@ -99,8 +99,8 @@ func runMain() (fatalErr error) {
 	}
 	if !branchExists {
 		log.Fail(fmt.Sprintf("Branch %s not detected", config.MasterBranch))
-		log.Fatalln(fmt.Sprintf("I need branch '%s' to exist. Please make sure there is one "+
-			"and run me again!", config.MasterBranch))
+		log.Fatalln(fmt.Sprintf("I need branch '%s' to exist. Please make sure there "+
+			"is one and run me again!", config.MasterBranch))
 	}
 
 	branchExists, stderr, fatalErr = git.RefExists(config.TrunkBranch)
@@ -117,25 +117,16 @@ func runMain() (fatalErr error) {
 		}
 	}
 
-	log.Run("Checking local config.")
-	// Check config files (local and global).
-	if _, _, err = config.ReadLocalConfig(); err != nil {
-		errorWithInfo{
-			"Local config could not be read.",
-			fmt.Sprintf("I could not read config from file %s in branch %s",
-				config.LocalConfigFileName, config.ConfigBranch),
-		}.Print()
+	log.Run("Checking config files.")
+	if cfgErr := config.Load(); cfgErr != nil {
+		logger := log.V(log.Info)
+		cfgErr.Log(logger)
 		success = false
 	}
 
-	log.Run("Checking global config.")
-	if _, err := config.ReadGlobalConfig(); err != nil {
-		errorWithInfo{
-			"Global config could not be read.",
-			fmt.Sprintf("I could not read config from file %s.",
-				config.GlobalConfigFileName),
-		}.Print()
-		success = false
+	if !success {
+		log.Println(fmt.Sprintf(`So listen, here's how it works. We expect you to have two files: '${HOME}/%s' for storing global configuration and '${YOUR_PROJECT_ROOT_DIR}/%s' for storing project configuration. Please refer to https://github.com/salsita/SalsaFlow to find what should be in those files.`, config.GlobalConfigFileName, config.LocalConfigFileName))
+		return
 	}
 
 	// Verify our git hook is installed and used.
@@ -144,6 +135,8 @@ func runMain() (fatalErr error) {
 		success = _success && success
 		return fatalErr
 	}
+
+	log.Run("Taking off every zig.")
 
 	return
 }
