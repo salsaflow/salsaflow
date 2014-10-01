@@ -26,12 +26,15 @@ import (
 	"github.com/google/go-querystring/query"
 )
 
+// Resources -------------------------------------------------------------------
+
+// IssueList represents a list of issues, what a surprise.
 type IssueList struct {
-	Expand     string
-	StartAt    int
-	MaxResults int
-	Total      int
-	Issues     []*Issue
+	Expand     string   `json:"expand,omitempty"`
+	StartAt    int      `json:"startAt,omitempty"`
+	MaxResults int      `json:"maxResults,omitempty"`
+	Total      int      `json:"total,omitempty"`
+	Issues     []*Issue `json:"issues,omitempty"`
 }
 
 // Issue represents the issue resource as produces by the REST API.
@@ -49,9 +52,32 @@ type Issue struct {
 			Subtask     bool   `json:"subtask,omitempty"`
 			IconURL     string `json:"iconUrl,omitempty"`
 		} `json:"issuetype,omitempty"`
-		Assignee *User `json:"assignee,omitempty"`
+		Assignee    *User        `json:"assignee,omitempty"`
+		FixVersions []*Version   `json:"fixVersions,omitempty"`
+		Status      *IssueStatus `json:"status,omitempty"`
 	} `json:"fields,omitempty"`
 }
+
+// IssueStatus represents an issue status, e.g. "Scheduled".
+type IssueStatus struct {
+	Id             string               `json:"id,omitempty"`
+	Self           string               `json:"self,omitempty"`
+	Name           string               `json:"name,omitempty"`
+	Description    string               `json:"description,omitempty"`
+	IconURL        string               `json:"iconUrl,omitempty"`
+	StatusCategory *IssueStatusCategory `json:"statusCategory,omitempty"`
+}
+
+// StatusCategory represents an issue status category.
+type IssueStatusCategory struct {
+	Id        string `json:"id,omitempty"`
+	Self      string `json:"self,omitempty"`
+	Key       string `json:"key,omitempty"`
+	Name      string `json:"name,omitempty"`
+	ColorName string `json:"colorName,omitempty"`
+}
+
+// The service -----------------------------------------------------------------
 
 type IssueService struct {
 	client *Client
@@ -96,7 +122,7 @@ func (service *IssueService) Search(opts *SearchOptions) ([]*Issue, *http.Respon
 // Updates issue with `issueIdOrKey`.
 func (service *IssueService) Update(issueIdOrKey string, body interface{}) (*http.Response, error) {
 	u := fmt.Sprintf("api/2/issue/%v", issueIdOrKey)
-	req, err := service.client.NewRequest("PUT", u, &body)
+	req, err := service.client.NewRequest("PUT", u, body)
 	if err != nil {
 		return nil, err
 	}
@@ -106,14 +132,13 @@ func (service *IssueService) Update(issueIdOrKey string, body interface{}) (*htt
 // Performs the requested transition for the chosen issue.
 func (service *IssueService) PerformTransition(issueIdOrKey, transitionId string) (*http.Response, error) {
 	u := fmt.Sprintf("api/2/issue/%v/transitions", issueIdOrKey)
-	var p struct {
-		Transition struct {
-			Id string `json:"id"`
-		} `json:"transition"`
+	p := M{
+		"transition": M{
+			"id": transitionId,
+		},
 	}
-	p.Transition.Id = transitionId
 
-	req, err := service.client.NewRequest("POST", u, &p)
+	req, err := service.client.NewRequest("POST", u, p)
 	if err != nil {
 		return nil, err
 	}
