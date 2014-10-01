@@ -164,10 +164,9 @@ ScanLoop:
 			return err
 		}
 
-		matcher := regexp.MustCompile("^story/.+/([0-9]+)$")
-		parts := matcher.FindStringSubmatch(branch)
-		if len(parts) == 2 {
-			lines = append(lines, fmt.Sprintf("Story-Id: %v", parts[1]))
+		storyId, err := git.RefToStoryId(branch)
+		if err == nil {
+			lines = append(lines, fmt.Sprintf("Story-Id: %v", storyId))
 		}
 	}
 
