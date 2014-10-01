@@ -27,8 +27,10 @@ import (
 const (
 	LibraryVersion = "0.0.1"
 
-	defaultUserAgent = "salsaflow-jira" + LibraryVersion
+	defaultUserAgent = "salsaflow/" + LibraryVersion
 )
+
+type M map[string]interface{}
 
 type Client struct {
 	// HTTP client to be used to send all the HTTP requests.
@@ -43,8 +45,11 @@ type Client struct {
 	// Me service.
 	Myself *MyselfService
 
-	// Issues
+	// Issues service.
 	Issues *IssueService
+
+	// Versions service.
+	Versions *VersionService
 }
 
 func New(baseURL *url.URL, httpClient *http.Client) *Client {
@@ -55,6 +60,7 @@ func New(baseURL *url.URL, httpClient *http.Client) *Client {
 	}
 	client.Myself = newMyselfService(client)
 	client.Issues = newIssueService(client)
+	client.Versions = newVersionService(client)
 	return client
 }
 
