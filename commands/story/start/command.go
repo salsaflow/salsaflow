@@ -146,7 +146,7 @@ func runMain() (err error) {
 			handleError(err, nil)
 			return err
 		}
-		branchName := fmt.Sprintf("story/%s/%s", slug.Slug(line), selectedStory.Id())
+		branchName := fmt.Sprintf("story/%s/%s", slug.Slug(line), selectedStory.ReadableId())
 		ok, err := prompt.Confirm(
 			fmt.Sprintf("The branch will be called '%s', OK?", branchName))
 		if err != nil {
@@ -179,7 +179,7 @@ func runMain() (err error) {
 		}(msg)
 	}
 
-	log.Run(fmt.Sprintf("Starting story %s", selectedStory.Id()))
+	log.Run(fmt.Sprintf("Starting story %s", selectedStory.ReadableId()))
 	if err := selectedStory.Start(); err != nil {
 		handleError(err, err.Stderr)
 		return err
