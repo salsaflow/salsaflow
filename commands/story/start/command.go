@@ -4,8 +4,10 @@ import (
 	// Stdlib
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
+	"text/tabwriter"
 
 	// Internal
 	"github.com/salsita/salsaflow/app"
@@ -76,7 +78,7 @@ func runMain() (err error) {
 		return err
 	}
 
-	log.Run("Loading stories from PM tool")
+	log.Run("Fetch stories from the issue tracker")
 	stories, err := modules.GetIssueTracker().StartableStories()
 	if err != nil {
 		handleError(err, nil)
@@ -84,15 +86,22 @@ func runMain() (err error) {
 	}
 
 	// List stories that can be started.
+	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 4, '\t', 0)
+	io.WriteString(tw, "\nYou can start working on one of the following stories:\n\n")
+	io.WriteString(tw, "Index\tStory ID\tStory Title\n")
+	io.WriteString(tw, "=====\t========\t===========\n")
 	for i, story := range stories {
-		log.Printf("[%d]: %s -> %s\n", i, story.ReadableId(), story.Title())
+		fmt.Fprintf(tw, "%v\t%v\t%v\n", i, story.ReadableId(), story.Title())
 	}
+	io.WriteString(tw, "\n")
+	tw.Flush()
 
 	// Prompt user to choose.
-	index, err := prompt.PromptIndex("Choose story: ", 0, len(stories)-1)
+	index, err := prompt.PromptIndex("Choose a story by inserting its index: ", 0, len(stories)-1)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
+	fmt.Println()
 
 	selectedStory = stories[index]
 
@@ -124,7 +133,7 @@ func runMain() (err error) {
 		// There is only one branch => checkout and work on that one.
 		for branch := range matchingBranches {
 			log.Log(fmt.Sprintf("Found one existing story branch: %s", branch))
-			log.Run(fmt.Sprintf("Checking out %s", branch))
+			log.Run(fmt.Sprintf("Checkout %s", branch))
 			if stderr, err = git.Checkout(branch); err != nil {
 				handleError(err, stderr)
 				return
@@ -156,8 +165,10 @@ func runMain() (err error) {
 		if !ok {
 			log.Fatalln("I will exit now. If you want to try again, just run me again!")
 		}
+		fmt.Println()
 
-		msg := "Checkout " + branchName
+		msg := "Create and checkout " + branchName
+		log.Run(msg)
 		if _, stderr, err = git.Git("branch", branchName, config.TrunkBranch); err != nil {
 			handleError(err, stderr)
 			return err
@@ -179,13 +190,13 @@ func runMain() (err error) {
 		}(msg)
 	}
 
-	log.Run(fmt.Sprintf("Starting story %s", selectedStory.ReadableId()))
+	log.Run(fmt.Sprintf("Start the selected story (%v)", selectedStory.ReadableId()))
 	if err := selectedStory.Start(); err != nil {
 		handleError(err, err.Stderr)
 		return err
 	}
 
-	log.Run("Setting you as the story owner")
+	log.Run("Set you as the story owner")
 	user, err := modules.GetIssueTracker().CurrentUser()
 	if err != nil {
 		handleError(err, nil)
@@ -197,5 +208,7 @@ func runMain() (err error) {
 		return err
 	}
 
+	// Do not checkout the original branch, the story branch is active now.
+	currentBranch = ""
 	return nil
 }
