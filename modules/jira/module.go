@@ -82,7 +82,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		startableStateIds[i] = startableStates[i].Id
 	}
 	jql := fmt.Sprintf("project=%s and (status=%s)",
-		config.ProjectIdOrKey(), strings.Join(startableStateIds, " OR status="))
+		config.ProjectKey(), strings.Join(startableStateIds, " OR status="))
 
 	issues, _, err := newClient().Issues.Search(&client.SearchOptions{
 		JQL: jql, MaxResults: 200,

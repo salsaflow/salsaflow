@@ -72,16 +72,16 @@ func loadGlobalConfig() error {
 // Local configuration -------------------------------------------------------
 
 type localConfig struct {
-	BaseURL        string `yaml:"base_url"`
-	ProjectIdOrKey string `yaml:"project_id_or_key"`
+	BaseURL    string `yaml:"base_url"`
+	ProjectKey string `yaml:"project_key"`
 }
 
 func (config *localConfig) Validate() error {
 	switch {
 	case config.BaseURL == "":
 		return &cfg.ErrKeyNotSet{Id + ".base_url"}
-	case config.ProjectIdOrKey == "":
-		return &cfg.ErrKeyNotSet{Id + ".project_id_or_key"}
+	case config.ProjectKey == "":
+		return &cfg.ErrKeyNotSet{Id + ".project_key"}
 	}
 
 	if _, err := url.Parse(config.BaseURL); err != nil {
@@ -161,6 +161,6 @@ func (c *jiraConfig) BaseURL() *url.URL {
 	return c.baseURL
 }
 
-func (c *jiraConfig) ProjectIdOrKey() string {
-	return localWrapper.C.ProjectIdOrKey
+func (c *jiraConfig) ProjectKey() string {
+	return localWrapper.C.ProjectKey
 }
