@@ -136,7 +136,7 @@ func runMain() (err error) {
 		if err != nil {
 			return handleError(msg, err, nil)
 		}
-		if storyId == selectedStory.Id() {
+		if storyId == selectedStory.ReadableId() {
 			// We found a matching story branch. Let's strip off the `remote/origin` etc
 			// part so that we have just the branch name.
 			branchName := stripRemotePrefixRe.ReplaceAllString(ref, "$1")
