@@ -1,6 +1,7 @@
 package repoCmd
 
 import (
+	"github.com/salsita/salsaflow/commands/repo/init"
 	"github.com/salsita/salsaflow/commands/repo/prune"
 
 	"gopkg.in/tchap/gocli.v1"
@@ -15,5 +16,6 @@ var Command = &gocli.Command{
 }
 
 func init() {
+	Command.MustRegisterSubcommand(initCmd.Command)
 	Command.MustRegisterSubcommand(pruneCmd.Command)
 }

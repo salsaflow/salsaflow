@@ -8,7 +8,6 @@ import (
 
 	// Internal
 	"github.com/salsita/salsaflow/app"
-	"github.com/salsita/salsaflow/commands/init"
 	"github.com/salsita/salsaflow/commands/release"
 	"github.com/salsita/salsaflow/commands/repo"
 	"github.com/salsita/salsaflow/commands/review"
@@ -37,7 +36,6 @@ func main() {
 	trunk.MustRegisterSubcommand(releaseCmd.Command)
 	trunk.MustRegisterSubcommand(repoCmd.Command)
 	trunk.MustRegisterSubcommand(storyCmd.Command)
-	trunk.MustRegisterSubcommand(initCmd.Command)
 	trunk.MustRegisterSubcommand(reviewCmd.Command)
 
 	// Start processing signals.
