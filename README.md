@@ -15,7 +15,8 @@ Actually, I don't know about you, but we use it here at [Salsita](https://www.sa
 
 ### Other System Requirements ###
 
-* `git>=2.0.0` in your `PATH`
+* `git` version `2.x` in your `PATH`
+* `RBTools` version `0.6.x` (`rbt` in your `PATH`)
 
 ## License ##
 
