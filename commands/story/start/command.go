@@ -78,6 +78,7 @@ func runMain() (err error) {
 		return err
 	}
 
+	// Fetch stories from the issue tracker.
 	log.Run("Fetch stories from the issue tracker")
 	stories, err := modules.GetIssueTracker().StartableStories()
 	if err != nil {
@@ -104,6 +105,14 @@ func runMain() (err error) {
 	fmt.Println()
 
 	selectedStory = stories[index]
+
+	// Fetch the remote repository.
+	log.Run("Fetch the remote repository")
+	stderr, err = git.UpdateRemotes(config.OriginName)
+	if err != nil {
+		handleError(err, nil)
+		return err
+	}
 
 	// Get all branches.
 	localRefs, remoteRefs, stderr, err := git.ListStoryRefs()
