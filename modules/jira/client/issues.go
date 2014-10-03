@@ -60,21 +60,11 @@ type Issue struct {
 
 // IssueStatus represents an issue status, e.g. "Scheduled".
 type IssueStatus struct {
-	Id             string               `json:"id,omitempty"`
-	Self           string               `json:"self,omitempty"`
-	Name           string               `json:"name,omitempty"`
-	Description    string               `json:"description,omitempty"`
-	IconURL        string               `json:"iconUrl,omitempty"`
-	StatusCategory *IssueStatusCategory `json:"statusCategory,omitempty"`
-}
-
-// StatusCategory represents an issue status category.
-type IssueStatusCategory struct {
-	Id        string `json:"id,omitempty"`
-	Self      string `json:"self,omitempty"`
-	Key       string `json:"key,omitempty"`
-	Name      string `json:"name,omitempty"`
-	ColorName string `json:"colorName,omitempty"`
+	Id          string `json:"id,omitempty"`
+	Self        string `json:"self,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	IconURL     string `json:"iconUrl,omitempty"`
 }
 
 // The service -----------------------------------------------------------------

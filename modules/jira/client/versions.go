@@ -30,11 +30,12 @@ type Version struct {
 	Self          string `json:"self,omitempty"`
 	Name          string `json:"name,omitempty"`
 	Description   string `json:"description,omitempty"`
+	Project       string `json:"project,omitempty"`
+	ProjectId     int    `json:"projectId,omitempty"`
 	Released      bool   `json:"released,omitempty"`
 	Archived      bool   `json:"archived,omitempty"`
 	StartDate     string `json:"startDate,omitempty"`
 	UserStartDate string `json:"userStartDate,omitempty"`
-	ProjectId     int    `json:"projectId,omitempty"`
 }
 
 // The service -----------------------------------------------------------------
@@ -47,6 +48,28 @@ func newVersionService(client *Client) *VersionService {
 	return &VersionService{client}
 }
 
+// Create creates a new version.
+func (service *VersionService) Create(version *Version) (*Version, *http.Response, error) {
+	switch {
+	case version.Name == "":
+		return nil, nil, &ErrFieldNotSet{"Version.Name"}
+	case version.Project == "":
+		return nil, nil, &ErrFieldNotSet{"Version.Project"}
+	}
+
+	req, err := service.client.NewRequest("POST", "api/2/version", version)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var createdVersion Version
+	resp, err := service.client.Do(req, &createdVersion)
+	if err != nil {
+		return nil, resp, err
+	}
+	return &createdVersion, resp, nil
+}
+
 // Update updates the version with the specified ID as specified in the change request.
 func (service *VersionService) Update(id string, change *Version) (*http.Response, error) {
 	u := fmt.Sprintf("api/2/version/%v", id)
@@ -54,5 +77,16 @@ func (service *VersionService) Update(id string, change *Version) (*http.Respons
 	if err != nil {
 		return nil, err
 	}
+	return service.client.Do(req, nil)
+}
+
+// Delete deleted the version with the specified ID.
+func (service *VersionService) Delete(id string) (*http.Response, error) {
+	u := fmt.Sprintf("api/2/version/%v", id)
+	req, err := service.client.NewRequest("DELETE", u, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	return service.client.Do(req, nil)
 }
