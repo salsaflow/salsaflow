@@ -4,14 +4,19 @@ Your ultimate Trunk Based Development (TBD) CLI utility.
 
 Actually, I don't know about you, but we use it here at [Salsita](https://www.salsitasoft.com/).
 
-## Installation ###
+## Installation ##
 
-Run `wget -q -O - https://github.com/salsita/SalsaFlow/raw/master/install.sh | sudo bash`
+1. Install [Go](https://golang.org/dl/) (used Go 1.3.1, but any Go 1.x should do the trick).
+2. Set up a Go [workspace](https://golang.org/doc/code.html#Workspaces).
+3. Run `go get github.com/salsita/salsaflow`. This will get the sources and install the executable into the workspace.
+   Add `$GOPATH/bin` into `PATH` to be able to run the executable directly from the command line.
+4. Run `go get github.com/salsita/salsaflow/bin/hooks/salsaflow-commit-msg`,
+   then use it as the `commit-msg` [hook](http://git-scm.com/book/en/Customizing-Git-Git-Hooks) in your repo.
 
-## Usage ##
+### Other System Requirements ###
 
-1. Make sure that `git` version `>=2.0.0` is in your `PATH`.
-2. The utility is available as a Git plugin called `git flow2`.
+* `git` version `2.x` in your `PATH`
+* `RBTools` version `0.6.x` (`rbt` in your `PATH`)
 
 ## License ##
 

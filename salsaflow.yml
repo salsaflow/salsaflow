@@ -1,4 +1,4 @@
 issue_tracker: "jira"
 jira:
-  project_id_or_key: "SF"
+  project_key: "SF"
   base_url: "https://jira.salsitasoft.com/rest/"

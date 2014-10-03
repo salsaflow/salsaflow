@@ -1,3 +1,0 @@
-git+git://github.com/realyze/pivotal_tools.git
-RBTools==0.6.2
-shyaml
