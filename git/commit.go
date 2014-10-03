@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -22,6 +21,11 @@ const (
 
 const dateLayout = "Mon Jan 2 15:04:05 2006 -0700"
 
+var (
+	ChangeIdTagPattern = regexp.MustCompile("^(?i)[ \t]*Change-Id:[ \t]+([^ \t]+)")
+	StoryIdTagPattern  = regexp.MustCompile("^(?i)[ \t]*Story-Id:[ \t]+([^ \t]+)")
+)
+
 type Commit struct {
 	SHA        string
 	Author     string
@@ -30,7 +34,7 @@ type Commit struct {
 	CommitDate time.Time
 	Title      string
 	ChangeId   string
-	StoryId    int
+	StoryId    string
 	Source     string
 }
 
@@ -113,7 +117,7 @@ func parseCommitLog(sout *bytes.Buffer) (commits []*Commit, stderr *bytes.Buffer
 		case logScanHead:
 			parts := headPattern.FindStringSubmatch(line)
 			if len(parts) != 3 {
-				err = fmt.Errorf("commit log (line %v): %v", lineNum, line)
+				err = fmt.Errorf("failed to parse git log [line %v]: %v", lineNum, line)
 				return
 			}
 			if commit != nil {
@@ -133,7 +137,7 @@ func parseCommitLog(sout *bytes.Buffer) (commits []*Commit, stderr *bytes.Buffer
 				commit.Author = line[12:]
 				nextState = logScanAuthorDate
 			} else {
-				err = fmt.Errorf("commit log (line %v, commit %v): %v", lineNum, commit.SHA, line)
+				err = fmt.Errorf("failed to parse git log [commit %v]: %v", commit.SHA, line)
 				return
 			}
 
@@ -143,14 +147,13 @@ func parseCommitLog(sout *bytes.Buffer) (commits []*Commit, stderr *bytes.Buffer
 				dateString := line[12:]
 				date, err = time.Parse(dateLayout, dateString)
 				if err != nil {
-					err = fmt.Errorf("commit log (line %v, commit %v): %v",
-						lineNum, commit.SHA, line)
+					err = fmt.Errorf("failed to parse git log [commit %v]: %v", commit.SHA, line)
 					return
 				}
 				commit.AuthorDate = date
 				nextState = logScanCommitter
 			} else {
-				err = fmt.Errorf("commit log (line %v, commit %v): %v", lineNum, commit.SHA, line)
+				err = fmt.Errorf("failed to parse git log [commit %v]: %v", commit.SHA, line)
 				return
 			}
 
@@ -159,7 +162,7 @@ func parseCommitLog(sout *bytes.Buffer) (commits []*Commit, stderr *bytes.Buffer
 				commit.Committer = line[12:]
 				nextState = logScanCommitDate
 			} else {
-				err = fmt.Errorf("commit log (line %v, commit %v): %v", lineNum, commit.SHA, line)
+				err = fmt.Errorf("failed to parse git log [commit %v]: %v", commit.SHA, line)
 				return
 			}
 
@@ -169,8 +172,7 @@ func parseCommitLog(sout *bytes.Buffer) (commits []*Commit, stderr *bytes.Buffer
 				dateString := line[12:]
 				date, err = time.Parse(dateLayout, dateString)
 				if err != nil {
-					err = fmt.Errorf("commit log (line %v, commit %v): %v",
-						lineNum, commit.SHA, line)
+					err = fmt.Errorf("failed to parse git log [commit %v]: %v", commit.SHA, line)
 					return
 				}
 				commit.CommitDate = date
@@ -190,35 +192,29 @@ func parseCommitLog(sout *bytes.Buffer) (commits []*Commit, stderr *bytes.Buffer
 			}
 			line = strings.TrimSpace(line)
 			switch {
-			case strings.HasPrefix(line, "Change-Id: "):
+			case ChangeIdTagPattern.MatchString(line):
 				if commit.ChangeId != "" {
-					err = fmt.Errorf(
-						"commit log (line %v, commit %v): duplicate Change-Id tag",
-						lineNum, commit.SHA)
+					err = fmt.Errorf("git log [commit %v]: duplicate Change-Id tag", commit.SHA)
 					return
 				}
-				commit.ChangeId = line[11:]
+				parts := ChangeIdTagPattern.FindStringSubmatch(line)
+				if len(parts) != 2 {
+					err = fmt.Errorf("git log [commit %v]: invalid Change-Id tag", commit.SHA)
+					return
+				}
+				commit.ChangeId = parts[1]
 				maybeHead = true
-			case strings.HasPrefix(line, "Story-Id: "):
-				if commit.StoryId != 0 {
-					err = fmt.Errorf(
-						"commit log (line %v): duplicate Story-Id tag",
-						lineNum, commit.SHA)
-					return
-
-				}
-				var (
-					storyIdString = line[10:]
-					storyId       int
-				)
-				storyId, err = strconv.Atoi(storyIdString)
-				if err != nil {
-					err = fmt.Errorf(
-						"commit log (line %v, commit %v): invalid Story-Id: %v",
-						lineNum, commit.SHA, storyIdString)
+			case StoryIdTagPattern.MatchString(line):
+				if commit.StoryId != "" {
+					err = fmt.Errorf("git log [commit %v]: duplicate Story-Id tag", commit.SHA)
 					return
 				}
-				commit.StoryId = storyId
+				parts := StoryIdTagPattern.FindStringSubmatch(line)
+				if len(parts) != 2 {
+					err = fmt.Errorf("git log [commit %v]: invalid Story-Id tag", commit.SHA)
+					return
+				}
+				commit.StoryId = parts[1]
 				maybeHead = true
 			}
 		}

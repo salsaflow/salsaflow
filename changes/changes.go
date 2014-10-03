@@ -10,7 +10,7 @@ import (
 )
 
 type Change struct {
-	StoryId  int
+	StoryId  string
 	ChangeId string
 	Commits  []*git.Commit
 }

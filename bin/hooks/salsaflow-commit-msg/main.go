@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"strings"
 
 	// Internal
@@ -19,11 +18,6 @@ import (
 const (
 	stateContent = iota + 1
 	stateTags
-)
-
-var (
-	changeIdPattern = regexp.MustCompile("^(?i)Change-Id:")
-	storyIdPattern  = regexp.MustCompile("^(?i)Story-Id:")
 )
 
 const diffSeparator = "# ------------------------ >8 ------------------------"
@@ -72,14 +66,14 @@ ScanLoop:
 		// Keep appending content until a tag is encountered.
 		if state == stateContent {
 			switch {
-			case changeIdPattern.MatchString(trimmedLine):
+			case git.ChangeIdTagPattern.MatchString(trimmedLine):
 				if changeIdSeen {
 					return errors.New("multiple Change-Id tags detected")
 				}
 				changeIdSeen = true
 				state = stateTags
 
-			case storyIdPattern.MatchString(trimmedLine):
+			case git.StoryIdTagPattern.MatchString(trimmedLine):
 				if storyIdSeen {
 					return errors.New("multiple Story-Id tags detected")
 				}
@@ -99,13 +93,13 @@ ScanLoop:
 			}
 
 			switch {
-			case changeIdPattern.MatchString(trimmedLine):
+			case git.ChangeIdTagPattern.MatchString(trimmedLine):
 				if changeIdSeen {
 					return errors.New("multiple Change-Id tags detected")
 				}
 				changeIdSeen = true
 
-			case storyIdPattern.MatchString(trimmedLine):
+			case git.StoryIdTagPattern.MatchString(trimmedLine):
 				if storyIdSeen {
 					return errors.New("multiple Story-Id tags detected")
 				}
