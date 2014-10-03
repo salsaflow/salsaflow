@@ -12,6 +12,7 @@ import (
 	// Internal
 	"github.com/salsita/salsaflow/app"
 	"github.com/salsita/salsaflow/config"
+	"github.com/salsita/salsaflow/errors"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/modules"
@@ -48,8 +49,9 @@ func run(cmd *gocli.Command, args []string) {
 	}
 }
 
-func handleError(err error, stderr *bytes.Buffer) {
-	log.FailWithDetails(err.Error(), stderr)
+func handleError(task string, err error, stderr *bytes.Buffer) error {
+	errors.NewError(task, stderr, err).Log(log.V(log.Info))
+	return err
 }
 
 func runMain() (err error) {
@@ -67,25 +69,25 @@ func runMain() (err error) {
 		log.Run(msg)
 		stderr, err := git.Checkout(currentBranch)
 		if err != nil {
-			handleError(err, stderr)
+			handleError(msg, err, stderr)
 			return
 		}
 	}()
 
 	// Remember the current branch.
-	log.Run("Remember the current branch")
+	msg := "Remember the current branch"
+	log.Run(msg)
 	currentBranch, stderr, err := git.CurrentBranch()
 	if err != nil {
-		handleError(err, stderr)
-		return err
+		return handleError(msg, err, stderr)
 	}
 
 	// Fetch stories from the issue tracker.
-	log.Run("Fetch stories from the issue tracker")
+	msg = "Fetch stories from the issue tracker"
+	log.Run(msg)
 	stories, err := modules.GetIssueTracker().StartableStories()
 	if err != nil {
-		handleError(err, nil)
-		return err
+		return handleError(msg, err, nil)
 	}
 
 	// List stories that can be started.
@@ -109,30 +111,30 @@ func runMain() (err error) {
 	selectedStory = stories[index]
 
 	// Fetch the remote repository.
-	log.Run("Fetch the remote repository")
+	msg = "Fetch the remote repository"
+	log.Run(msg)
 	stderr, err = git.UpdateRemotes(config.OriginName)
 	if err != nil {
-		handleError(err, nil)
-		return err
+		return handleError(msg, err, nil)
 	}
 
 	// Get all branches.
+	msg = "Collect all story branches"
 	localRefs, remoteRefs, stderr, err := git.ListStoryRefs()
 	if err != nil {
-		handleError(err, nil)
-		return err
+		return handleError(msg, err, nil)
 	}
 
 	// Get all story branches connected to `selectedStory` id.
-	log.Run("Check existing branches")
+	msg = "Check existing branches"
+	log.Run(msg)
 	matchingBranches := map[string]struct{}{}
 
 	stripRemotePrefixRe := regexp.MustCompile(".*/(story/.+/.+)$")
 	for _, ref := range append(localRefs, remoteRefs...) {
 		storyId, err := git.RefToStoryId(ref)
 		if err != nil {
-			handleError(err, nil)
-			return err
+			return handleError(msg, err, nil)
 		}
 		if storyId == selectedStory.Id() {
 			// We found a matching story branch. Let's strip off the `remote/origin` etc
@@ -145,80 +147,80 @@ func runMain() (err error) {
 	if len(matchingBranches) == 1 {
 		// There is only one branch => checkout and work on that one.
 		for branch := range matchingBranches {
-			log.Log(fmt.Sprintf("Found one existing story branch: %s", branch))
-			log.Run(fmt.Sprintf("Checkout %s", branch))
+			log.Log("Found one existing story branch: " + branch)
+			msg := "Checkout branch " + branch
+			log.Run(msg)
 			if stderr, err = git.Checkout(branch); err != nil {
-				handleError(err, stderr)
-				return
+				return handleError(msg, err, stderr)
 			}
 		}
 
 	} else if len(matchingBranches) > 1 {
 		// There are multiple branches. Let the user choose which one to work on.
-		log.Log("Found multiple existing story branches:")
+		logger := log.V(log.Info)
+		logger.Lock()
+		logger.UnsafeLog("Found multiple existing story branches:")
 		for branch := range matchingBranches {
-			log.Printf("\t - %s\n", branch)
+			logger.UnsafeNewLine("  - " + branch)
 		}
-		log.Log("Please checkout one of them and work there.")
+		logger.UnsafeNewLine("Please checkout one of them and work there.")
+		logger.Unlock()
 
 	} else {
 		// There is no branch => create a new one.
+		msg := "Prompt for the new story branch name"
 		line, err := prompt.Prompt("Please insert branch slug: ")
 		if err != nil {
-			handleError(err, nil)
-			return err
+			return handleError(msg, err, nil)
 		}
 		branchName := fmt.Sprintf("story/%s/%s", slug.Slug(line), selectedStory.ReadableId())
 		ok, err := prompt.Confirm(
 			fmt.Sprintf("The branch will be called '%s', OK?", branchName))
 		if err != nil {
-			handleError(err, nil)
-			return err
+			return handleError(msg, err, nil)
 		}
 		if !ok {
 			log.Fatalln("I will exit now. If you want to try again, just run me again!")
 		}
 		fmt.Println()
 
-		msg := "Create and checkout " + branchName
+		createMsg := "Create branch " + branchName
 		log.Run(msg)
 		if _, stderr, err = git.Git("branch", branchName, config.TrunkBranch); err != nil {
-			handleError(err, stderr)
-			return err
+			return handleError(msg, err, stderr)
 		}
 
+		msg = "Checkout branch " + branchName
 		if _, stderr, err = git.Git("checkout", branchName); err != nil {
-			handleError(err, stderr)
-			return err
+			return handleError(msg, err, stderr)
 		}
 
-		// Delete created branch on rollback.
+		// Delete the newly created branch on rollback.
 		defer func(msg string) {
 			if err != nil {
 				log.Rollback(msg)
 				if stderr, err := git.Branch("-D", branchName); err != nil {
-					handleError(err, stderr)
+					handleError("Delete branch "+branchName, err, stderr)
 				}
 			}
-		}(msg)
+		}(createMsg)
 	}
 
-	log.Run(fmt.Sprintf("Start the selected story (%v)", selectedStory.ReadableId()))
+	msg = fmt.Sprintf("Start the selected story (%v)", selectedStory.ReadableId())
+	log.Run(msg)
 	if err := selectedStory.Start(); err != nil {
-		handleError(err, err.Stderr)
-		return err
+		return handleError(msg, err, err.Stderr)
 	}
 
-	log.Run("Set you as the story owner")
+	msg = "Set you as the story owner"
+	log.Run(msg)
 	user, err := modules.GetIssueTracker().CurrentUser()
 	if err != nil {
-		handleError(err, nil)
-		return err
+		return handleError(msg, err, nil)
 	}
 	// TODO: We should update, not overwrite the owners.
 	if err := selectedStory.SetOwners([]common.User{user}); err != nil {
-		handleError(err, nil)
-		return err
+		return handleError(msg, err, nil)
 	}
 
 	// Do not checkout the original branch, the story branch is active now.
