@@ -39,3 +39,9 @@ func (err *Error) Fatal(logger log.Logger) {
 func (err *Error) Error() string {
 	return err.Err.Error()
 }
+
+func Log(err error) {
+	if ex, ok := err.(*Error); ok {
+		ex.Log(log.V(log.Info))
+	}
+}
