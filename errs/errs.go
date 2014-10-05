@@ -40,8 +40,9 @@ func (err *Error) Error() string {
 	return err.Err.Error()
 }
 
-func Log(err error) {
+func LogAndReturn(err error) error {
 	if ex, ok := err.(*Error); ok {
 		ex.Log(log.V(log.Info))
 	}
+	return err
 }
