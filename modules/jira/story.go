@@ -2,7 +2,7 @@ package jira
 
 import (
 	// Internal
-	"github.com/salsita/salsaflow/errors"
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/modules/common"
 	"github.com/salsita/salsaflow/modules/jira/client"
 )
@@ -27,15 +27,15 @@ func (story *story) Title() string {
 	return story.Issue.Fields.Summary
 }
 
-func (story *story) Start() *errors.Error {
+func (story *story) Start() *errs.Error {
 	_, err := newClient().Issues.PerformTransition(story.Issue.Id, transitionStart.Id)
 	if err != nil {
-		return errors.NewError("Starting JIRA story", nil, err)
+		return errs.NewError("Starting JIRA story", nil, err)
 	}
 	return nil
 }
 
-func (story *story) SetOwners(users []common.User) *errors.Error {
+func (story *story) SetOwners(users []common.User) *errs.Error {
 	var data struct {
 		Fields struct {
 			Assignee struct {
@@ -47,7 +47,7 @@ func (story *story) SetOwners(users []common.User) *errors.Error {
 	data.Fields.Assignee.Name = name
 	_, err := newClient().Issues.Update(story.Id(), data)
 	if err != nil {
-		return errors.NewError("Updating story", nil, err)
+		return errs.NewError("Updating story", nil, err)
 	}
 	return nil
 }

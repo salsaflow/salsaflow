@@ -2,7 +2,7 @@ package pivotaltracker
 
 import (
 	// Internal
-	"github.com/salsita/salsaflow/errors"
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/modules/common"
 	"github.com/salsita/salsaflow/version"
@@ -49,7 +49,7 @@ func (release *runningRelease) Deliver() (common.Action, error) {
 	log.Run(msg)
 	stories, stderr, err := setStoriesState(release.stories, pivotal.StoryStateDelivered)
 	if err != nil {
-		errors.NewError(msg, stderr, err).Log(log.V(log.Info))
+		errs.NewError(msg, stderr, err).Log(log.V(log.Info))
 		return nil, err
 	}
 	release.stories = stories
@@ -57,7 +57,7 @@ func (release *runningRelease) Deliver() (common.Action, error) {
 		// On error, set the story state back to Finished.
 		stories, stderr, err := setStoriesState(release.stories, pivotal.StoryStateFinished)
 		if err != nil {
-			errors.NewError(msg, stderr, err).Log(log.V(log.Info))
+			errs.NewError(msg, stderr, err).Log(log.V(log.Info))
 			return err
 		}
 		release.stories = stories

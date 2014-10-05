@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/salsita/salsaflow/errors"
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/version"
 )
 
@@ -39,9 +39,9 @@ type Story interface {
 	Assignees() []User
 	Title() string
 
-	Start() *errors.Error
+	Start() *errs.Error
 
-	SetOwners([]User) *errors.Error
+	SetOwners([]User) *errs.Error
 }
 
 type NextRelease interface {

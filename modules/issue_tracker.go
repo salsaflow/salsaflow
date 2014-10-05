@@ -7,7 +7,7 @@ import (
 
 	// Internal
 	"github.com/salsita/salsaflow/config"
-	"github.com/salsita/salsaflow/errors"
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/modules/common"
 
@@ -33,7 +33,7 @@ func mustInitIssueTracker() {
 	}
 }
 
-func initIssueTracker() *errors.Error {
+func initIssueTracker() *errs.Error {
 	// Register all available issue trackers here.
 	factories := map[string]IssueTrackerFactory{
 		jira.Id:           jira.Factory,
@@ -56,13 +56,13 @@ func initIssueTracker() *errors.Error {
 		fmt.Fprintf(&b, "(unknown issue tracker: %v)", config.IssueTrackerName)
 		fmt.Fprintf(&b, "(available issue trackers: %v)", ids)
 		fmt.Fprintf(&b, "\nError: failed to instantiate the issue tracker plugin")
-		return errors.NewError(taskName, &b, nil)
+		return errs.NewError(taskName, &b, nil)
 	}
 
 	// Try to instantiate the issue tracker.
 	tracker, err := factory()
 	if err != nil {
-		return errors.NewError(taskName, nil, err)
+		return errs.NewError(taskName, nil, err)
 	}
 
 	// Set the global issue tracker instance, at last.

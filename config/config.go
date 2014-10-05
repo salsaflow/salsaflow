@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	// Internal
-	"github.com/salsita/salsaflow/errors"
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 
 	// Other
@@ -36,7 +36,7 @@ type readResult struct {
 	err    error
 }
 
-func Load() (err *errors.Error) {
+func Load() (err *errs.Error) {
 	// Let's go async!
 	resCh := make(chan *readResult, 2)
 
@@ -66,7 +66,7 @@ func Load() (err *errors.Error) {
 	// Wait for the files to be read.
 	for i := 0; i < cap(resCh); i++ {
 		if res := <-resCh; res != nil && res.err != nil {
-			return &errors.Error{"Error: failed to load configuration", nil, res.err}
+			return &errs.Error{"Error: failed to load configuration", nil, res.err}
 		}
 	}
 
@@ -76,10 +76,10 @@ func Load() (err *errors.Error) {
 		IssueTracker string `yaml:"issue_tracker"`
 	}
 	if err := yaml.Unmarshal(localConfigContent, &config); err != nil {
-		return errors.NewError(msg, nil, err)
+		return errs.NewError(msg, nil, err)
 	}
 	if config.IssueTracker == "" {
-		return errors.NewError(msg, nil, &ErrKeyNotSet{"issue_tracker"})
+		return errs.NewError(msg, nil, &ErrKeyNotSet{"issue_tracker"})
 	}
 
 	// Set the issue tracker name.

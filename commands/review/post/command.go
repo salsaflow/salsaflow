@@ -12,7 +12,7 @@ import (
 	"github.com/salsita/salsaflow/app"
 	"github.com/salsita/salsaflow/asciiart"
 	"github.com/salsita/salsaflow/config"
-	"github.com/salsita/salsaflow/errors"
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/prompt"
@@ -45,7 +45,7 @@ func run(cmd *gocli.Command, args []string) {
 }
 
 func handleError(task string, err error, stderr *bytes.Buffer) error {
-	errors.NewError(task, stderr, err).Log(log.V(log.Info))
+	errs.NewError(task, stderr, err).Log(log.V(log.Info))
 	return err
 }
 
@@ -190,7 +190,7 @@ publish them in Review Board. Then merge your branch into ` + config.TrunkBranch
 func logRbtOutput(res *readResult) {
 	var logger = log.V(log.Info)
 	if res.err != nil {
-		errors.NewError(res.msg, res.stderr, res.err).Log(logger)
+		errs.NewError(res.msg, res.stderr, res.err).Log(logger)
 	} else {
 		logger.Lock()
 		logger.UnsafeNewLine("")

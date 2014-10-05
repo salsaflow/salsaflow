@@ -14,7 +14,7 @@ import (
 	"github.com/salsita/salsaflow/app"
 	"github.com/salsita/salsaflow/asciiart"
 	"github.com/salsita/salsaflow/config"
-	errs "github.com/salsita/salsaflow/errors"
+	errs "github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/prompt"

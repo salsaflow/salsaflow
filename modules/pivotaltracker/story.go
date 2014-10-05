@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	// Internal
-	"github.com/salsita/salsaflow/errors"
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/modules/common"
 
 	// Other
@@ -37,22 +37,22 @@ func (story *story) Title() string {
 	return story.s.Name
 }
 
-func (story *story) Start() *errors.Error {
+func (story *story) Start() *errs.Error {
 	stories := []*pivotal.Story{story.s}
 	_, stderr, err := setStoriesState(stories, pivotal.StoryStateStarted)
 	if err != nil {
-		return errors.NewError("Start Pivotal Tracker story", stderr, err)
+		return errs.NewError("Start Pivotal Tracker story", stderr, err)
 	}
 	return nil
 }
 
-func (story *story) SetOwners(users []common.User) *errors.Error {
+func (story *story) SetOwners(users []common.User) *errs.Error {
 	msg := "Updating PivotalTracker story"
 	ownerIds := make([]int, len(users))
 	for i, user := range users {
 		id, err := strconv.Atoi(user.Id())
 		if err != nil {
-			return errors.NewError(msg, nil, err)
+			return errs.NewError(msg, nil, err)
 		}
 		ownerIds[i] = id
 	}
@@ -61,7 +61,7 @@ func (story *story) SetOwners(users []common.User) *errors.Error {
 		return updateRequest
 	})
 	if err != nil {
-		return errors.NewError(msg, stderr, err)
+		return errs.NewError(msg, stderr, err)
 	}
 	return nil
 }

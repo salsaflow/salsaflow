@@ -6,7 +6,7 @@ import (
 
 	// Internal
 	"github.com/salsita/salsaflow/config"
-	"github.com/salsita/salsaflow/errors"
+	"github.com/salsita/salsaflow/errs"
 	flags "github.com/salsita/salsaflow/flag"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/modules"
@@ -21,7 +21,7 @@ func RegisterGlobalFlags(flags *flag.FlagSet) {
 	flags.Var(LogFlag, "log", "set logging verbosity; {trace|debug|verbose|info|off}")
 }
 
-func Init() *errors.Error {
+func Init() *errs.Error {
 	// Set up logging.
 	log.SetV(log.MustStringToLevel(LogFlag.Value()))
 

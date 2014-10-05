@@ -1,9 +1,9 @@
 package modules
 
 import (
-	"github.com/salsita/salsaflow/errors"
+	"github.com/salsita/salsaflow/errs"
 )
 
-func Bootstrap() *errors.Error {
+func Bootstrap() *errs.Error {
 	return initIssueTracker()
 }

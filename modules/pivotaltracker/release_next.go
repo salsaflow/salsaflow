@@ -9,7 +9,7 @@ import (
 	"text/tabwriter"
 
 	// Internal
-	errs "github.com/salsita/salsaflow/errors"
+	errs "github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/modules/common"
 	"github.com/salsita/salsaflow/prompt"
