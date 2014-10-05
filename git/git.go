@@ -20,7 +20,19 @@ func UpdateRemotes(remotes ...string) (stderr *bytes.Buffer, err error) {
 }
 
 func Push(remote string, args ...string) (stderr *bytes.Buffer, err error) {
-	argsList := append([]string{"push"}, remote)
+	argsList := make([]string, 2, 2+len(args))
+	argsList[0] = "push"
+	argsList[1] = remote
+	argsList = append(argsList, args...)
+	_, stderr, err = Git(argsList...)
+	return
+}
+
+func PushForce(remote string, args ...string) (stderr *bytes.Buffer, err error) {
+	argsList := make([]string, 3, 3+len(args))
+	argsList[0] = "push"
+	argsList[1] = "-f"
+	argsList[2] = remote
 	argsList = append(argsList, args...)
 	_, stderr, err = Git(argsList...)
 	return

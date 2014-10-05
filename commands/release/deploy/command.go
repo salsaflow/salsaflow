@@ -86,7 +86,7 @@ func runMain(ref string) (err error) {
 	}
 
 	// Reset the master branch to point to the chosen ref.
-	msg = "Reset the master branch to point to " + ref
+	msg = fmt.Sprintf("Reset the master branch to point to '%v'", ref)
 	log.Run(msg)
 	origMaster, stderr, err := git.Hexsha("refs/heads/" + config.MasterBranch)
 	if err != nil {
@@ -110,7 +110,6 @@ func runMain(ref string) (err error) {
 	// Push the master branch to trigger deployment.
 	msg = "Push the master branch to trigger deployment"
 	log.Run(msg)
-	stderr, err = git.Push(
-		config.OriginName, "-f", config.MasterBranch+":"+config.MasterBranch)
+	stderr, err = git.PushForce(config.OriginName, config.MasterBranch+":"+config.MasterBranch)
 	return
 }
