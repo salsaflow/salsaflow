@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	// Internal
@@ -225,6 +226,21 @@ func RepositoryRootAbsolutePath() (path string, stderr *bytes.Buffer, err error)
 
 	path = string(bytes.TrimSpace(stdout.Bytes()))
 	return
+}
+
+func GetConfigBool(key string) (value bool, stderr *bytes.Buffer, err error) {
+	stdout, stderr, err := Git("config", key)
+	if err != nil && stderr.Len() != 0 {
+		// git config returns exit code 1 when the key is not set.
+		// This can be detected by stderr being of zero length.
+		return false, stderr, err
+	}
+	// Otherwise a boolean value should be printed.
+	v, err := strconv.ParseBool(strings.TrimSpace(stdout.String()))
+	if err != nil {
+		return false, nil, err
+	}
+	return v, nil, nil
 }
 
 func Git(args ...string) (stdout, stderr *bytes.Buffer, err error) {

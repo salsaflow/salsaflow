@@ -7,14 +7,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	// Internal
 	"github.com/salsita/salsaflow/app"
 	"github.com/salsita/salsaflow/asciiart"
 	"github.com/salsita/salsaflow/config"
-	errs "github.com/salsita/salsaflow/errs"
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/prompt"
@@ -75,23 +74,12 @@ func runMain() (err error) {
 
 	// Check whether the repository has been initialized yet.
 	msg := "Check whether the repository has been initialized yet"
-	stdout, stderr, err := git.Git("config", "salsaflow.initialized")
-	if err != nil && stderr.Len() != 0 {
-		// git config returns exit code 1 when the key is not set.
-		// This can be detected by stderr being of zero length.
+	initialized, stderr, err := git.GetConfigBool("salsaflow.initialized")
+	if err != nil {
 		return handleError(msg, err, stderr)
 	}
-	if stdout.Len() != 0 {
-		// In case there is some output, which happens when the key is set,
-		// then parse the value. SalsaFlow is not ever setting the key to false,
-		// but who knows, there can be someone crazy that does it manually.
-		initialized, err := strconv.ParseBool(strings.TrimSpace(stdout.String()))
-		if err != nil {
-			return handleError(msg, err, nil)
-		}
-		if initialized {
-			return errors.New("repository already initialized")
-		}
+	if initialized {
+		return errors.New("repository already initialized")
 	}
 
 	// Make sure that the master branch exists.

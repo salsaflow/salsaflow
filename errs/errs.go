@@ -23,17 +23,29 @@ func (err *Error) Log(logger log.Logger) {
 	logger.Lock()
 	defer logger.Unlock()
 	logger.UnsafeFail(err.TaskName)
-	logger.UnsafeNewLine(fmt.Sprintf("(%v)", err.Err))
-	logger.UnsafeStderr(err.Stderr)
+	if err.Err != nil {
+		logger.UnsafeNewLine(fmt.Sprintf("(%v)", err.Err))
+	}
+	if err.Stderr != nil {
+		logger.UnsafeStderr(err.Stderr)
+	}
 }
 
 func (err *Error) Fatal(logger log.Logger) {
 	logger.Lock()
 	defer logger.Unlock()
 	logger.UnsafeFail(err.TaskName)
-	logger.UnsafeNewLine(fmt.Sprintf("(%v)", err.Err))
-	logger.UnsafeStderr(err.Stderr)
-	logger.UnsafeFatalln("\nError: task failed")
+	if err.Err != nil {
+		logger.UnsafeNewLine(fmt.Sprintf("(%v)", err.Err))
+	}
+	if err.Stderr != nil {
+		logger.UnsafeStderr(err.Stderr)
+	}
+	if err.Err != nil {
+		logger.UnsafeFatalln("\nError: " + err.Err.Error())
+	} else {
+		logger.UnsafeFatalln("\nError: task failed")
+	}
 }
 
 func (err *Error) Error() string {
