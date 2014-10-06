@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	// Internal
@@ -80,6 +81,27 @@ func runMain() (err error) {
 	}
 	if initialized {
 		return errors.New("repository already initialized")
+	}
+
+	// Make sure the user is using the right version of Git.
+	//
+	// The check is here and not in app.Init because it is highly improbable
+	// that the check would pass onece and then fail later. It is expected
+	// that once the user starts using git version 2.x, he keeps doing so.
+	msg = "Check the git version being used"
+	log.Run(msg)
+	stdout, stderr, err := shell.Run("git", "--version")
+	if err != nil {
+		return handleError(msg, err, stderr)
+	}
+	parts := regexp.MustCompile("^git version (.+)\n").FindStringSubmatch(stdout.String())
+	if len(parts) != 2 {
+		return handleError(msg, errors.New("unexpected git --version output"), nil)
+	}
+	gitVersion := parts[1]
+	if !strings.HasPrefix(gitVersion, "2.") {
+		return handleError(
+			msg, errors.New("unsupported git version detected: "+gitVersion), nil)
 	}
 
 	// Make sure that the master branch exists.
