@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	// Internal
@@ -101,14 +102,38 @@ func runMain() (err error) {
 	if err != nil {
 		return handleError(msg, err, stderr)
 	}
-	parts := regexp.MustCompile("^git version (.+)\n").FindStringSubmatch(stdout.String())
-	if len(parts) != 2 {
+	pattern := regexp.MustCompile("^git version ([0-9]+)[.]([0-9]+)[.]([0-9]+)")
+	parts := pattern.FindStringSubmatch(stdout.String())
+	if len(parts) != 4 {
 		return handleError(msg, errors.New("unexpected git --version output"), nil)
 	}
-	gitVersion := parts[1]
-	if !strings.HasPrefix(gitVersion, "2.") {
-		return handleError(
-			msg, errors.New("unsupported git version detected: "+gitVersion), nil)
+	major, _ := strconv.Atoi(parts[1])
+	minor, _ := strconv.Atoi(parts[2])
+	patch, _ := strconv.Atoi(parts[3])
+	gitVersion := fmt.Sprintf("%v.%v.%v", major, minor, patch)
+	if runtime.GOOS == "windows" {
+		// We require git 1.9.4+ on Windows.
+		switch {
+		case major >= 2:
+			// OK
+		case minor == 1 && minor > 9:
+			// OK
+		case minor == 1 && minor == 9 && patch >= 4:
+			// OK
+		default:
+			return handleError(
+				msg,
+				errors.New("unsupported git version detected: "+gitVersion),
+				nil)
+		}
+	} else {
+		// Don't bother, just require git 2.0.0+ on other systems.
+		if major < 2 {
+			return handleError(
+				msg,
+				errors.New("unsupported git version detected: "+gitVersion),
+				nil)
+		}
 	}
 
 	// Make sure that the master branch exists.
