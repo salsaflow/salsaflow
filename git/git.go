@@ -230,12 +230,17 @@ func RepositoryRootAbsolutePath() (path string, stderr *bytes.Buffer, err error)
 
 func GetConfigBool(key string) (value bool, stderr *bytes.Buffer, err error) {
 	stdout, stderr, err := Git("config", key)
-	if err != nil && stderr.Len() != 0 {
-		// git config returns exit code 1 when the key is not set.
-		// This can be detected by stderr being of zero length.
+	if err != nil {
+		if stderr.Len() == 0 {
+			// git config returns exit code 1 when the key is not set.
+			// This can be detected by stderr being of zero length.
+			// We treat this as the key being set to false.
+			return false, nil, nil
+		}
+		// Otherwise there is an error.
 		return false, stderr, err
 	}
-	// Otherwise a boolean value should be printed.
+	// Otherwise a boolean value is written into stdout, so we parse it.
 	v, err := strconv.ParseBool(strings.TrimSpace(stdout.String()))
 	if err != nil {
 		return false, nil, err
