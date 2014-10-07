@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	// Internal
@@ -25,7 +26,13 @@ import (
 	"gopkg.in/tchap/gocli.v1"
 )
 
-const CommitMsgHookFileName = "salsaflow-commit-msg"
+var CommitMsgHookFileName = "salsaflow-commit-msg"
+
+func init() {
+	if runtime.GOOS == "windows" {
+		CommitMsgHookFileName += ".exe"
+	}
+}
 
 var Command = &gocli.Command{
 	UsageLine: "init",
