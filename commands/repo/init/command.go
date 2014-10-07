@@ -121,18 +121,26 @@ func runMain() (err error) {
 		case major == 1 && minor == 9 && patch >= 4:
 			// OK
 		default:
+			hint := `
+You need Git version 1.9.4+
+
+`
 			return handleError(
 				msg,
 				errors.New("unsupported git version detected: "+gitVersion),
-				nil)
+				bytes.NewBufferString(hint))
 		}
 	} else {
 		// Don't bother, just require git 2.0.0+ on other systems.
 		if major < 2 {
+			hint := `
+You need Git version 2.0.0+
+
+`
 			return handleError(
 				msg,
 				errors.New("unsupported git version detected: "+gitVersion),
-				nil)
+				bytes.NewBufferString(hint))
 		}
 	}
 
