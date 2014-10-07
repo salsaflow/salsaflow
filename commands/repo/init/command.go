@@ -70,7 +70,7 @@ func runMain() (err error) {
 			return
 		}
 		asciiart.PrintThumbsUp()
-		log.Println("\nSwell, your repo is initialized!")
+		log.Println("\nSwell, your repo is initialized!\n")
 	}()
 
 	// Check whether the repository has been initialized yet.
@@ -146,7 +146,7 @@ func runMain() (err error) {
 	}
 
 	// Check the project-specific configuration file.
-	msg = "Check the project-specific SalsaFlow configuration"
+	msg = "Check the local SalsaFlow configuration"
 	log.Run(msg)
 	if _, stderr, err = config.ReadLocalConfig(); err != nil {
 		return handleError(msg, fmt.Errorf("could not read config file '%v' on branch '%v': %v",
