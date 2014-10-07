@@ -2,11 +2,15 @@ package config
 
 import (
 	// Stdlib
+	"bufio"
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 
 	// Internal
 	"github.com/salsita/salsaflow/errs"
@@ -42,7 +46,15 @@ func Load() (err *errs.Error) {
 
 	// Read the config files from the disk.
 	go func() {
-		msg := "Read project configuration file"
+		// Make sure the local configuration file is committed.
+		msg := "Make sure the local configuration file is committed"
+		if stderr, err := ensureLocalConfigCommitted(); err != nil {
+			resCh <- &readResult{msg, stderr, err}
+			return
+		}
+
+		// Read the local configuration file.
+		msg = "Read project configuration file"
 		localConfig, stderr, err := ReadLocalConfig()
 		if err != nil {
 			resCh <- &readResult{msg, stderr, err}
@@ -53,6 +65,7 @@ func Load() (err *errs.Error) {
 	}()
 
 	go func() {
+		// Read the global configuration file.
 		msg := "Read global configuration file"
 		globalConfig, err := ReadGlobalConfig()
 		if err != nil {
@@ -64,9 +77,10 @@ func Load() (err *errs.Error) {
 	}()
 
 	// Wait for the files to be read.
+	// XXX: We only handle the first error encountered.
 	for i := 0; i < cap(resCh); i++ {
 		if res := <-resCh; res != nil && res.err != nil {
-			return &errs.Error{"Error: failed to load configuration", nil, res.err}
+			return errs.NewError("Error: failed to load configuration", res.stderr, res.err)
 		}
 	}
 
@@ -86,6 +100,29 @@ func Load() (err *errs.Error) {
 	IssueTrackerName = config.IssueTracker
 
 	return nil
+}
+
+func ensureLocalConfigCommitted() (stderr *bytes.Buffer, err error) {
+	stdout, stderr, err := git.Git("status", "--porcelain")
+	if err != nil {
+		return stderr, err
+	}
+	var (
+		suffix  = " " + LocalConfigFileName
+		scanner = bufio.NewScanner(stdout)
+	)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasSuffix(line, suffix) {
+			hint := fmt.Sprintf(`
+Please commit your %v changes into branch '%v'.
+Only then will I let you pass and proceed further!
+
+`, LocalConfigFileName, TrunkBranch)
+			return bytes.NewBufferString(hint), errors.New("local configuration file modified")
+		}
+	}
+	return nil, scanner.Err()
 }
 
 func ReadLocalConfig() (content, stderr *bytes.Buffer, err error) {
