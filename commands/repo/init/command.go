@@ -116,9 +116,9 @@ func runMain() (err error) {
 		switch {
 		case major >= 2:
 			// OK
-		case minor == 1 && minor > 9:
+		case major == 1 && minor > 9:
 			// OK
-		case minor == 1 && minor == 9 && patch >= 4:
+		case major == 1 && minor == 9 && patch >= 4:
 			// OK
 		default:
 			return handleError(
