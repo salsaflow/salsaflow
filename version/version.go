@@ -84,6 +84,12 @@ func (ver *Version) ReleaseTagString() string {
 }
 
 func (ver *Version) CommitToBranch(branch string) (stderr *bytes.Buffer, err error) {
+	// Make sure package.json is clean.
+	stderr, err = git.EnsureFileClean(PackageFileName)
+	if err != nil {
+		return
+	}
+
 	// Checkout the branch.
 	stderr, err = git.Checkout(branch)
 	if err != nil {

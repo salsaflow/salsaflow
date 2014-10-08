@@ -3,7 +3,6 @@ package git
 import (
 	// Stdlib
 	"bytes"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -11,8 +10,6 @@ import (
 	// Internal
 	"github.com/salsita/salsaflow/shell"
 )
-
-var ErrDirtyRepository = errors.New("the repository is dirty")
 
 func UpdateRemotes(remotes ...string) (stderr *bytes.Buffer, err error) {
 	argsList := append([]string{"remote", "update"}, remotes...)
@@ -202,10 +199,24 @@ func EnsureBranchSynchronized(branch, remote string) (stderr *bytes.Buffer, err 
 
 func EnsureCleanWorkingTree() (status *bytes.Buffer, stderr *bytes.Buffer, err error) {
 	status, stderr, err = Git("status", "--porcelain")
-	if status.Len() != 0 {
-		err = ErrDirtyRepository
+	if err != nil {
+		return nil, stderr, err
 	}
-	return
+	if status.Len() != 0 {
+		return status, nil, ErrDirtyRepository
+	}
+	return nil, nil, nil
+}
+
+func EnsureFileClean(relativePath string) (stderr *bytes.Buffer, err error) {
+	status, stderr, err := Git("status", "--porcelain", relativePath)
+	if err != nil {
+		return stderr, err
+	}
+	if status.Len() != 0 {
+		return nil, &ErrDirtyFile{relativePath}
+	}
+	return nil, nil
 }
 
 func CurrentBranch() (branch string, stderr *bytes.Buffer, err error) {
