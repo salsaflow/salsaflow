@@ -34,7 +34,7 @@ var Command = &gocli.Command{
     3) Create the release branch on top of the trunk branch.
     4) Commit the new version string into the trunk branch so that it is
        prepared for the future release (the release after the one being started).
-	5) Start the release in the issue tracker.
+    5) Start the release in the issue tracker.
     6) Push everything.
 
   So, the -next_trunk_version flag is actually not affecting the release that is
@@ -110,7 +110,6 @@ func runMain() (err error) {
 	}
 
 	// Prompt the user to confirm the release.
-	msg = ""
 	ok, err := release.PromptUserToConfirmStart()
 	if err != nil {
 		return errs.Log(err)
