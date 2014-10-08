@@ -4,6 +4,8 @@ import (
 	// Stdlib
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -237,6 +239,30 @@ func RepositoryRootAbsolutePath() (path string, stderr *bytes.Buffer, err error)
 
 	path = string(bytes.TrimSpace(stdout.Bytes()))
 	return
+}
+
+// RelativePath returns the relative path from the current working directory to the file
+// specified by the relative path from the repository root.
+//
+// This is useful for some other Git commands, particularly git status.
+func RelativePath(pathFromRoot string) (relativePath string, stderr *bytes.Buffer, err error) {
+	root, stderr, err := RepositoryRootAbsolutePath()
+	if err != nil {
+		return "", stderr, err
+	}
+	absolutePath := filepath.Join(root, pathFromRoot)
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", nil, err
+	}
+
+	relativePath, err = filepath.Rel(cwd, absolutePath)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return relativePath, nil, nil
 }
 
 func GetConfigBool(key string) (value bool, stderr *bytes.Buffer, err error) {
