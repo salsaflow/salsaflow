@@ -52,7 +52,7 @@ func (err *Error) Error() string {
 	return err.Err.Error()
 }
 
-func LogAndReturn(err error) error {
+func Log(err error) error {
 	if ex, ok := err.(*Error); ok {
 		ex.Log(log.V(log.Info))
 	}

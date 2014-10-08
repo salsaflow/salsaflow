@@ -113,7 +113,7 @@ func runMain() (err error) {
 	msg = ""
 	ok, err := release.PromptUserToConfirmStart()
 	if err != nil {
-		return errs.LogAndReturn(err)
+		return errs.Log(err)
 	}
 	if !ok {
 		fmt.Println("\nYour wish is my command, exiting now...")
@@ -186,7 +186,7 @@ func runMain() (err error) {
 	msg = ""
 	action, err := release.Start()
 	if err != nil {
-		return errs.LogAndReturn(err)
+		return errs.Log(err)
 	}
 	defer func() {
 		if err != nil {
