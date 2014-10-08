@@ -13,7 +13,9 @@ import (
 	"strconv"
 
 	// Internal
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
+	"github.com/salsita/salsaflow/log"
 )
 
 const (
@@ -101,10 +103,10 @@ func (ver *Version) CommitToBranch(branch string) (stderr *bytes.Buffer, err err
 	if err != nil {
 		return
 	}
-	path := filepath.Join(root, PackageFileName)
+	absPath := filepath.Join(root, PackageFileName)
 
 	// Read package.json
-	file, err := os.OpenFile(path, os.O_RDWR, 0)
+	file, err := os.OpenFile(absPath, os.O_RDWR, 0)
 	if err != nil {
 		return
 	}
@@ -139,11 +141,27 @@ func (ver *Version) CommitToBranch(branch string) (stderr *bytes.Buffer, err err
 	}
 
 	// Commit package.json
-	_, stderr, err = git.Git("add", path)
+	_, stderr, err = git.Git("add", absPath)
 	if err != nil {
 		return
 	}
-	// XXX: Somehow unstage package.json?
+	defer func() {
+		if err == nil {
+			return
+		}
+		// On error, checkout package.json to cancel the changes.
+		//
+		// We cannot loose any changes by doing so, because make sure that
+		// package.json is clean at the beginning of CommitToBranch.
+		_, serr, ex := git.Git("checkout", "--", absPath)
+		if ex != nil {
+			errs.NewError(
+				fmt.Sprintf("Roll back changes to %v", PackageFileName),
+				serr,
+				err).Log(log.V(log.Info))
+		}
+	}()
+
 	_, stderr, err = git.Git("commit", "-m", fmt.Sprintf("Bump version to %v", ver))
 	return
 }
