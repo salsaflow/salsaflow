@@ -34,58 +34,31 @@ var (
 	globalConfigContent []byte
 )
 
-type readResult struct {
-	msg    string
-	stderr *bytes.Buffer
-	err    error
-}
-
-func Load() (err *errs.Error) {
-	// Let's go async!
-	resCh := make(chan *readResult, 2)
-
-	// Read the config files from the disk.
-	go func() {
-		// Make sure the local configuration file is committed.
-		msg := "Make sure the local configuration file is committed"
-		if stderr, err := ensureLocalConfigCommitted(); err != nil {
-			resCh <- &readResult{msg, stderr, err}
-			return
-		}
-
-		// Read the local configuration file.
-		msg = "Read project configuration file"
-		localConfig, stderr, err := ReadLocalConfig()
-		if err != nil {
-			resCh <- &readResult{msg, stderr, err}
-			return
-		}
-		localConfigContent = localConfig.Bytes()
-		resCh <- nil
-	}()
-
-	go func() {
-		// Read the global configuration file.
-		msg := "Read global configuration file"
-		globalConfig, err := ReadGlobalConfig()
-		if err != nil {
-			resCh <- &readResult{msg, nil, err}
-			return
-		}
-		globalConfigContent = globalConfig.Bytes()
-		resCh <- nil
-	}()
-
-	// Wait for the files to be read.
-	// XXX: We only handle the first error encountered.
-	for i := 0; i < cap(resCh); i++ {
-		if res := <-resCh; res != nil && res.err != nil {
-			return errs.NewError("Error: failed to load configuration", res.stderr, res.err)
-		}
+func Load() *errs.Error {
+	// Make sure the local configuration file is committed.
+	msg := "Make sure the local configuration file is committed"
+	if stderr, err := ensureLocalConfigCommitted(); err != nil {
+		return errs.NewError(msg, stderr, err)
 	}
 
+	// Read the local configuration file.
+	msg = "Read local configuration file"
+	localConfig, stderr, err := ReadLocalConfig()
+	if err != nil {
+		return errs.NewError(msg, stderr, err)
+	}
+	localConfigContent = localConfig.Bytes()
+
+	// Read the global configuration file.
+	msg = "Read global configuration file"
+	globalConfig, err := ReadGlobalConfig()
+	if err != nil {
+		return errs.NewError(msg, nil, err)
+	}
+	globalConfigContent = globalConfig.Bytes()
+
 	// Parse the local config to know what config modules to bootstrap.
-	msg := "Parse project configuration file"
+	msg = "Parse project configuration file"
 	var config struct {
 		IssueTracker string `yaml:"issue_tracker"`
 	}
