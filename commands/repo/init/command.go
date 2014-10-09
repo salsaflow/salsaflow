@@ -94,54 +94,38 @@ func runMain() (err error) {
 	// Make sure the user is using the right version of Git.
 	//
 	// The check is here and not in app.Init because it is highly improbable
-	// that the check would pass onece and then fail later. It is expected
-	// that once the user starts using git version 2.x, he keeps doing so.
+	// that the check would pass once and then fail later. Once the right
+	// version of git is installed, it most probably stays.
 	msg = "Check the git version being used"
 	log.Run(msg)
-	stdout, stderr, err := shell.Run("git", "--version")
+	stdout, stderr, err := git.Git("--version")
 	if err != nil {
 		return handleError(msg, err, stderr)
 	}
-	pattern := regexp.MustCompile("^git version ([0-9]+)[.]([0-9]+)[.]([0-9]+)")
+	pattern := regexp.MustCompile("^git version (([0-9]+)[.]([0-9]+).*)")
 	parts := pattern.FindStringSubmatch(stdout.String())
 	if len(parts) != 4 {
 		return handleError(msg, errors.New("unexpected git --version output"), nil)
 	}
-	major, _ := strconv.Atoi(parts[1])
-	minor, _ := strconv.Atoi(parts[2])
-	patch, _ := strconv.Atoi(parts[3])
-	gitVersion := fmt.Sprintf("%v.%v.%v", major, minor, patch)
-	if runtime.GOOS == "windows" {
-		// We require git 1.9.4+ on Windows.
-		switch {
-		case major >= 2:
-			// OK
-		case major == 1 && minor > 9:
-			// OK
-		case major == 1 && minor == 9 && patch >= 4:
-			// OK
-		default:
-			hint := `
-You need Git version 1.9.4+
+	gitVersion := parts[1]
+	// This cannot fail since we matched the regexp.
+	major, _ := strconv.Atoi(parts[2])
+	minor, _ := strconv.Atoi(parts[3])
+	// We need Git version 1.8.5.4+, so let's require 1.9+.
+	switch {
+	case major >= 2:
+		// OK
+	case major == 1 && minor == 9:
+		// OK
+	default:
+		hint := `
+You need Git version 1.9.0 or newer.
 
 `
-			return handleError(
-				msg,
-				errors.New("unsupported git version detected: "+gitVersion),
-				bytes.NewBufferString(hint))
-		}
-	} else {
-		// Don't bother, just require git 2.0.0+ on other systems.
-		if major < 2 {
-			hint := `
-You need Git version 2.0.0+
-
-`
-			return handleError(
-				msg,
-				errors.New("unsupported git version detected: "+gitVersion),
-				bytes.NewBufferString(hint))
-		}
+		return handleError(
+			msg,
+			errors.New("unsupported git version detected: "+gitVersion),
+			bytes.NewBufferString(hint))
 	}
 
 	// Make sure that the master branch exists.
