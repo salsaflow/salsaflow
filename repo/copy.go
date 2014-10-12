@@ -1,6 +1,5 @@
 // From http://stackoverflow.com/questions/21060945/simple-way-to-copy-a-file-in-golang
-
-package initCmd
+package repo
 
 import (
 	"fmt"

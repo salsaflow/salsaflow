@@ -285,6 +285,11 @@ func GetConfigBool(key string) (value bool, stderr *bytes.Buffer, err error) {
 	return v, nil, nil
 }
 
+func SetConfigBool(key string, value bool) (stderr *bytes.Buffer, err error) {
+	_, stderr, err = Git("config", key, strconv.FormatBool(value))
+	return
+}
+
 func Git(args ...string) (stdout, stderr *bytes.Buffer, err error) {
 	args = append([]string{"git", "--no-pager"}, args...)
 	return shell.Run(args...)
