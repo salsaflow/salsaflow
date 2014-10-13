@@ -139,19 +139,13 @@ func (ver *Version) CommitToBranch(branch string) (stderr *bytes.Buffer, err err
 	if err != nil {
 		return
 	}
-
-	// Commit package.json
-	_, stderr, err = git.Git("add", absPath)
-	if err != nil {
-		return
-	}
 	defer func() {
 		if err == nil {
 			return
 		}
 		// On error, checkout package.json to cancel the changes.
 		//
-		// We cannot loose any changes by doing so, because make sure that
+		// We cannot lose any changes by doing so, because we make sure that
 		// package.json is clean at the beginning of CommitToBranch.
 		_, serr, ex := git.Git("checkout", "--", absPath)
 		if ex != nil {
@@ -161,6 +155,12 @@ func (ver *Version) CommitToBranch(branch string) (stderr *bytes.Buffer, err err
 				err).Log(log.V(log.Info))
 		}
 	}()
+
+	// Commit package.json
+	_, stderr, err = git.Git("add", absPath)
+	if err != nil {
+		return
+	}
 
 	_, stderr, err = git.Git("commit", "-m", fmt.Sprintf("Bump version to %v", ver))
 	return
