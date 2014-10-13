@@ -71,7 +71,7 @@ func Init() *errs.Error {
 	switch {
 	case major >= 2:
 		// OK
-	case major == 1 && minor == 9:
+	case major == 1 && minor >= 9:
 		// OK
 	default:
 		hint := `
