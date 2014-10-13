@@ -1,0 +1,32 @@
+machine:
+  environment:
+    WORKSPACE: "$HOME/workspace"
+checkout:
+  pre:
+    - "cd \"$HOME\" && mkdir -p \"workspace/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME\""
+  override:
+    - "cd \"$WORKSPACE\" && git clone --branch $CIRCLE_BRANCH --single-branch \"git@github.com:$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git\" \"src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME\""
+dependencies:
+  cache_directories:
+    - "~/cache/gonative"
+  pre:
+    - "make -C \"$WORKSPACE/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME\" update-deps":
+        environment:
+          GOPATH: "$HOME/workspace:$GOPATH"
+  override:
+    - "cd \"$WORKSPACE/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME\" && ./circle_build_gonative.bash"
+    - "go get github.com/mitchellh/gox"
+test:
+  override:
+    - "cd \"$WORKSPACE/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME\" && gox -osarch=\"windows/amd64 linux/amd64 darwin/amd64\"":
+        environment:
+          GOPATH: "$HOME/workspace:$GOPATH"
+          GOROOT: "$HOME/cache/gonative/go"
+          PATH:   "$HOME/cache/gonative/go/bin:$PATH"
+    - "cd \"$WORKSPACE/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/bin/hooks/salsaflow-commit-msg\" && gox -osarch=\"windows/amd64 linux/amd64 darwin/amd64\"":
+        environment:
+          GOPATH: "$HOME/workspace:$GOPATH"
+          GOROOT: "$HOME/cache/gonative/go"
+          PATH:   "$HOME/cache/gonative/go/bin:$PATH"
+  post:
+    - "$WORKSPACE/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/circle_pack.bash"
