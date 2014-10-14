@@ -57,7 +57,7 @@ func (service *VersionService) Create(version *Version) (*Version, *http.Respons
 		return nil, nil, &ErrFieldNotSet{"Version.Project"}
 	}
 
-	req, err := service.client.NewRequest("POST", "api/2/version", version)
+	req, err := service.client.NewRequest("POST", "version", version)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -72,7 +72,7 @@ func (service *VersionService) Create(version *Version) (*Version, *http.Respons
 
 // Update updates the version with the specified ID as specified in the change request.
 func (service *VersionService) Update(id string, change *Version) (*http.Response, error) {
-	u := fmt.Sprintf("api/2/version/%v", id)
+	u := fmt.Sprintf("version/%v", id)
 	req, err := service.client.NewRequest("PUT", u, change)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func (service *VersionService) Update(id string, change *Version) (*http.Respons
 
 // Delete deleted the version with the specified ID.
 func (service *VersionService) Delete(id string) (*http.Response, error) {
-	u := fmt.Sprintf("api/2/version/%v", id)
+	u := fmt.Sprintf("version/%v", id)
 	req, err := service.client.NewRequest("DELETE", u, nil)
 	if err != nil {
 		return nil, err

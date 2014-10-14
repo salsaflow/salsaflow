@@ -85,7 +85,7 @@ type SearchOptions struct {
 }
 
 func (service *IssueService) Search(opts *SearchOptions) ([]*Issue, *http.Response, error) {
-	u := "api/2/search"
+	u := "search"
 	if opts != nil {
 		vs, err := query.Values(opts)
 		if err != nil {
@@ -111,7 +111,7 @@ func (service *IssueService) Search(opts *SearchOptions) ([]*Issue, *http.Respon
 
 // Updates issue with `issueIdOrKey`.
 func (service *IssueService) Update(issueIdOrKey string, body interface{}) (*http.Response, error) {
-	u := fmt.Sprintf("api/2/issue/%v", issueIdOrKey)
+	u := fmt.Sprintf("issue/%v", issueIdOrKey)
 	req, err := service.client.NewRequest("PUT", u, body)
 	if err != nil {
 		return nil, err
@@ -121,7 +121,7 @@ func (service *IssueService) Update(issueIdOrKey string, body interface{}) (*htt
 
 // Performs the requested transition for the chosen issue.
 func (service *IssueService) PerformTransition(issueIdOrKey, transitionId string) (*http.Response, error) {
-	u := fmt.Sprintf("api/2/issue/%v/transitions", issueIdOrKey)
+	u := fmt.Sprintf("issue/%v/transitions", issueIdOrKey)
 	p := M{
 		"transition": M{
 			"id": transitionId,

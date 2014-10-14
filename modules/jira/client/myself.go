@@ -28,7 +28,7 @@ func newMyselfService(client *Client) *MyselfService {
 }
 
 func (service *MyselfService) Get() (*User, *http.Response, error) {
-	req, err := service.client.NewRequest("GET", "api/2/myself", nil)
+	req, err := service.client.NewRequest("GET", "myself", nil)
 	if err != nil {
 		return nil, nil, err
 	}
