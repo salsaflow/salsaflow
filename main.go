@@ -12,19 +12,18 @@ import (
 	"github.com/salsita/salsaflow/commands/repo"
 	"github.com/salsita/salsaflow/commands/review"
 	"github.com/salsita/salsaflow/commands/story"
+	"github.com/salsita/salsaflow/commands/version"
 
 	// Other
 	"gopkg.in/tchap/gocli.v1"
 )
-
-const version = "0.2.1"
 
 func main() {
 	// Initialise the application.
 	trunk := gocli.NewApp("git-trunk")
 	trunk.UsageLine = "git-trunk SUBCMD [SUBCMD_OPTION ...]"
 	trunk.Short = "the ultimate Trunk Based Development CLI utility"
-	trunk.Version = version
+	trunk.Version = app.Version
 	trunk.Long = `
   git-trunk is a git plugin that provides some useful shortcuts for
   Trunk Based Development. See the list of subcommands.`
@@ -37,6 +36,7 @@ func main() {
 	trunk.MustRegisterSubcommand(repoCmd.Command)
 	trunk.MustRegisterSubcommand(storyCmd.Command)
 	trunk.MustRegisterSubcommand(reviewCmd.Command)
+	trunk.MustRegisterSubcommand(versionCmd.Command)
 
 	// Start processing signals.
 	signalCh := make(chan os.Signal, 1)

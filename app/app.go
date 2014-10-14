@@ -14,6 +14,8 @@ import (
 	"github.com/salsita/salsaflow/repo"
 )
 
+const Version = "0.2.1"
+
 var ErrRepositoryNotInitialised = errors.New("repository not initialised")
 
 var (
