@@ -50,7 +50,7 @@ func ReadFromBranch(branch string) (ver *Version, stderr *bytes.Buffer, err erro
 		return
 	}
 
-	ver, err = parseVersion(pkg.Version)
+	ver, err = Parse(pkg.Version)
 	return
 }
 
@@ -67,7 +67,7 @@ func (ver *Version) IncrementPatch() *Version {
 }
 
 func (ver *Version) Set(versionString string) error {
-	newVer, err := parseVersion(versionString)
+	newVer, err := Parse(versionString)
 	if err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func (ver *Version) CommitToBranch(branch string) (stderr *bytes.Buffer, err err
 	return
 }
 
-func parseVersion(versionString string) (ver *Version, err error) {
+func Parse(versionString string) (ver *Version, err error) {
 	pattern := regexp.MustCompile("^" + GroupMatcherString + "$")
 	parts := pattern.FindStringSubmatch(versionString)
 	if len(parts) != 4 {
