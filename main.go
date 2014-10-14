@@ -20,12 +20,12 @@ import (
 
 func main() {
 	// Initialise the application.
-	trunk := gocli.NewApp("git-trunk")
-	trunk.UsageLine = "git-trunk SUBCMD [SUBCMD_OPTION ...]"
+	trunk := gocli.NewApp("salsaflow")
+	trunk.UsageLine = "salsaflow SUBCMD [SUBCMD_OPTION ...]"
 	trunk.Short = "the ultimate Trunk Based Development CLI utility"
 	trunk.Version = app.Version
 	trunk.Long = `
-  git-trunk is a git plugin that provides some useful shortcuts for
+  salsaflow is a CLI utility that provides some useful shortcuts for
   Trunk Based Development. See the list of subcommands.`
 
 	// Register global flags.
