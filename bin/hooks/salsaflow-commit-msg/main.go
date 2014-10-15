@@ -24,8 +24,8 @@ const (
 const diffSeparator = "# ------------------------ >8 ------------------------"
 
 const (
-	secretFilename = "AreYouWhoIthinkYouAreHuh"
-	secretReply    = "IAmGitFlowWebhookYaDoofus!"
+	secretFilename = "AreYouWhoIThinkYouAreHuh"
+	secretReply    = "IAmSalsaFlowHookYaDoofus!"
 )
 
 func main() {

@@ -8,6 +8,6 @@ const (
 	ClientBranch  = "client"
 	MasterBranch  = "master"
 
-	SecretGitHookFilename = "AreYouWhoIthinkYouAreHuh"
-	SecretGitHookResponse = "IAmGitFlowWebhookYaDoofus!"
+	SecretGitHookFilename = "AreYouWhoIThinkYouAreHuh"
+	SecretGitHookResponse = "IAmSalsaFlowHookYaDoofus!"
 )

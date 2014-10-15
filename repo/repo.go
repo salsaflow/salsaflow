@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -24,13 +25,21 @@ import (
 	"bitbucket.org/kardianos/osext"
 )
 
-var CommitMsgHookFileName = "salsaflow-commit-msg"
+type hookType string
 
-func getCommitMsgHookFileName() string {
-	if runtime.GOOS == "windows" && !strings.HasSuffix(CommitMsgHookFileName, ".exe") {
-		return CommitMsgHookFileName + ".exe"
+const (
+	hookTypeCommitMsg hookType = "commit-msg"
+	hookTypePrePush            = "pre-push"
+)
+
+const HookPrefix = "salsaflow-"
+
+func getHookFileName(typ hookType) string {
+	if runtime.GOOS == "windows" {
+		return HookPrefix + string(typ) + ".exe"
+	} else {
+		return HookPrefix + string(typ)
 	}
-	return CommitMsgHookFileName
 }
 
 var initHooks []InitHook
@@ -161,10 +170,16 @@ You need Git version 1.9.0 or newer.
 				config.LocalConfigFileName, config.ConfigBranch, err))
 	}
 
-	// Verify our git hook is installed and used.
-	msg = "Check the git commit-msg hook"
+	// Verify our git hooks are installed and used.
+	msg = "Check the current git commit-msg hook"
 	log.Run(msg)
-	if err := checkGitHook(); err != nil {
+	if err := checkGitHook(hookTypeCommitMsg); err != nil {
+		return errs.NewError(msg, nil, err)
+	}
+
+	msg = "Check the current git pre-push hook"
+	log.Run(msg)
+	if err := checkGitHook(hookTypePrePush); err != nil {
 		return errs.NewError(msg, nil, err)
 	}
 
@@ -188,7 +203,10 @@ You need Git version 1.9.0 or newer.
 }
 
 // Check whether SalsaFlow git hook is used. Prompts user to install our hook if it isn't.
-func checkGitHook() *errs.Error {
+func checkGitHook(typ hookType) *errs.Error {
+	// Declade some variables so that we can use goto.
+	var confirmed bool
+
 	// Ping the git hook with our secret argument.
 	msg := "Get the repository root absolute path"
 	repoRoot, _, err := git.RepositoryRootAbsolutePath()
@@ -196,7 +214,7 @@ func checkGitHook() *errs.Error {
 		return errs.NewError(msg, nil, err)
 	}
 
-	hookPath := filepath.Join(repoRoot, ".git", "hooks", "commit-msg")
+	hookPath := filepath.Join(repoRoot, ".git", "hooks", string(typ))
 	stdout, _, _ := shell.Run(hookPath, config.SecretGitHookFilename)
 	secret := strings.TrimSpace(stdout.String())
 
@@ -204,21 +222,29 @@ func checkGitHook() *errs.Error {
 		return nil
 	}
 
-	// Prompt the user to confirm the SalsaFlow git commit-msg hook.
-	log.Warn("SalsaFlow git commit-msg hook not detected")
-	msg = "Prompt the user to confirm the commit-msg hook"
-
 	// Get the hook executable absolute path. It's supposed to be installed
 	// in the same directory as the salsaflow executable itself.
 	binDir, err := osext.ExecutableFolder()
 	if err != nil {
 		return errs.NewError(msg, nil, err)
 	}
-	hookBin := filepath.Join(binDir, getCommitMsgHookFileName())
+	hookBin := filepath.Join(binDir, getHookFileName(typ))
 
-	confirmed, err := prompt.Confirm(`
-I need my own git commit-msg hook to be placed in the repository.
-Shall I create or replace your current commit-msg hook?`)
+	// Check whether there is a hook already present in the repository.
+	// If there is no hook, we don't have to ask the user, we can just install the hook.
+	msg = fmt.Sprintf("Check whether there is a git %v hook already installed", typ)
+	if _, err := os.Stat(hookPath); err != nil {
+		if os.IsNotExist(err) {
+			goto CopyHook
+		}
+		return errs.NewError(msg, nil, err)
+	}
+
+	// Prompt the user to confirm the SalsaFlow git commit-msg hook.
+	msg = fmt.Sprintf("Prompt the user to confirm the %v hook", typ)
+	confirmed, err = prompt.Confirm(`
+I need my own git ` + string(typ) + ` hook to be placed in the repository.
+Shall I create or replace your current ` + string(typ) + ` hook?`)
 	fmt.Println()
 	if err != nil {
 		return errs.NewError(msg, nil, err)
@@ -232,19 +258,20 @@ Please make sure the executable located at
 
   %v
 
-runs as your commit-msg hook and run me again!
+runs as your `+string(typ)+` hook and run me again!
 
 `, hookBin)
-		return errs.NewError(msg, nil, errors.New("SalsaFlow git commit-msg hook not detected"))
+		return errs.NewError(msg, nil, fmt.Errorf("SalsaFlow git %v hook not detected", typ))
 	}
 
-	// Install the SalsaFlow commit-msg git hook by copying the hook executable
+CopyHook:
+	// Install the SalsaFlow git hook by copying the hook executable
 	// from the expected absolute path to the git config hook directory.
-	msg = "Install the SalsaFlow git commit-msg hook"
+	msg = fmt.Sprintf("Install the SalsaFlow git %v hook", typ)
 	if err := CopyFile(hookBin, hookPath); err != nil {
 		return errs.NewError(msg, nil, err)
 	}
-	log.Log("SalsaFlow commit-msg git hook installed")
+	log.Log(fmt.Sprintf("SalsaFlow git %v hook installed", typ))
 
 	return nil
 }

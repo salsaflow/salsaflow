@@ -58,7 +58,8 @@ func GrepCommits(filter string) (commits []*Commit, stderr *bytes.Buffer, err er
 		return nil, serr, err
 	}
 
-	return parseCommitLog(sout)
+	commits, err = ParseCommits(sout)
+	return
 }
 
 // Returns list of commit on branch `ref` compared to branch `parent`.
@@ -75,7 +76,8 @@ func ListBranchCommits(ref string, parent string) (commits []*Commit, stderr *by
 		return nil, serr, err
 	}
 
-	return parseCommitLog(sout)
+	commits, err = ParseCommits(sout)
+	return
 }
 
 // Parse git log output, which is a sequence of Git commits looking like
@@ -90,8 +92,7 @@ func ListBranchCommits(ref string, parent string) (commits []*Commit, stderr *by
 //
 //    Change-Id: $changeId
 //    Story-Id: $storyId
-func parseCommitLog(sout *bytes.Buffer) (commits []*Commit, stderr *bytes.Buffer, err error) {
-
+func ParseCommits(sout *bytes.Buffer) (commits []*Commit, err error) {
 	cs := make([]*Commit, 0)
 
 	var (
@@ -203,7 +204,6 @@ func parseCommitLog(sout *bytes.Buffer) (commits []*Commit, stderr *bytes.Buffer
 					return
 				}
 				commit.ChangeId = parts[1]
-				maybeHead = true
 			case StoryIdTagPattern.MatchString(line):
 				if commit.StoryId != "" {
 					err = fmt.Errorf("git log [commit %v]: duplicate Story-Id tag", commit.SHA)
@@ -215,8 +215,8 @@ func parseCommitLog(sout *bytes.Buffer) (commits []*Commit, stderr *bytes.Buffer
 					return
 				}
 				commit.StoryId = parts[1]
-				maybeHead = true
 			}
+			maybeHead = true
 		}
 	}
 	if commit != nil {
@@ -224,7 +224,7 @@ func parseCommitLog(sout *bytes.Buffer) (commits []*Commit, stderr *bytes.Buffer
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return cs, nil, nil
+	return cs, nil
 }

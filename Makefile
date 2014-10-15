@@ -1,6 +1,7 @@
 install: format
 	go install github.com/salsita/salsaflow
 	go install github.com/salsita/salsaflow/bin/hooks/salsaflow-commit-msg
+	go install github.com/salsita/salsaflow/bin/hooks/salsaflow-pre-push
 
 update-deps:
 	go get -d -u bitbucket.org/kardianos/osext

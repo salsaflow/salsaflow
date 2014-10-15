@@ -72,8 +72,8 @@ func LogFail(task string, err error) error {
 	} else {
 		logger := log.V(log.Info)
 		logger.Lock()
-		logger.Fail(task)
-		logger.NewLine(fmt.Sprintf("(err = %v)", err))
+		logger.UnsafeFail(task)
+		logger.UnsafeNewLine(fmt.Sprintf("(err = %v)", err))
 		logger.Unlock()
 	}
 	return err
