@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	stateContent = iota + 1
+	stateWhitespace = iota + 1
+	stateContent
 	stateTags
 )
 
@@ -52,7 +53,7 @@ func run(msgPath string) error {
 
 	// Read and parse the commit message.
 	var (
-		state        = stateContent
+		state        = stateWhitespace
 		changeIdSeen bool
 		storyIdSeen  bool
 		lines        []string
@@ -62,6 +63,20 @@ ScanLoop:
 	for scanner.Scan() {
 		line := scanner.Text()
 		trimmedLine := strings.TrimSpace(line)
+
+		// Drop leading whitespace and comments.
+		//
+		// This is necessary since in case the commit message is empty,
+		// nothing is really written and the commit is canceled.
+		if state == stateWhitespace {
+			switch {
+			case trimmedLine == "":
+				continue ScanLoop
+			case strings.HasPrefix(trimmedLine, "#"):
+				continue ScanLoop
+			}
+			state = stateContent
+		}
 
 		// Keep appending content until a tag is encountered.
 		if state == stateContent {
@@ -110,7 +125,7 @@ ScanLoop:
 				// so we can as well just skip it and drop the content here.
 				break ScanLoop
 
-			case strings.HasPrefix(line, "#"):
+			case strings.HasPrefix(trimmedLine, "#"):
 				// Let's drop comments here.
 				// This must come after the previous case, otherwise
 				// the diff separator is dropped as well.
