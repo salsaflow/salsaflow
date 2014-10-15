@@ -9,5 +9,8 @@ type ErrDirtyFile struct {
 }
 
 func (err *ErrDirtyFile) Error() string {
+	if err.relativePath == "" {
+		panic("ErrDirtyFile.relativePath is not set")
+	}
 	return "file modified but not committed: " + err.relativePath
 }
