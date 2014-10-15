@@ -1,4 +1,5 @@
 issue_tracker: "jira"
+code_review_tool: "review_board"
 jira:
   project_key: "SF"
   base_url: "https://jira.salsitasoft.com/rest/api/2/"
