@@ -30,6 +30,4 @@ func run(cmd *gocli.Command, args []string) {
 	if err := app.Init(); err != nil {
 		log.Fatalln("\nError: " + err.Error())
 	}
-
-	log.Log("The repository is initialised")
 }

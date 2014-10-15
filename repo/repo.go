@@ -33,6 +33,23 @@ func getCommitMsgHookFileName() string {
 	return CommitMsgHookFileName
 }
 
+var initHooks []InitHook
+
+type InitHook func() error
+
+func AddInitHook(hook InitHook) {
+	initHooks = append(initHooks, hook)
+}
+
+func executeInitHooks() error {
+	for _, hook := range initHooks {
+		if err := hook(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func Init() *errs.Error {
 	// Check whether the repository has been initialized yet.
 	msg := "Check whether the repository has been initialized"
@@ -147,6 +164,13 @@ You need Git version 1.9.0 or newer.
 	msg = "Check the git commit-msg hook"
 	log.Run(msg)
 	if err := checkGitHook(); err != nil {
+		return errs.NewError(msg, nil, err)
+	}
+
+	// Run other registered init hooks.
+	msg = "Running the registered repository init hooks"
+	log.Log(msg)
+	if err := executeInitHooks(); err != nil {
 		return errs.NewError(msg, nil, err)
 	}
 
