@@ -23,7 +23,7 @@ func (err *Error) Log(logger log.Logger) {
 	logger.Lock()
 	logger.UnsafeFail(err.TaskName)
 	if err.Err != nil {
-		logger.UnsafeNewLine(fmt.Sprintf("(%v)", err.Err))
+		logger.UnsafeNewLine(fmt.Sprintf("(error = %v)", err.Err))
 	}
 	if err.Stderr != nil {
 		logger.UnsafeStderr(err.Stderr)

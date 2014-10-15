@@ -42,7 +42,7 @@ func Init() *errs.Error {
 	}
 
 	// Make sure the repo is initialised.
-	if err := repo.Init(); err != nil {
+	if err := repo.Init(); err != nil && err.Err != repo.ErrInitialised {
 		return err
 	}
 

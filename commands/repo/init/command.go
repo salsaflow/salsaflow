@@ -6,7 +6,9 @@ import (
 
 	// Internal
 	"github.com/salsita/salsaflow/app"
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/log"
+	"github.com/salsita/salsaflow/repo"
 
 	// Other
 	"gopkg.in/tchap/gocli.v1"
@@ -28,6 +30,11 @@ func run(cmd *gocli.Command, args []string) {
 	}
 
 	if err := app.Init(); err != nil {
+		if err.Err == repo.ErrInitialised {
+			log.Log("The repository has been already initialised")
+			return
+		}
+		errs.Log(err)
 		log.Fatalln("\nError: " + err.Error())
 	}
 }

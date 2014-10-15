@@ -50,16 +50,17 @@ func executeInitHooks() error {
 	return nil
 }
 
+var ErrInitialised = errors.New("repository already initialised")
+
 func Init() *errs.Error {
-	// Check whether the repository has been initialized yet.
-	msg := "Check whether the repository has been initialized"
-	initialized, stderr, err := git.GetConfigBool("salsaflow.initialized")
+	// Check whether the repository has been initialised yet.
+	msg := "Check whether the repository has been initialised"
+	initialised, stderr, err := git.GetConfigBool("salsaflow.initialised")
 	if err != nil {
 		return errs.NewError(msg, stderr, err)
 	}
-	if initialized {
-		// There is nothing to do.
-		return nil
+	if initialised {
+		return errs.NewError(msg, nil, ErrInitialised)
 	}
 
 	log.Log("Initialising the repository for SalsaFlow")
@@ -174,9 +175,9 @@ You need Git version 1.9.0 or newer.
 		return errs.NewError(msg, nil, err)
 	}
 
-	// Success! Mark the repository as initialized in git config.
-	msg = "Mark the repository as initialized"
-	if stderr, err := git.SetConfigBool("salsaflow.initialized", true); err != nil {
+	// Success! Mark the repository as initialised in git config.
+	msg = "Mark the repository as initialised"
+	if stderr, err := git.SetConfigBool("salsaflow.initialised", true); err != nil {
 		return errs.NewError(msg, stderr, err)
 	}
 	asciiart.PrintThumbsUp()
