@@ -58,3 +58,19 @@ func Log(err error) error {
 	}
 	return err
 }
+
+func LogFail(task string, err error) error {
+	if ex, ok := err.(*Error); ok {
+		ex.Log(log.V(log.Info))
+		if task != ex.TaskName {
+			log.Fail(task)
+		}
+	} else {
+		logger := log.V(log.Info)
+		logger.Lock()
+		logger.Fail(task)
+		logger.NewLine(fmt.Sprintf("(err = %v)", err))
+		logger.Unlock()
+	}
+	return err
+}

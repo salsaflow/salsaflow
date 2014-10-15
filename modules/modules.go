@@ -5,5 +5,8 @@ import (
 )
 
 func Bootstrap() *errs.Error {
-	return initIssueTracker()
+	if err := initIssueTracker(); err != nil {
+		return err
+	}
+	return initCodeReviewTool()
 }

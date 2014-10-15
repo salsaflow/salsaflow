@@ -44,7 +44,7 @@ func initIssueTracker() *errs.Error {
 	var (
 		taskName = "Instantiate the selected issue tracker plugin"
 	)
-	factory, ok := factories[config.IssueTrackerName]
+	factory, ok := factories[config.IssueTrackerId()]
 	if !ok {
 		// Collect the available tracker ids.
 		ids := make([]string, 0, len(factories))
@@ -53,7 +53,7 @@ func initIssueTracker() *errs.Error {
 		}
 
 		var b bytes.Buffer
-		fmt.Fprintf(&b, "(unknown issue tracker: %v)", config.IssueTrackerName)
+		fmt.Fprintf(&b, "(unknown issue tracker: %v)", config.IssueTrackerId())
 		fmt.Fprintf(&b, "(available issue trackers: %v)", ids)
 		fmt.Fprintf(&b, "\nError: failed to instantiate the issue tracker plugin")
 		return errs.NewError(taskName, &b, nil)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"text/tabwriter"
 
 	// Internal
@@ -15,8 +16,8 @@ import (
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/log"
+	"github.com/salsita/salsaflow/modules"
 	"github.com/salsita/salsaflow/prompt"
-	"github.com/salsita/salsaflow/shell"
 
 	// Other
 	"gopkg.in/tchap/gocli.v1"
@@ -49,31 +50,17 @@ func handleError(task string, err error, stderr *bytes.Buffer) error {
 	return err
 }
 
-type readResult struct {
-	msg    string
-	stdout *bytes.Buffer
-	stderr *bytes.Buffer
-	err    error
-}
-
 func runMain() (err error) {
-	var (
-		currentBranch string
-		storyId       string
-		stderr        *bytes.Buffer
-	)
-
-	// Remember the current branch.
-	msg := "Remember the current branch"
-	log.Run(msg)
-	currentBranch, stderr, err = git.CurrentBranch()
+	// Get the current branch name.
+	msg := "Get the current branch name"
+	currentBranch, stderr, err := git.CurrentBranch()
 	if err != nil {
 		return handleError(msg, err, nil)
 	}
 
 	// Parse the branch name. Return in case we are not on a story branch.
 	msg = "Parse the branch name"
-	storyId, err = git.RefToStoryId(currentBranch)
+	storyId, err := git.RefToStoryId(currentBranch)
 	if err != nil {
 		_, ok := err.(*git.ErrNotStoryBranch)
 		if !ok {
@@ -145,57 +132,30 @@ Here's what's going to happen:
 
 	// Post the review requests.
 	msg = "Post the review requests"
-	resCh := make(chan *readResult, len(commits))
+	tool := modules.GetCodeReviewTool()
 
+	var wg sync.WaitGroup
+	wg.Add(len(commits))
 	for _, commit := range commits {
 		go func(commit *git.Commit) {
+			defer wg.Done()
 			msg := "Post the review request for commit " + commit.SHA
 			log.Go(msg)
-			stdout, stderr, err := shell.Run(
-				"rbt", "post", "--guess-fields", "yes", "--branch", storyId, commit.SHA)
-			resCh <- &readResult{msg, stdout, stderr, err}
+			if err := tool.PostReviewRequest(commit); err != nil {
+				errs.LogFail(msg, err)
+			}
 		}(commit)
 	}
-	for i := 0; i < cap(resCh); i++ {
-		if res := <-resCh; res != nil {
-			logRbtOutput(res)
-		}
-	}
+	wg.Wait()
 
 	// Tell the user what to do next.
-	log.Println(`
-----------
-
-Now, please, take some time to go through all the review requests,
-check and annotate them for the reviewers to make them more happy (less sad).
-
-If you find any issues you want to fix right before publishing, fix them now,
-amend the relevant commits and use:
-
-  $ rbt post -r <RB request id> <commit SHA>
-
-to update the relevant review request.
-
-  ###########################################################
+	fmt.Println("\n----------")
+	tool.PrintPostReviewRequestFollowup()
+	fmt.Print(`  ###########################################################
   # IMPORTANT: Your code has not been merged and/or pushed. #
   ###########################################################
-
-When you think the review requests are ready to be published,
-publish them in Review Board. Then merge your branch into ` + config.TrunkBranch + ` and push.
+	
 `)
 
 	return nil
-}
-
-func logRbtOutput(res *readResult) {
-	var logger = log.V(log.Info)
-	if res.err != nil {
-		errs.NewError(res.msg, res.stderr, res.err).Log(logger)
-	} else {
-		logger.Lock()
-		logger.UnsafeNewLine("")
-		logger.UnsafeOk(res.msg)
-		logger.UnsafePrint(res.stdout)
-		logger.Unlock()
-	}
 }

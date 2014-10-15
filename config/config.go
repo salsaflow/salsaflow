@@ -27,7 +27,18 @@ const (
 	ConfigBranch = TrunkBranch
 )
 
-var IssueTrackerName string
+var (
+	issueTrackerId   string
+	codeReviewToolId string
+)
+
+func IssueTrackerId() string {
+	return issueTrackerId
+}
+
+func CodeReviewToolId() string {
+	return codeReviewToolId
+}
 
 var (
 	localConfigContent  []byte
@@ -60,17 +71,22 @@ func Load() *errs.Error {
 	// Parse the local config to know what config modules to bootstrap.
 	msg = "Parse project configuration file"
 	var config struct {
-		IssueTracker string `yaml:"issue_tracker"`
+		IssueTracker   string `yaml:"issue_tracker"`
+		CodeReviewTool string `yaml:"code_review_tool"`
 	}
 	if err := yaml.Unmarshal(localConfigContent, &config); err != nil {
 		return errs.NewError(msg, nil, err)
 	}
-	if config.IssueTracker == "" {
+	switch {
+	case config.IssueTracker == "":
 		return errs.NewError(msg, nil, &ErrKeyNotSet{"issue_tracker"})
+	case config.CodeReviewTool == "":
+		return errs.NewError(msg, nil, &ErrKeyNotSet{"code_review_tool"})
 	}
 
-	// Set the issue tracker name.
-	IssueTrackerName = config.IssueTracker
+	// Set the global variables.
+	issueTrackerId = config.IssueTracker
+	codeReviewToolId = config.CodeReviewTool
 
 	return nil
 }
