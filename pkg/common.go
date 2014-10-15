@@ -26,16 +26,9 @@ var ErrAborted = errors.New("aborted by the user")
 //
 // Given a GitHub release, it downloads and unpacks the fitting artifacts
 // and replaces the current executables with the ones just downloaded.
-func doInstall(client *github.Client, owner, repo string, release *github.RepositoryRelease, version string) error {
-	// Fetch the release assets.
-	msg := "Fetch relevant GitHub release metadata"
-	log.Run(msg)
-	assets, _, err := client.Repositories.ListReleaseAssets(owner, repo, *release.ID, nil)
-	if err != nil {
-		return errs.NewError(msg, nil, err)
-	}
-
-	msg = "Pick the most suitable release asset"
+func doInstall(client *github.Client, owner, repo string, assets []github.ReleaseAsset, version string) error {
+	// Choose the asset to be downloaded.
+	msg := "Pick the most suitable release asset"
 	var (
 		assetName = getAssetName(version)
 		assetURL  string

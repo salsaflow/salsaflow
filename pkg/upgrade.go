@@ -108,7 +108,7 @@ func Upgrade(opts *InstallOptions) error {
 	fmt.Println()
 
 	// Proceed to actually install the executables.
-	return doInstall(client, owner, repo, release.resource, release.version.String())
+	return doInstall(client, owner, repo, release.resource.Assets, release.version.String())
 }
 
 type githubRelease struct {
