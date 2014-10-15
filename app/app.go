@@ -42,7 +42,7 @@ func Init() *errs.Error {
 	}
 
 	// Make sure the repo is initialised.
-	if err := repo.Init(); err != nil && err.Err != repo.ErrInitialised {
+	if err := repo.Init(); err != nil {
 		return err
 	}
 
@@ -51,7 +51,7 @@ func Init() *errs.Error {
 
 func MustInit() {
 	var logger = log.V(log.Info)
-	if err := Init(); err != nil {
+	if err := Init(); err != nil && err.Err != repo.ErrInitialised {
 		err.Fatal(logger)
 	}
 }
