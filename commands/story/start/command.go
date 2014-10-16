@@ -76,7 +76,6 @@ func runMain() (err error) {
 
 	// Remember the current branch.
 	msg := "Remember the current branch"
-	log.Run(msg)
 	currentBranch, stderr, err := git.CurrentBranch()
 	if err != nil {
 		return handleError(msg, err, stderr)
