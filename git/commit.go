@@ -11,6 +11,7 @@ import (
 
 const (
 	logScanHead = iota + 1
+	logScanMerge
 	logScanAuthor
 	logScanAuthorDate
 	logScanCommitter
@@ -28,6 +29,7 @@ var (
 
 type Commit struct {
 	SHA        string
+	Merge      string
 	Author     string
 	AuthorDate time.Time
 	Committer  string
@@ -130,10 +132,14 @@ func ParseCommits(sout *bytes.Buffer) (commits []*Commit, err error) {
 			}
 			nextState = logScanAuthor
 
-		case logScanAuthor:
-			if strings.HasPrefix(line, "Merge") {
-				continue
+		case logScanMerge:
+			// Only present when this is a merge commit.
+			if strings.HasPrefix(line, "Merge: ") {
+				commit.Merge = line[7:]
 			}
+			nextState = logScanAuthor
+
+		case logScanAuthor:
 			if strings.HasPrefix(line, "Author:     ") {
 				commit.Author = line[12:]
 				nextState = logScanAuthorDate

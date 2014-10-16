@@ -94,7 +94,8 @@ func run(remoteName, pushURL string) error {
 	io.WriteString(tw, "==========\t=====\n")
 
 	for _, commit := range commits {
-		if commit.StoryId == "" {
+		// All non-merge commits must have the Story-Id tag present in the commit message.
+		if commit.StoryId == "" && commit.Merge == "" {
 			fmt.Fprintf(tw, "%v\t%v\n", commit.SHA, "commit message: Story-Id tag missing")
 			invalid = true
 		}
