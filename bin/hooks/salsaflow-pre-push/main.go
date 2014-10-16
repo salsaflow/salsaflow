@@ -57,7 +57,10 @@ func run(remoteName, pushURL string) error {
 		if len(parts) != 4 {
 			return errs.NewError(msg, nil, errors.New("invalid input line: "+line))
 		}
-		hexshas = append(hexshas, parts[1])
+		// We get the following hexsha when the ref is being deleted. Skip that.
+		if sha := parts[1]; sha != "0000000000000000000000000000000000000000" {
+			hexshas = append(hexshas, sha)
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		return errs.NewError(msg, nil, err)
