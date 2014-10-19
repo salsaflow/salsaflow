@@ -10,15 +10,10 @@ import (
 	"strings"
 
 	// Internal
+	"github.com/salsita/salsaflow/asciiart"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/uuid"
-)
-
-const (
-	stateWhitespace = iota + 1
-	stateContent
-	stateTags
 )
 
 const diffSeparator = "# ------------------------ >8 ------------------------"
@@ -39,13 +34,14 @@ func main() {
 	}
 
 	if err := run(os.Args[1]); err != nil {
-		log.Fatalln(err)
+		asciiart.PrintGrimReaper("COMMIT ABORTED")
+		log.Fatalln("Error:", err)
 	}
 }
 
-func run(msgPath string) error {
+func run(messagePath string) error {
 	// Open the commit message file.
-	file, err := os.OpenFile(msgPath, os.O_RDWR, 0644)
+	file, err := os.OpenFile(messagePath, os.O_RDWR, 0644)
 	if err != nil {
 		return err
 	}
@@ -53,90 +49,47 @@ func run(msgPath string) error {
 
 	// Read and parse the commit message.
 	var (
-		state        = stateWhitespace
-		changeIdSeen bool
-		storyIdSeen  bool
-		lines        []string
+		dropEmptyLines bool = true
+		changeIdSeen   bool
+		lines          []string
 	)
 	scanner := bufio.NewScanner(file)
-ScanLoop:
 	for scanner.Scan() {
-		line := scanner.Text()
-		trimmedLine := strings.TrimSpace(line)
+		// Read the next line.
+		var (
+			line        = scanner.Text()
+			trimmedLine = strings.TrimSpace(line)
+		)
 
-		// Drop leading whitespace and comments.
-		//
-		// This is necessary since in case the commit message is empty,
-		// nothing is really written and the commit is canceled.
-		if state == stateWhitespace {
-			switch {
-			case trimmedLine == "":
-				continue ScanLoop
-			case strings.HasPrefix(trimmedLine, "#"):
-				continue ScanLoop
-			}
-			state = stateContent
-		}
-
-		// Keep appending content until a tag is encountered.
-		if state == stateContent {
-			switch {
-			case git.ChangeIdTagPattern.MatchString(trimmedLine):
-				if changeIdSeen {
-					return errors.New("multiple Change-Id tags detected")
-				}
-				changeIdSeen = true
-				state = stateTags
-
-			case git.StoryIdTagPattern.MatchString(trimmedLine):
-				if storyIdSeen {
-					return errors.New("multiple Story-Id tags detected")
-				}
-				storyIdSeen = true
-				state = stateTags
-			}
-
-			lines = append(lines, line)
-			continue ScanLoop
-		}
-
-		// In case Change-Id or Story-Id is already there, consume the rest of the input
-		// in a similar way as the previous state, just drop empty lines and comments.
-		if state == stateTags {
+		// Drop leading empty lines.
+		if dropEmptyLines {
 			if trimmedLine == "" {
 				continue
 			}
-
-			switch {
-			case git.ChangeIdTagPattern.MatchString(trimmedLine):
-				if changeIdSeen {
-					return errors.New("multiple Change-Id tags detected")
-				}
-				changeIdSeen = true
-
-			case git.StoryIdTagPattern.MatchString(trimmedLine):
-				if storyIdSeen {
-					return errors.New("multiple Story-Id tags detected")
-				}
-				storyIdSeen = true
-
-			case line == diffSeparator:
-				// Everything below diffSeparator is anyway removed by git,
-				// so we can as well just skip it and drop the content here.
-				break ScanLoop
-
-			case strings.HasPrefix(trimmedLine, "#"):
-				// Let's drop comments here.
-				// This must come after the previous case, otherwise
-				// the diff separator is dropped as well.
-				continue ScanLoop
-			}
-
-			lines = append(lines, line)
-			continue ScanLoop
+			dropEmptyLines = false
 		}
 
-		panic("unreachable code reached")
+		// Drop comments.
+		if strings.HasPrefix(trimmedLine, "#") {
+			continue
+		}
+
+		// Drop the diff that can be appended do the commit message when
+		// git commit -v is used. Git would drop the diff later anyway.
+		if line == diffSeparator {
+			break
+		}
+
+		// Check for the Change-Id tag.
+		if git.ChangeIdTagPattern.MatchString(trimmedLine) {
+			if changeIdSeen {
+				return errors.New("multiple Change-Id tags detected")
+			}
+			changeIdSeen = true
+		}
+
+		// Finally, append the line to the commit message.
+		lines = append(lines, line)
 	}
 	if err := scanner.Err(); err != nil {
 		return err
@@ -147,37 +100,23 @@ ScanLoop:
 		return nil
 	}
 
-	// Return if all the tags are already there.
-	if changeIdSeen && storyIdSeen {
+	// Do nothing in case Change-Id is already there.
+	if changeIdSeen {
 		return nil
 	}
 
-	// Append a newline if there are no tags yet.
-	if state != stateTags && lines[len(lines)-1] != "\n" {
-		lines = append(lines, "")
+	// Make sure a single empty line is following the current content.
+	for lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
 	}
+	lines = append(lines, "")
 
-	// Get the values for the missing tags.
-	if !changeIdSeen {
-		changeId, err := uuid.New()
-		if err != nil {
-			return err
-		}
-		lines = append(lines, fmt.Sprintf("Change-Id: %v", changeId))
+	// Append the Change-Id tag.
+	changeId, err := uuid.New()
+	if err != nil {
+		return err
 	}
-
-	if !storyIdSeen {
-		branch, stderr, err := git.CurrentBranch()
-		if err != nil {
-			log.Println(stderr)
-			return err
-		}
-
-		storyId, err := git.RefToStoryId(branch)
-		if err == nil {
-			lines = append(lines, fmt.Sprintf("Story-Id: %v", storyId))
-		}
-	}
+	lines = append(lines, fmt.Sprintf("Change-Id: %v", changeId))
 
 	// Write the content back to the disk (truncate the file first).
 	_, err = file.Seek(0, os.SEEK_SET)
@@ -188,7 +127,6 @@ ScanLoop:
 		return err
 	}
 
-	content := strings.Join(lines, "\n") + "\n"
-	_, err = io.Copy(file, strings.NewReader(content))
+	_, err = io.Copy(file, strings.NewReader(strings.Join(lines, "\n")))
 	return err
 }
