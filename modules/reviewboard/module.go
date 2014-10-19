@@ -29,7 +29,7 @@ func Factory() (common.CodeReviewTool, error) {
 func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit) error {
 	msg := "Post review request for commit " + commit.SHA
 	stdout, stderr, err := shell.Run(
-		"rbt", "post", "--guess-fields", "yes", "--branch", commit.StoryId, commit.SHA)
+		"rbt", "post", "--guess-fields", "yes", "--bugs-closed", commit.StoryId, commit.SHA)
 	if err != nil {
 		return errs.NewError(msg, stderr, err)
 	}
