@@ -106,10 +106,13 @@ func run(messagePath string) error {
 	}
 
 	// Make sure a single empty line is following the current content.
+	// Do not insert an empty line in case the last line is Story-Id.
 	for lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
-	lines = append(lines, "")
+	if !strings.HasPrefix(lines[len(lines)-1], "Story-Id") {
+		lines = append(lines, "")
+	}
 
 	// Append the Change-Id tag.
 	changeId, err := uuid.New()
