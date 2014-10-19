@@ -20,7 +20,7 @@ func (story *story) ReadableId() string {
 }
 
 func (story *story) Assignees() []common.User {
-	panic("Not implemented")
+	return []common.User{&user{story.Issue.Fields.Assignee}}
 }
 
 func (story *story) Title() string {
