@@ -189,14 +189,17 @@ func ParseCommits(sout *bytes.Buffer) (commits []*Commit, err error) {
 				Source: parts[2],
 			}
 			message = make([]string, 0)
-			nextState = logScanAuthor
+			nextState = logScanMerge
 
 		case logScanMerge:
 			// Only present when this is a merge commit.
 			if strings.HasPrefix(line, "Merge: ") {
 				commit.Merge = line[7:]
+				nextState = logScanAuthor
+				continue
 			}
-			nextState = logScanAuthor
+			// In case the line is not present, fall through to Author.
+			fallthrough
 
 		case logScanAuthor:
 			if strings.HasPrefix(line, "Author:     ") {
