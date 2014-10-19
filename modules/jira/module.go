@@ -81,20 +81,38 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 	for i := range startableStates {
 		startableStateIds[i] = startableStates[i].Id
 	}
-	jql := fmt.Sprintf("project=%s and (status=%s)",
+	query := fmt.Sprintf("project=%s and (status=%s)",
 		config.ProjectKey(), strings.Join(startableStateIds, " OR status="))
 
 	issues, _, err := newClient().Issues.Search(&client.SearchOptions{
-		JQL: jql, MaxResults: 200,
+		JQL:        query,
+		MaxResults: 200,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	commonStories := make([]common.Story, len(issues))
-	for i := range issues {
-		commonStories[i] = &story{issues[i]}
+	return toCommonStories(issues), nil
+}
+
+func (tracker *issueTracker) StoriesInProgress() (stories []common.Story, err error) {
+	query := fmt.Sprintf("project=%v AND (status=%v OR status=%v)",
+		config.ProjectKey(), statusInProgress.Id, statusVerification.Id)
+	issues, _, err := newClient().Issues.Search(&client.SearchOptions{
+		JQL:        query,
+		MaxResults: 200,
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	return commonStories, err
+	return toCommonStories(issues), nil
+}
+
+func toCommonStories(issues []*client.Issue) []common.Story {
+	stories := make([]common.Story, len(issues))
+	for i := range issues {
+		stories[i] = &story{issues[i]}
+	}
+	return stories
 }

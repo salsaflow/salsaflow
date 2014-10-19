@@ -89,10 +89,22 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		return nil, err
 	}
 
-	commonStories := make([]common.Story, len(pivotalStories))
-	for i := range pivotalStories {
-		commonStories[i] = &story{pivotalStories[i]}
+	return toCommonStories(pivotalStories), nil
+}
+
+func (tracker *issueTracker) StoriesInProgress() (stories []common.Story, err error) {
+	pivotalStories, err := listStories("(type:bug OR type:feature) AND (state:started OR state:finished)")
+	if err != nil {
+		return nil, err
 	}
 
-	return commonStories, nil
+	return toCommonStories(pivotalStories), nil
+}
+
+func toCommonStories(stories []*pivotal.Story) []common.Story {
+	commonStories := make([]common.Story, len(stories))
+	for i := range stories {
+		commonStories[i] = &story{stories[i]}
+	}
+	return commonStories
 }

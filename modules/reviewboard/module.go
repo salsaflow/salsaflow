@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	// Internal
-	"github.com/salsita/salsaflow/config"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/log"
@@ -30,12 +29,13 @@ func Factory() (common.CodeReviewTool, error) {
 func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit) error {
 	msg := "Post review request for commit " + commit.SHA
 	stdout, stderr, err := shell.Run(
-		"rbt", "post", "--guess-fields", "yes", "--branch", commit.StoryId, commit.SHA)
+		"rbt", "post", "--guess-fields", "yes", "--bugs-closed", commit.StoryId, commit.SHA)
 	if err != nil {
 		return errs.NewError(msg, stderr, err)
 	}
 	logger := log.V(log.Info)
 	logger.Lock()
+	logger.UnsafeNewLine("")
 	logger.UnsafeOk(msg)
 	fmt.Print(stdout)
 	logger.Unlock()
@@ -48,14 +48,16 @@ Now, please, take some time to go through all the review requests,
 check and annotate them for the reviewers to make them more happy (less sad).
 
 If you find any issues you want to fix right before publishing, fix them now,
-amend the relevant commits and use:
+and if you still can, amend the relevant commits and use:
 
   $ rbt post -r <RB request id> <commit SHA>
 
-to update the relevant review request.
+to update (replace) the relevant review request.
 
-When you think the review requests are ready to be published,
-publish them in Review Board. Then merge your branch into ` + config.TrunkBranch + ` and push.
+In case you cannot amend the relevant commits any more, use the usual
+review update command to update the review requests.
+
+When you think that you are ready, publish the review requests in Review Board.
 `)
 }
 

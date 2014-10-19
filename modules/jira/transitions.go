@@ -21,40 +21,54 @@ var startableStates = []jiraWorkflowEntity{
 	},
 }
 
+var statusIcebox = jiraWorkflowEntity{
+	"10000",
+	"IceBox",
+}
+
+var statusScheduled = jiraWorkflowEntity{
+	"10107",
+	"Scheduled",
+}
+
+var statusInProgress = jiraWorkflowEntity{
+	"3",
+	"In Progress",
+}
+
+var statusVerification = jiraWorkflowEntity{
+	"10104",
+	"Verification",
+}
+
+var statusStaged = jiraWorkflowEntity{
+	"10105",
+	"Staged",
+}
+
+var statusReleased = jiraWorkflowEntity{
+	"10106",
+	"Released",
+}
+
+var statusClosed = jiraWorkflowEntity{
+	"6",
+	"Closed",
+}
+
 var transitionStart = jiraWorkflowEntity{
 	"4",
 	"Start Progress",
 }
 
-var statuses = []jiraWorkflowEntity{
-	{
-		"6",
-		"Closed",
-	},
-	{
-		"10000",
-		"IceBox",
-	},
-	{
-		"10107",
-		"Scheduled",
-	},
-	{
-		"3",
-		"In Progress",
-	},
-	{
-		"10104",
-		"Verification",
-	},
-	{
-		"10105",
-		"Staged",
-	},
-	{
-		"10106",
-		"Released",
-	},
+var transitionStage = jiraWorkflowEntity{
+	"731",
+	"stage",
+}
+
+var transitionRelease = jiraWorkflowEntity{
+	"741",
+	"release",
 }
 
 var transitions = []jiraWorkflowEntity{

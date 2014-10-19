@@ -38,5 +38,18 @@ func PrintSnoopy() {
      /  \-'~;    /~~~(O)
     /  __/~|   /       |
   =(  _____| (_________|
-	`)
+`)
+}
+
+func PrintGrimReaper(msg string) {
+	log.Printf(`
+                ( %v )
+    ___o .--.  o
+   /___| |OO| .
+  /'   |_|  |
+       (_    _)
+       | |   \
+       | |oo_/
+
+`, msg)
 }
