@@ -401,6 +401,9 @@ Please pick up the story to assign the commit to.
 		return commits, handleError(msg, err, stderr)
 	}
 
+	log.NewLine("")
+	log.Log("Commit messages amended successfully")
+
 	// And we are done!
 	return newCommits, nil
 }
