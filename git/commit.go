@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
+	"text/template"
 	"time"
 )
 
@@ -18,6 +20,7 @@ const (
 	logScanCommitDate
 	logScanMsgTitle
 	logScanMsgBody
+	logScanDiff
 )
 
 const dateLayout = "Mon Jan 2 15:04:05 2006 -0700"
@@ -28,16 +31,47 @@ var (
 )
 
 type Commit struct {
-	SHA        string
-	Merge      string
-	Author     string
-	AuthorDate time.Time
-	Committer  string
-	CommitDate time.Time
-	Title      string
-	ChangeId   string
-	StoryId    string
-	Source     string
+	SHA          string
+	Source       string
+	Merge        string
+	Author       string
+	AuthorDate   time.Time
+	Committer    string
+	CommitDate   time.Time
+	MessageTitle string
+	Message      string
+	ChangeId     string
+	StoryId      string
+}
+
+var commitTemplate = `commit {{.SHA}} {{.Source}}{{with .Merge}}Merge: {{.}}{{"\n"}}{{end}}
+Author:     {{.Author}}
+AuthorDate: {{.AuthorDate}}
+Commit:     {{.Committer}}
+CommitDate: {{.CommitDate}}
+
+{{.Message | indent }}
+`
+
+func (commit *Commit) Bump(wr io.Writer) error {
+	funcMap := template.FuncMap{
+		"indent": func(content string) (string, error) {
+			var out bytes.Buffer
+			scanner := bufio.NewScanner(strings.NewReader(content))
+			for scanner.Scan() {
+				if _, err := fmt.Fprintln(&out, "    ", scanner.Text()); err != nil {
+					return "", err
+				}
+			}
+			if err := scanner.Err(); err != nil {
+				return "", err
+			}
+			return out.String(), nil
+		},
+	}
+
+	tpl := template.Must(template.New("commit").Funcs(funcMap).Parse(commitTemplate))
+	return tpl.Execute(wr, commit)
 }
 
 // ListStoryCommits returns the list of all commits that are associated with the given story.
@@ -64,14 +98,32 @@ func GrepCommits(filter string) (commits []*Commit, stderr *bytes.Buffer, err er
 	return
 }
 
-// Returns list of commit on branch `ref` compared to branch `parent`.
-func ListBranchCommits(ref string, parent string) (commits []*Commit, stderr *bytes.Buffer, err error) {
+// ShowCommits returns the list of commits associated with the given revisions.
+func ShowCommits(revisions ...string) (commits []*Commit, stderr *bytes.Buffer, err error) {
+	args := make([]string, 4, 4+len(revisions))
+	args[0] = "show"
+	args[1] = "--source"
+	args[2] = "--abbrev-commit"
+	args[3] = "--pretty=fuller"
+	args = append(args, revisions...)
+
+	sout, serr, err := Git(args...)
+	if err != nil {
+		return nil, serr, err
+	}
+
+	commits, err = ParseCommits(sout)
+	return
+}
+
+// ShowCommitRange returns the list of commits specified by the given Git revision range.
+func ShowCommitRange(revisions string) (commits []*Commit, stderr *bytes.Buffer, err error) {
 	args := []string{
 		"log",
 		"--source",
 		"--abbrev-commit",
 		"--pretty=fuller",
-		parent + ".." + ref,
+		revisions,
 	}
 	sout, serr, err := Git(args...)
 	if err != nil {
@@ -98,11 +150,15 @@ func ParseCommits(sout *bytes.Buffer) (commits []*Commit, err error) {
 	cs := make([]*Commit, 0)
 
 	var (
-		lineNum     int
-		nextState   int
-		maybeHead   = true
-		commit      *Commit
+		lineNum   int
+		nextState int
+		maybeHead = true
+
+		commit  *Commit
+		message []string
+
 		headPattern = regexp.MustCompile("^commit[ \t]+([0-9a-f]+)[ \t]+(.+)$")
+		numSpaces   int
 		scanner     = bufio.NewScanner(sout)
 	)
 	for scanner.Scan() {
@@ -123,13 +179,16 @@ func ParseCommits(sout *bytes.Buffer) (commits []*Commit, err error) {
 				err = fmt.Errorf("failed to parse git log [line %v]: %v", lineNum, line)
 				return
 			}
+			// Close the previous commit.
 			if commit != nil {
-				cs = append(cs, commit)
+				cs = append(cs, finaliseCommit(commit, message))
 			}
+			// Start a new commit.
 			commit = &Commit{
 				SHA:    parts[1],
 				Source: parts[2],
 			}
+			message = make([]string, 0)
 			nextState = logScanAuthor
 
 		case logScanMerge:
@@ -190,47 +249,77 @@ func ParseCommits(sout *bytes.Buffer) (commits []*Commit, err error) {
 			if line == "" {
 				continue
 			}
-			commit.Title = strings.TrimSpace(line)
+			trimmedLine := strings.TrimSpace(line)
+			numSpaces = strings.Index(line, trimmedLine)
+			commit.MessageTitle = trimmedLine
+			message = append(message, line[numSpaces:])
 			nextState = logScanMsgBody
 
 		case logScanMsgBody:
-			if line == "" {
-				continue
-			}
-			line = strings.TrimSpace(line)
+			trimmedLine := strings.TrimSpace(line)
 			switch {
-			case ChangeIdTagPattern.MatchString(line):
+			// In case we are parsing the output of git show,
+			// we have to handle the diff section as well.
+			case strings.HasPrefix(line, "diff --git"):
+				nextState = logScanDiff
+				continue
+			case ChangeIdTagPattern.MatchString(trimmedLine):
 				if commit.ChangeId != "" {
 					err = fmt.Errorf("git log [commit %v]: duplicate Change-Id tag", commit.SHA)
 					return
 				}
-				parts := ChangeIdTagPattern.FindStringSubmatch(line)
+				parts := ChangeIdTagPattern.FindStringSubmatch(trimmedLine)
 				if len(parts) != 2 {
 					err = fmt.Errorf("git log [commit %v]: invalid Change-Id tag", commit.SHA)
 					return
 				}
 				commit.ChangeId = parts[1]
-			case StoryIdTagPattern.MatchString(line):
+			case StoryIdTagPattern.MatchString(trimmedLine):
 				if commit.StoryId != "" {
 					err = fmt.Errorf("git log [commit %v]: duplicate Story-Id tag", commit.SHA)
 					return
 				}
-				parts := StoryIdTagPattern.FindStringSubmatch(line)
+				parts := StoryIdTagPattern.FindStringSubmatch(trimmedLine)
 				if len(parts) != 2 {
 					err = fmt.Errorf("git log [commit %v]: invalid Story-Id tag", commit.SHA)
 					return
 				}
 				commit.StoryId = parts[1]
 			}
+			if len(line) >= numSpaces {
+				line = line[numSpaces:]
+			}
+			message = append(message, line)
 			maybeHead = true
+
+		case logScanDiff:
+			continue
 		}
 	}
 	if commit != nil {
-		cs = append(cs, commit)
+		cs = append(cs, finaliseCommit(commit, message))
 	}
 
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
-	return cs, nil
+
+	// Reverse the list of commits so that the first commit in the chain
+	// is also the first commit in the list being returned.
+	reversed := make([]*Commit, len(cs))
+	for i, commit := range cs {
+		reversed[len(reversed)-1-i] = commit
+	}
+	return reversed, nil
+}
+
+func finaliseCommit(commit *Commit, messageLines []string) *Commit {
+	// Make sure the commit message ends with no empty lines.
+	// This also means that there is no newline at the end.
+	for messageLines[len(messageLines)-1] == "" {
+		messageLines = messageLines[:len(messageLines)-1]
+	}
+	// Concatenate the lines and set the resulting commit message.
+	commit.Message = strings.Join(messageLines, "\n")
+	return commit
 }

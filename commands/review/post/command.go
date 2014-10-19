@@ -86,7 +86,8 @@ func runMain() (err error) {
 
 	// Get all the commits that are new compared to the trunk branch.
 	msg = "List and parse the commits on the story branch"
-	commits, stderr, err := git.ListBranchCommits(currentBranch, config.TrunkBranch)
+	commits, stderr, err := git.ShowCommitRange(
+		fmt.Sprintf("%s..%s", config.TrunkBranch, currentBranch))
 	if err != nil {
 		return handleError(msg, err, stderr)
 	}
@@ -106,7 +107,7 @@ Here's what's going to happen:
 	io.WriteString(tw, "     Commit SHA\tCommit Title\n")
 	io.WriteString(tw, "     ==========\t============\n")
 	for _, commit := range commits {
-		fmt.Fprintf(tw, "     %v\t%v\n", commit.SHA, commit.Title)
+		fmt.Fprintf(tw, "     %v\t%v\n", commit.SHA, commit.MessageTitle)
 	}
 	io.WriteString(tw, "\n")
 	tw.Flush()

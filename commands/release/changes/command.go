@@ -167,7 +167,7 @@ func runMain() (err error) {
 			// Print the first line.
 			commit := change.Commits[0]
 			fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
-				storyId, changeId, commit.SHA, commit.Source, commit.Title)
+				storyId, changeId, commit.SHA, commit.Source, commit.MessageTitle)
 
 			// Make some of the columns empty in case we are not porcelain.
 			if !porcelain {
@@ -178,7 +178,7 @@ func runMain() (err error) {
 			// Print the rest with the chosen columns being empty.
 			for _, commit := range change.Commits[1:] {
 				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
-					storyId, changeId, commit.SHA, commit.Source, commit.Title)
+					storyId, changeId, commit.SHA, commit.Source, commit.MessageTitle)
 			}
 		}
 	}

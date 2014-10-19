@@ -19,6 +19,20 @@ func UpdateRemotes(remotes ...string) (stderr *bytes.Buffer, err error) {
 	return
 }
 
+func Log(args ...string) (stdout, stderr *bytes.Buffer, err error) {
+	argsList := make([]string, 1, 1+len(args))
+	argsList[0] = "log"
+	argsList = append(argsList, args...)
+	return Git(argsList...)
+}
+
+func CherryPick(args ...string) (stdout, stderr *bytes.Buffer, err error) {
+	argsList := make([]string, 1, 1+len(args))
+	argsList[0] = "cherry-pick"
+	argsList = append(argsList, args...)
+	return Git(argsList...)
+}
+
 func Push(remote string, args ...string) (stderr *bytes.Buffer, err error) {
 	argsList := make([]string, 2, 2+len(args))
 	argsList[0] = "push"
