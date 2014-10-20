@@ -28,8 +28,9 @@ import (
 )
 
 var Command = &gocli.Command{
-	UsageLine: "post [-parent=BRANCH] [-no_fetch] [-no_rebase] [REVISION]",
-	Short:     "post code review requests",
+	UsageLine: `
+  post [-no_fetch] [-no_rebase] [-ask_once] [-parent=BRANCH] [REVISION]`,
+	Short: "post code review requests",
 	Long: `
   Post a code review request for each commit specified.
 
@@ -41,7 +42,8 @@ var Command = &gocli.Command{
   BRANCH and HEAD are selected to be posted for code review. Using git revision
   ranges, these are the commits matching BRANCH..HEAD, or BRANCH.. for short.
   The selected sommits are rebased onto the parent branch before posting.
-  To prevent rebasing, use -no_rebase.
+  To prevent rebasing, use -no_rebase. To be asked to pick up the missing
+  story ID only once and use it for all commits, set -ask_once.
 
   When no parent branch nor the revision is specified, the last commit
   on the current branch is selected and posted alone into the code review tool.
@@ -50,19 +52,24 @@ var Command = &gocli.Command{
 }
 
 var (
-	flagParent   string
+	flagAskOnce  bool
 	flagNoFetch  bool
 	flagNoRebase bool
+	flagParent   string
 )
 
 func init() {
-	Command.Flags.StringVar(&flagParent, "parent", flagParent,
-		"branch to be used in computing the revision range")
+	Command.Flags.BoolVar(&flagAskOnce, "ask_once", flagAskOnce,
+		"ask once and reuse the story ID for all commits")
 	Command.Flags.BoolVar(&flagNoFetch, "no_fetch", flagNoFetch,
 		"do not fetch the upstream repository")
 	Command.Flags.BoolVar(&flagNoRebase, "no_rebase", flagNoRebase,
 		"do not rebase onto the parent branch")
+	Command.Flags.StringVar(&flagParent, "parent", flagParent,
+		"branch to be used in computing the revision range")
 }
+
+var ErrNoCommits = errors.New("no commits selected for code review")
 
 func run(cmd *gocli.Command, args []string) {
 	if len(args) > 1 {
@@ -163,15 +170,21 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 }
 
 func postReviewRequests(commits []*git.Commit, canAmend bool) error {
+	// Make sure there are actually some commits to be posted.
+	msg := "Make sure there are actually some commits to be posted"
+	if len(commits) == 0 {
+		return handleError(msg, ErrNoCommits, nil)
+	}
+
 	// Tell the user what is going to happen.
 	fmt.Print(`
 You are about to post review requests for the following commits:
 
 `)
-	mustBumpCommits(os.Stdout, commits, "  ")
+	mustListCommits(os.Stdout, commits, "  ")
 
 	// Ask the user for confirmation.
-	msg := "Prompt the user for confirmation"
+	msg = "Prompt the user for confirmation"
 	confirmed, err := prompt.Confirm("\nYou cool with that?")
 	if err != nil {
 		return handleError(msg, err, nil)
@@ -220,9 +233,9 @@ func rewriteCommits(commits []*git.Commit, canAmend bool) ([]*git.Commit, error)
 		}
 	}
 
-	// Make sure there are actually some commits to be posted.
+	// Again, make sure there are actually some commits to be posted.
 	if len(commits) == 0 {
-		return commits, errors.New("no commits selected for code review")
+		return commits, ErrNoCommits
 	}
 
 	// In case there is no Story-Id tag missing, we are done.
@@ -257,8 +270,6 @@ and read the DESCRIPTION section.
 			bytes.NewBufferString(hint),
 			errors.New("Story-Id tag missing"))
 	}
-
-	log.Log("Story-Id tags missing, rewriting the commits")
 
 	// Fetch the stories in progress from the issue tracker.
 	storiesMsg := "Fetch stories from the issue tracker"
@@ -336,6 +347,20 @@ StoryLoop:
 	}()
 
 	// Loop and rewrite the commit messages.
+	var story common.Story
+	if flagAskOnce {
+		fmt.Print(`
+Some of the commits listed above are not assigned to any story.
+Please pick up the story that these commits will be assigned to:
+
+`)
+		selectedStory, err := promptForStory(stories)
+		if err != nil {
+			return commits, err
+		}
+		story = selectedStory
+	}
+
 	for _, commit := range commits {
 		// Cherry-pick the commit.
 		msg := "Move the next commit onto the temporary branch"
@@ -344,34 +369,23 @@ StoryLoop:
 		}
 
 		if commit.StoryId == "" {
-			// Tell the user what is happening.
-			fmt.Printf(`
+			if !flagAskOnce {
+				// Ask for the story ID for the current commit.
+				fmt.Printf(`
 The following commit is not assigned to any story:
 
   commit hash:  %v
   commit title: %v
 
-The commit can be assigned to one of the following stories.
-Please pick up the story to assign the commit to.
+Please pick up the story to assign the commit to:
 
 `, commit.SHA, commit.MessageTitle)
-
-			tw := tabwriter.NewWriter(os.Stdout, 0, 8, 4, '\t', 0)
-			io.WriteString(tw, "  Index\tStory ID\tStory Title\n")
-			io.WriteString(tw, "  =====\t========\t===========\n")
-			for i, story := range stories {
-				fmt.Fprintf(tw, "  %v\t%v\t%v\n", i, story.ReadableId(), story.Title())
+				selectedStory, err := promptForStory(stories)
+				if err != nil {
+					return commits, err
+				}
+				story = selectedStory
 			}
-			io.WriteString(tw, "\n")
-			tw.Flush()
-
-			// Prompt the user to select a story to assign the commit with.
-			msg = "Prompt the user to select a story"
-			index, err := prompt.PromptIndex("Choose a story by inserting its index: ", 0, len(stories)-1)
-			if err != nil {
-				return commits, errs.NewError(msg, nil, err)
-			}
-			story := stories[index]
 
 			// Amend the commit message to include Story-Id.
 			commit.Message += fmt.Sprintf("\nStory-Id: %v\n", story.ReadableId())
@@ -408,7 +422,7 @@ Please pick up the story to assign the commit to.
 	return newCommits, nil
 }
 
-func mustBumpCommits(writer io.Writer, commits []*git.Commit, prefix string) {
+func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 	must := func(n int, err error) error {
 		if err != nil {
 			panic(err)
@@ -425,6 +439,27 @@ func mustBumpCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 	}
 
 	must(0, tw.Flush())
+}
+
+func promptForStory(stories []common.Story) (common.Story, error) {
+	// Present the stories to the user.
+	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 4, '\t', 0)
+	io.WriteString(tw, "  Index\tStory ID\tStory Title\n")
+	io.WriteString(tw, "  =====\t========\t===========\n")
+	for i, story := range stories {
+		fmt.Fprintf(tw, "  %v\t%v\t%v\n", i, story.ReadableId(), story.Title())
+	}
+	io.WriteString(tw, "\n")
+	tw.Flush()
+
+	// Prompt the user to select a story to assign the commit with.
+	msg := "Prompt the user to select a story"
+	index, err := prompt.PromptIndex(
+		"Choose a story by inserting its index: ", 0, len(stories)-1)
+	if err != nil {
+		return nil, errs.NewError(msg, nil, err)
+	}
+	return stories[index], nil
 }
 
 func sendReviewRequests(commits []*git.Commit) error {
