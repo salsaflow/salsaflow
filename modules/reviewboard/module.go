@@ -65,7 +65,7 @@ func ensureRbtVersion() error {
 	msg := "Check the RBTools version being used"
 	log.Run(msg)
 
-	// rbt prints the version string to stderr. WHY? Know knows...
+	// rbt prints the version string to stderr. WHY? Who knows...
 	_, stderr, err := shell.Run("rbt", "--version")
 	if err != nil {
 		return errs.NewError(msg, stderr, err)
@@ -86,7 +86,7 @@ func ensureRbtVersion() error {
 		hint := `
 You need RBTools version 0.6. Please run
 
-  $ pip install rbtool~=0.6 --allow-external rbtool --allow-unverified rbtool
+  $ pip install rbtools~=0.6 --allow-external rbtools --allow-unverified rbtools
 
 to install the correct version.
 
