@@ -15,10 +15,6 @@ var startableStates = []jiraWorkflowEntity{
 		"10107",
 		"Scheduled",
 	},
-	{
-		"3",
-		"In Progress",
-	},
 }
 
 var statusIcebox = jiraWorkflowEntity{

@@ -41,7 +41,7 @@ var Command = &gocli.Command{
   In case the parent branch BRANCH is specified, all the commits between
   BRANCH and HEAD are selected to be posted for code review. Using git revision
   ranges, these are the commits matching BRANCH..HEAD, or BRANCH.. for short.
-  The selected sommits are rebased onto the parent branch before posting.
+  The selected commits are rebased onto the parent branch before posting.
   To prevent rebasing, use -no_rebase. To be asked to pick up the missing
   story ID only once and use it for all commits, set -ask_once.
 
@@ -358,12 +358,10 @@ StoryLoop:
 	// Loop and rewrite the commit messages.
 	var story common.Story
 	if flagAskOnce {
-		fmt.Print(`
+		header := `
 Some of the commits listed above are not assigned to any story.
-Please pick up the story that these commits will be assigned to:
-
-`)
-		selectedStory, err := promptForStory(stories)
+Please pick up the story that these commits will be assigned to:`
+		selectedStory, err := prompt.PromptStory(header, stories)
 		if err != nil {
 			return commits, err
 		}
@@ -380,7 +378,7 @@ Please pick up the story that these commits will be assigned to:
 		if commit.StoryId == "" {
 			if !flagAskOnce {
 				// Ask for the story ID for the current commit.
-				fmt.Printf(`
+				header := fmt.Sprintf(`
 The following commit is not assigned to any story:
 
   commit hash:  %v
@@ -389,7 +387,7 @@ The following commit is not assigned to any story:
 Please pick up the story to assign the commit to:
 
 `, commit.SHA, commit.MessageTitle)
-				selectedStory, err := promptForStory(stories)
+				selectedStory, err := prompt.PromptStory(header, stories)
 				if err != nil {
 					return commits, err
 				}
@@ -448,27 +446,6 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 	}
 
 	must(0, tw.Flush())
-}
-
-func promptForStory(stories []common.Story) (common.Story, error) {
-	// Present the stories to the user.
-	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 4, '\t', 0)
-	io.WriteString(tw, "  Index\tStory ID\tStory Title\n")
-	io.WriteString(tw, "  =====\t========\t===========\n")
-	for i, story := range stories {
-		fmt.Fprintf(tw, "  %v\t%v\t%v\n", i, story.ReadableId(), story.Title())
-	}
-	io.WriteString(tw, "\n")
-	tw.Flush()
-
-	// Prompt the user to select a story to assign the commit with.
-	msg := "Prompt the user to select a story"
-	index, err := prompt.PromptIndex(
-		"Choose a story by inserting its index: ", 0, len(stories)-1)
-	if err != nil {
-		return nil, errs.NewError(msg, nil, err)
-	}
-	return stories[index], nil
 }
 
 func sendReviewRequests(commits []*git.Commit) error {

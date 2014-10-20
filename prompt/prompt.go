@@ -10,6 +10,10 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	// Internal
+	"github.com/salsita/salsaflow/errs"
+	"github.com/salsita/salsaflow/modules/common"
+
 	// Other
 	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 )
@@ -59,6 +63,16 @@ func (i *OutOfBoundsError) Error() string {
 	return "Index out of bounds: " + i.input
 }
 
+func Prompt(msg string) (string, error) {
+	fmt.Print(msg)
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+	return strings.ToLower(scanner.Text()), nil
+}
+
 func PromptIndex(msg string, min, max int) (int, error) {
 	line, err := Prompt(msg)
 	if err != nil {
@@ -77,14 +91,28 @@ func PromptIndex(msg string, min, max int) (int, error) {
 	return index, nil
 }
 
-func Prompt(msg string) (string, error) {
-	fmt.Print(msg)
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	if err := scanner.Err(); err != nil {
-		return "", err
+func PromptStory(msg string, stories []common.Story) (common.Story, error) {
+	// Print the into message.
+	fmt.Println(msg)
+	fmt.Println()
+
+	// Present the stories to the user.
+	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 4, '\t', 0)
+	io.WriteString(tw, "  Index\tStory ID\tStory Title\n")
+	io.WriteString(tw, "  =====\t========\t===========\n")
+	for i, story := range stories {
+		fmt.Fprintf(tw, "  %v\t%v\t%v\n", i, story.ReadableId(), story.Title())
 	}
-	return strings.ToLower(scanner.Text()), nil
+	io.WriteString(tw, "\n")
+	tw.Flush()
+
+	// Prompt the user to select a story to assign the commit with.
+	task := "Prompt the user to select a story"
+	index, err := PromptIndex("Choose a story by inserting its index: ", 0, len(stories)-1)
+	if err != nil {
+		return nil, errs.NewError(task, nil, err)
+	}
+	return stories[index], nil
 }
 
 func ConfirmStories(headerLine string, stories []*pivotal.Story) (bool, error) {
@@ -125,8 +153,6 @@ func printStoriesConfirmationDialog(headerLine string, stories []*pivotal.Story)
 		fmt.Fprintf(tw, "%v\t%v\n", story.Name, story.URL)
 	}
 
-	io.WriteString(tw, "\n")
+	io.WriteString(tw, "\nDo you want to proceed? [y/N]:")
 	tw.Flush()
-
-	fmt.Print("Do you want to proceed? [y/N]: ")
 }

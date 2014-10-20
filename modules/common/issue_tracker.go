@@ -40,12 +40,13 @@ type User interface {
 type Story interface {
 	Id() string
 	ReadableId() string
-	Assignees() []User
 	Title() string
 
-	Start() *errs.Error
+	Assignees() []User
+	AddAssignee(User) *errs.Error
+	SetAssignees([]User) *errs.Error
 
-	SetOwners([]User) *errs.Error
+	Start() *errs.Error
 }
 
 type NextRelease interface {
