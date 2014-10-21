@@ -194,23 +194,31 @@ func Hexsha(ref string) (hexsha string, stderr *bytes.Buffer, err error) {
 }
 
 func EnsureBranchSynchronized(branch, remote string) (stderr *bytes.Buffer, err error) {
+	exists, stderr, err := RemoteBranchExists(branch, remote)
+	if err != nil {
+		return stderr, err
+	}
+	if !exists {
+		return nil, nil
+	}
+
 	var (
 		localRef  = "refs/heads/" + branch
 		remoteRef = "refs/remotes/" + remote + "/" + branch
 	)
 	localHexsha, stderr, err := Hexsha(localRef)
 	if err != nil {
-		return
+		return stderr, err
 	}
 	remoteHexsha, stderr, err := Hexsha(remoteRef)
 	if err != nil {
-		return
+		return stderr, err
 	}
 
 	if localHexsha != remoteHexsha {
-		err = fmt.Errorf("branch '%v' is not up to date", branch)
+		return stderr, fmt.Errorf("branch '%v' is not up to date", branch)
 	}
-	return
+	return nil, nil
 }
 
 func EnsureCleanWorkingTree() (status *bytes.Buffer, stderr *bytes.Buffer, err error) {

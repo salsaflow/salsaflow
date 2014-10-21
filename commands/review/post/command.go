@@ -110,6 +110,13 @@ func postRevision(revision string) error {
 }
 
 func postBranch(parentBranch string) error {
+	// Get the current branch name.
+	msg := "Get the current branch name"
+	currentBranch, stderr, err := git.CurrentBranch()
+	if err != nil {
+		return errs.NewError(msg, stderr, err)
+	}
+
 	if !flagNoFetch {
 		// Fetch the remote repository.
 		msg := "Fetch the remote repository"
@@ -118,24 +125,26 @@ func postBranch(parentBranch string) error {
 			return handleError(msg, err, stderr)
 		}
 
-		// Make sure the parent branch is up to date.
-		msg = fmt.Sprintf("Make sure branch '%v' is up to date", parentBranch)
+		// Make sure the current branch is up to date.
+		msg = fmt.Sprintf("Make sure branch '%v' is up to date", currentBranch)
 		log.Run(msg)
-		exists, stderr, err := git.RemoteBranchExists(parentBranch, config.OriginName)
+		stderr, err = git.EnsureBranchSynchronized(currentBranch, config.OriginName)
 		if err != nil {
 			return handleError(msg, err, stderr)
 		}
-		if exists {
-			stderr, err = git.EnsureBranchSynchronized(config.TrunkBranch, config.OriginName)
-			if err != nil {
-				return handleError(msg, err, stderr)
-			}
+
+		// Make sure the parent branch is up to date.
+		msg = fmt.Sprintf("Make sure branch '%v' is up to date", parentBranch)
+		log.Run(msg)
+		stderr, err = git.EnsureBranchSynchronized(parentBranch, config.OriginName)
+		if err != nil {
+			return handleError(msg, err, stderr)
 		}
 	}
 
 	// Rebase the current branch on top the parent branch.
 	if !flagNoRebase {
-		msg := fmt.Sprintf("Rebase the current branch onto '%v'", parentBranch)
+		msg := fmt.Sprintf("Rebase branch '%v' onto '%v'", currentBranch, parentBranch)
 		log.Run(msg)
 		_, stderr, err := git.Git("rebase", parentBranch)
 		if err != nil {
@@ -159,7 +168,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	}
 
 	// Get the commits to be posted
-	msg := "Get the commits to be posted for code review"
+	msg = "Get the commits to be posted for code review"
 	commits, stderr, err := git.ShowCommitRange(parentBranch + "..")
 	if err != nil {
 		return handleError(msg, err, stderr)
