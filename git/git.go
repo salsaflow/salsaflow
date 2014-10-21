@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	// Internal
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/shell"
 )
 
@@ -19,24 +20,52 @@ func UpdateRemotes(remotes ...string) (stderr *bytes.Buffer, err error) {
 	return
 }
 
-func Log(args ...string) (stdout, stderr *bytes.Buffer, err error) {
-	argsList := make([]string, 1, 1+len(args))
-	argsList[0] = "log"
+func MergeInto(branch string, args ...string) (stderr *bytes.Buffer, err error) {
+	// Get the current branch.
+	currentBranch, stderr, err := CurrentBranch()
+	if err != nil {
+		return stderr, err
+	}
+	defer func() {
+		// On return, checkout the original branch.
+		if serr, ex := Checkout(currentBranch); ex != nil {
+			if err == nil {
+				stderr = serr
+				err = ex
+			} else {
+				errs.Log(errs.NewError(
+					fmt.Sprintf("Checkout branch '%v'", currentBranch), serr, ex))
+			}
+		}
+	}()
+
+	// Checkout the target branch.
+	if stderr, err := Checkout(branch); err != nil {
+		return stderr, err
+	}
+
+	// Do the merging.
+	argsList := make([]string, 2, 2+len(args))
+	argsList[0] = "merge"
+	argsList[1] = currentBranch
 	argsList = append(argsList, args...)
-	return Git(argsList...)
+	_, stderr, err = Git(argsList...)
+	return stderr, err
+}
+
+func Log(args ...string) (stdout, stderr *bytes.Buffer, err error) {
+	return RunGitCommand("log", args...)
 }
 
 func CherryPick(args ...string) (stdout, stderr *bytes.Buffer, err error) {
-	argsList := make([]string, 1, 1+len(args))
-	argsList[0] = "cherry-pick"
-	argsList = append(argsList, args...)
-	return Git(argsList...)
+	return RunGitCommand("cherry-pick", args...)
 }
 
 func Push(remote string, args ...string) (stderr *bytes.Buffer, err error) {
-	argsList := make([]string, 2, 2+len(args))
+	argsList := make([]string, 3, 3+len(args))
 	argsList[0] = "push"
-	argsList[1] = remote
+	argsList[1] = "-u"
+	argsList[2] = remote
 	argsList = append(argsList, args...)
 	_, stderr, err = Git(argsList...)
 	return
@@ -53,9 +82,8 @@ func PushForce(remote string, args ...string) (stderr *bytes.Buffer, err error) 
 }
 
 func Branch(args ...string) (stderr *bytes.Buffer, err error) {
-	argsList := append([]string{"branch"}, args...)
-	_, stderr, err = Git(argsList...)
-	return
+	_, stderr, err = RunGitCommand("branch", args...)
+	return stderr, err
 }
 
 func RefExists(ref string) (exists bool, stderr *bytes.Buffer, err error) {
@@ -315,4 +343,11 @@ func SetConfigBool(key string, value bool) (stderr *bytes.Buffer, err error) {
 func Git(args ...string) (stdout, stderr *bytes.Buffer, err error) {
 	args = append([]string{"git", "--no-pager"}, args...)
 	return shell.Run(args...)
+}
+
+func RunGitCommand(command string, args ...string) (stdout, stderr *bytes.Buffer, err error) {
+	argsList := make([]string, 1, 1+len(args))
+	argsList[0] = command
+	argsList = append(argsList, args...)
+	return Git(argsList...)
 }

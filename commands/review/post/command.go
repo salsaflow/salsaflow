@@ -29,7 +29,9 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  post [-no_fetch] [-no_rebase] [-ask_once] [-parent=BRANCH] [REVISION]`,
+  post [REVISION]
+
+  post [-no_fetch] [-no_rebase] [-ask_once] -parent=BRANCH`,
 	Short: "post code review requests",
 	Long: `
   Post a code review request for each commit specified.
@@ -125,18 +127,18 @@ func postBranch(parentBranch string) error {
 			return handleError(msg, err, stderr)
 		}
 
-		// Make sure the current branch is up to date.
-		msg = fmt.Sprintf("Make sure branch '%v' is up to date", currentBranch)
-		log.Run(msg)
-		stderr, err = git.EnsureBranchSynchronized(currentBranch, config.OriginName)
-		if err != nil {
-			return handleError(msg, err, stderr)
-		}
-
 		// Make sure the parent branch is up to date.
 		msg = fmt.Sprintf("Make sure branch '%v' is up to date", parentBranch)
 		log.Run(msg)
 		stderr, err = git.EnsureBranchSynchronized(parentBranch, config.OriginName)
+		if err != nil {
+			return handleError(msg, err, stderr)
+		}
+
+		// Make sure the current branch is up to date.
+		msg = fmt.Sprintf("Make sure branch '%v' is up to date", currentBranch)
+		log.Run(msg)
+		stderr, err = git.EnsureBranchSynchronized(currentBranch, config.OriginName)
 		if err != nil {
 			return handleError(msg, err, stderr)
 		}
@@ -215,9 +217,9 @@ You are about to post review requests for the following commits:
 	asciiart.PrintSnoopy()
 
 	// Post the review requests.
-	msg = "Post the review request"
+	msg = "Post the review requests"
 	if err := sendReviewRequests(commits); err != nil {
-		return handleError(msg, err, nil)
+		return errs.LogFail(msg, err)
 	}
 
 	// Tell the user what to do next.
@@ -349,7 +351,7 @@ StoryLoop:
 	}
 	defer func() {
 		// Checkout the original branch on exit.
-		msg := "Checkout the original branch"
+		msg := fmt.Sprintf("Checkout branch '%v'", currentBranch)
 		if stderr, err := git.Checkout(currentBranch); err != nil {
 			errs.NewError(msg, stderr, err).Log(log.V(log.Info))
 		}
@@ -384,9 +386,7 @@ The following commit is not assigned to any story:
   commit hash:  %v
   commit title: %v
 
-Please pick up the story to assign the commit to:
-
-`, commit.SHA, commit.MessageTitle)
+Please pick up the story to assign the commit to:`, commit.SHA, commit.MessageTitle)
 				selectedStory, err := prompt.PromptStory(header, stories)
 				if err != nil {
 					return commits, err
