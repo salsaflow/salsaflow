@@ -32,25 +32,39 @@ func main() {
 		return
 	}
 
+	// Tell the user what is happening.
+	fmt.Println("---> Running the SalsaFlow pre-push hook")
+
 	// The hook is always invoked as `pre-push <remote-name> <push-url>`.
 	if len(os.Args) != 3 {
-		panic(fmt.Errorf("argv: %#v", os.Args))
+		log.Fatalf("Invalid arguments: %#v\n", os.Args)
 	}
 
 	// Run the main function.
-	msg := "Make sure the commits comply with the SalsaFlow requirements"
-	log.Run(msg)
 	if err := run(os.Args[1], os.Args[2]); err != nil {
-		errs.LogFail(msg, err)
+		errs.Log(err)
 		fmt.Println()
 		os.Exit(1)
 	}
 }
 
 func run(remoteName, pushURL string) error {
+	// Only check the project remote.
+	if remoteName != config.OriginName {
+		log.Log("Not pushing to the main project repository, check skipped")
+		return nil
+	}
+
 	// The commits that are being pushed are listed on stdin.
 	// The format is <local ref> <local sha1> <remote ref> <remote sha1>,
 	// so we parse the input and collect all the local hexshas.
+	var coreRefs = []string{
+		"refs/heads/" + config.TrunkBranch,
+		"refs/heads/" + config.ReleaseBranch,
+		"refs/heads/" + config.ClientBranch,
+		"refs/heads/" + config.MasterBranch,
+	}
+
 	msg := "Parse the hook input"
 	var revRanges []string
 	scanner := bufio.NewScanner(os.Stdin)
@@ -63,12 +77,26 @@ func run(remoteName, pushURL string) error {
 			return errs.NewError(msg, nil, errors.New("invalid input line: "+line))
 		}
 
-		localSha, remoteSha := parts[1], parts[3]
+		localSha, remoteRef, remoteSha := parts[1], parts[2], parts[3]
 
 		// Skip the refs that are being deleted.
 		if localSha == zeroHash {
 			continue
 		}
+
+		// Check only updates to the core branches,
+		// i.e. trunk, release, client or master.
+		var checkReference bool
+		for _, ref := range coreRefs {
+			if remoteRef == ref {
+				checkReference = true
+			}
+		}
+		if !checkReference {
+			continue
+		}
+
+		log.Log(fmt.Sprintf("Checking commits updating remote reference '%s'", remoteRef))
 
 		// Append the revision range for this input line.
 		var revRange string
