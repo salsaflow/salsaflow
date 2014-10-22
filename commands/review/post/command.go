@@ -394,15 +394,14 @@ Please pick up the story to assign the commit to:`, commit.SHA, commit.MessageTi
 				story = selectedStory
 			}
 
-			// Amend the commit message to include Story-Id.
-			commit.Message += fmt.Sprintf("\nStory-Id: %v\n", story.ReadableId())
-			commit.StoryId = story.ReadableId()
+			// Extend the commit message to include Story-Id.
+			commitMessage := fmt.Sprintf("%v\nStory-Id: %v\n", commit.Message, story.ReadableId())
 
 			// Amend the cherry-picked commit to include the new commit message.
 			msg = "Amend the commit message for " + commit.SHA
 			stderr = new(bytes.Buffer)
 			cmd := exec.Command("git", "commit", "--amend", "-F", "-")
-			cmd.Stdin = bytes.NewBufferString(commit.Message)
+			cmd.Stdin = bytes.NewBufferString(commitMessage)
 			cmd.Stderr = stderr
 			if err := cmd.Run(); err != nil {
 				return commits, errs.NewError(msg, stderr, err)
