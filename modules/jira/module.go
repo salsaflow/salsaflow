@@ -77,10 +77,6 @@ func selectActiveIssueIds(ids []string) (activeIds []string, err error) {
 }
 
 func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
-	startableStateIds := make([]string, len(startableStates))
-	for i := range startableStates {
-		startableStateIds[i] = startableStates[i].Id
-	}
 	query := fmt.Sprintf("project=%s and (status=%s)",
 		config.ProjectKey(), strings.Join(startableStateIds, " OR status="))
 
@@ -97,7 +93,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 
 func (tracker *issueTracker) StoriesInProgress() (stories []common.Story, err error) {
 	query := fmt.Sprintf("project=%v AND (status=%v OR status=%v)",
-		config.ProjectKey(), statusInProgress.Id, statusVerification.Id)
+		config.ProjectKey(), stateCodingId, stateCodingDoneId)
 	issues, _, err := newClient().Issues.Search(&client.SearchOptions{
 		JQL:        query,
 		MaxResults: 200,
