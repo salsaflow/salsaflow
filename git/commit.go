@@ -53,7 +53,9 @@ CommitDate: {{.CommitDate}}
 {{.Message | indent }}
 `
 
-func (commit *Commit) Bump(wr io.Writer) error {
+// Dump writes a human-friendly representation of the commit to the writer.
+// The output closely resembles the output of git log.
+func (commit *Commit) Dump(wr io.Writer) error {
 	funcMap := template.FuncMap{
 		"indent": func(content string) (string, error) {
 			var out bytes.Buffer
