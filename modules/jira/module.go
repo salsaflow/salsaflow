@@ -91,7 +91,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 	return toCommonStories(issues), nil
 }
 
-func (tracker *issueTracker) StoriesInProgress() (stories []common.Story, err error) {
+func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
 	query := fmt.Sprintf("project=%s and (status=%s)",
 		config.ProjectKey(), strings.Join(inDevelopmentStateIds, " OR status="))
 

@@ -92,7 +92,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 	return toCommonStories(pivotalStories), nil
 }
 
-func (tracker *issueTracker) StoriesInProgress() (stories []common.Story, err error) {
+func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
 	pivotalStories, err := listStories("(type:bug OR type:feature) AND (state:started OR state:finished)")
 	if err != nil {
 		return nil, err

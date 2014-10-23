@@ -303,7 +303,7 @@ and read the DESCRIPTION section.
 		return commits, errs.NewError(msg, nil, err)
 	}
 
-	stories, err := tracker.StoriesInProgress()
+	stories, err := tracker.StoriesInDevelopment()
 	if err != nil {
 		return commits, errs.NewError(storiesMsg, nil, err)
 	}

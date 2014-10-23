@@ -20,9 +20,8 @@ type IssueTracker interface {
 	// StartableStories returns the list of stories that can be started.
 	StartableStories() ([]Story, error)
 
-	// StoriesInProgress returns the list of stories that are in progress,
-	// which means that they are actively being worked on.
-	StoriesInProgress() ([]Story, error)
+	// StoriesInDevelopment returns the list of stories that are being developed.
+	StoriesInDevelopment() ([]Story, error)
 
 	// NextRelease is a factory method for creating release objects
 	// representing the releases that have not been started yet.
