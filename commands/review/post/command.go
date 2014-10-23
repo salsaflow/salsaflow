@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"text/tabwriter"
@@ -29,9 +30,9 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  post [REVISION]
+  post [-fixes=RRID] [REVISION]
 
-  post [-no_fetch] [-no_rebase] [-ask_once] -parent=BRANCH`,
+  post [-fixes=RRID] [-no_fetch] [-no_rebase] [-ask_once] -parent=BRANCH`,
 	Short: "post code review requests",
 	Long: `
   Post a code review request for each commit specified.
@@ -55,6 +56,7 @@ var Command = &gocli.Command{
 
 var (
 	flagAskOnce  bool
+	flagFixes    uint
 	flagNoFetch  bool
 	flagNoRebase bool
 	flagParent   string
@@ -63,6 +65,8 @@ var (
 func init() {
 	Command.Flags.BoolVar(&flagAskOnce, "ask_once", flagAskOnce,
 		"ask once and reuse the story ID for all commits")
+	Command.Flags.UintVar(&flagFixes, "fixes", flagFixes,
+		"mark the commits as fixing issues in the given review request")
 	Command.Flags.BoolVar(&flagNoFetch, "no_fetch", flagNoFetch,
 		"do not fetch the upstream repository")
 	Command.Flags.BoolVar(&flagNoRebase, "no_rebase", flagNoRebase,
@@ -454,6 +458,13 @@ func sendReviewRequests(commits []*git.Commit) error {
 		topErrMux sync.Mutex
 	)
 
+	var postOpts map[string]interface{}
+	if flagFixes != 0 {
+		postOpts = map[string]interface{}{
+			"fixes": strconv.FormatUint(uint64(flagFixes), 10),
+		}
+	}
+
 	var wg sync.WaitGroup
 	wg.Add(len(commits))
 	for _, commit := range commits {
@@ -461,7 +472,7 @@ func sendReviewRequests(commits []*git.Commit) error {
 			defer wg.Done()
 			msg := "Post the review request for commit " + commit.SHA
 			log.Go(msg)
-			if err := tool.PostReviewRequest(commit); err != nil {
+			if err := tool.PostReviewRequest(commit, postOpts); err != nil {
 				errs.LogFail(msg, err)
 				topErrMux.Lock()
 				topErr = errors.New("failed to post a code review request")

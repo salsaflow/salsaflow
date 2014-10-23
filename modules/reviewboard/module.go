@@ -26,10 +26,37 @@ func Factory() (common.CodeReviewTool, error) {
 	return &codeReviewTool{}, nil
 }
 
-func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit) error {
+func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit, opts map[string]interface{}) error {
+	// Assert that certain field are set.
+	switch {
+	case commit.SHA == "":
+		panic("SHA not set for the commit being posted")
+	case commit.StoryId == "":
+		panic("story ID not set for the commit being posted")
+	}
+
+	// Get the value of "fixes".
+	var fixes string
+	if v := opts["fixes"]; v != nil {
+		switch v := v.(type) {
+		case string:
+			fixes = v
+		case uint:
+			fixes = strconv.FormatUint(uint64(v), 10)
+		case int:
+			fixes = strconv.FormatInt(int64(v), 10)
+		}
+	}
+
+	// Post the review request.
+	args := []string{"rbt", "post", "--guess-fields", "yes", "--bugs-closed", commit.StoryId}
+	if fixes != "" {
+		args = append(args, "--depends-on", fixes)
+	}
+	args = append(args, commit.SHA)
+
 	msg := "Post review request for commit " + commit.SHA
-	stdout, stderr, err := shell.Run(
-		"rbt", "post", "--guess-fields", "yes", "--bugs-closed", commit.StoryId, commit.SHA)
+	stdout, stderr, err := shell.Run(args...)
 	if err != nil {
 		return errs.NewError(msg, stderr, err)
 	}

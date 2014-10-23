@@ -7,6 +7,6 @@ import (
 // CodeReviewTool interface ----------------------------------------------------
 
 type CodeReviewTool interface {
-	PostReviewRequest(commit *git.Commit) error
+	PostReviewRequest(commit *git.Commit, options map[string]interface{}) error
 	PrintPostReviewRequestFollowup()
 }
