@@ -35,23 +35,17 @@ func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit, opts map[strin
 		panic("story ID not set for the commit being posted")
 	}
 
-	// Get the value of "fixes".
-	var fixes string
-	if v := opts["fixes"]; v != nil {
-		switch v := v.(type) {
-		case string:
-			fixes = v
-		case uint:
-			fixes = strconv.FormatUint(uint64(v), 10)
-		case int:
-			fixes = strconv.FormatInt(int64(v), 10)
-		}
-	}
-
 	// Post the review request.
+	var (
+		fixes  = formatOptInteger(opts["fixes"])
+		update = formatOptInteger(opts["update"])
+	)
 	args := []string{"rbt", "post", "--guess-fields", "yes", "--bugs-closed", commit.StoryId}
 	if fixes != "" {
 		args = append(args, "--depends-on", fixes)
+	}
+	if update != "" {
+		args = append(args, "--review-request-id", update)
 	}
 	args = append(args, commit.SHA)
 
@@ -86,6 +80,30 @@ review update command to update the review requests.
 
 When you think that you are ready, publish the review requests in Review Board.
 `)
+}
+
+func formatOptInteger(value interface{}) string {
+	// Return an empty string on nil.
+	if value == nil {
+		return ""
+	}
+
+	// Return an empty string in case the value is not an integer.
+	switch value := value.(type) {
+	case string:
+		return value
+	case int:
+	case int32:
+	case int64:
+	case uint:
+	case uint32:
+	case uint64:
+	default:
+		return ""
+	}
+
+	// Format the integer and return the string representation.
+	return fmt.Sprintf("%v", value)
 }
 
 func ensureRbtVersion() error {

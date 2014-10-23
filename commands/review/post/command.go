@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"sync"
 	"text/tabwriter"
@@ -30,7 +29,7 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  post [-fixes=RRID] [REVISION]
+  post [-update=RRID] [-fixes=RRID] [REVISION]
 
   post [-fixes=RRID] [-no_fetch] [-no_rebase] [-ask_once] -parent=BRANCH`,
 	Short: "post code review requests",
@@ -60,6 +59,7 @@ var (
 	flagNoFetch  bool
 	flagNoRebase bool
 	flagParent   string
+	flagUpdate   uint
 )
 
 func init() {
@@ -73,6 +73,8 @@ func init() {
 		"do not rebase onto the parent branch")
 	Command.Flags.StringVar(&flagParent, "parent", flagParent,
 		"branch to be used in computing the revision range")
+	Command.Flags.UintVar(&flagUpdate, "update", flagUpdate,
+		"update an existing review request with REVISION")
 }
 
 var ErrNoCommits = errors.New("no commits selected for code review")
@@ -90,6 +92,9 @@ func run(cmd *gocli.Command, args []string) {
 	case len(args) == 1:
 		err = postRevision(args[0])
 	case flagParent != "":
+		if flagUpdate != 0 {
+			log.Fatalln("\nError: cannot use -update together with -parent")
+		}
 		err = postBranch(flagParent)
 	default:
 		err = postRevision("HEAD")
@@ -458,11 +463,12 @@ func sendReviewRequests(commits []*git.Commit) error {
 		topErrMux sync.Mutex
 	)
 
-	var postOpts map[string]interface{}
+	var postOpts = make(map[string]interface{}, 2)
 	if flagFixes != 0 {
-		postOpts = map[string]interface{}{
-			"fixes": strconv.FormatUint(uint64(flagFixes), 10),
-		}
+		postOpts["fixes"] = flagFixes
+	}
+	if flagUpdate != 0 {
+		postOpts["update"] = flagUpdate
 	}
 
 	var wg sync.WaitGroup
