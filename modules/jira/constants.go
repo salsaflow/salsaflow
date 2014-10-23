@@ -3,9 +3,9 @@ package jira
 // States --------------------------------------------------------------------
 
 const (
-	stateApprovedId   = "10000"
-	stateCodingId     = "3"
-	stateCodingDoneId = "10003"
+	stateApprovedId = "10000"
+	stateInCodingId = "3"
+	stateInReviewId = "10003"
 )
 
 var startableStateIds = []string{
@@ -13,8 +13,8 @@ var startableStateIds = []string{
 }
 
 var inProgressStateIds = []string{
-	stateCodingId,
-	stateCodingDoneId,
+	stateInCodingId,
+	stateInReviewId,
 }
 
 // Transitions -----------------------------------------------------------------
