@@ -93,7 +93,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 
 func (tracker *issueTracker) StoriesInProgress() (stories []common.Story, err error) {
 	query := fmt.Sprintf("project=%s and (status=%s)",
-		config.ProjectKey(), strings.Join(inProgressStateIds, " OR status="))
+		config.ProjectKey(), strings.Join(inDevelopmentStateIds, " OR status="))
 
 	issues, _, err := newClient().Issues.Search(&client.SearchOptions{
 		JQL:        query,
