@@ -92,7 +92,7 @@ func Load() *errs.Error {
 }
 
 func ensureLocalConfigCommitted() (stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := git.Git("status", "--porcelain")
+	stdout, stderr, err := git.Status("--porcelain")
 	if err != nil {
 		return stderr, err
 	}

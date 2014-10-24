@@ -81,7 +81,7 @@ func Init() *errs.Error {
 	// version of git is installed, it most probably stays.
 	msg = "Check the git version being used"
 	log.Run(msg)
-	stdout, stderr, err := git.Git("--version")
+	stdout, stderr, err := git.Run("--version")
 	if err != nil {
 		return errs.NewError(msg, stderr, err)
 	}
@@ -145,8 +145,7 @@ You need Git version 1.9.0 or newer.
 
 		msg = "Push the newly created trunk branch"
 		log.Run(msg)
-		_, stderr, err = git.Git("push", "-u", config.OriginName,
-			config.TrunkBranch+":"+config.TrunkBranch)
+		stderr, err = git.Push(config.OriginName, config.TrunkBranch+":"+config.TrunkBranch)
 		if err != nil {
 			return errs.NewError(msg, stderr, err)
 		}

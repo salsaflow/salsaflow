@@ -16,7 +16,7 @@ var (
 )
 
 func ListStoryRefs() (localRefs, remoteRefs []string, stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := Git("show-ref")
+	stdout, stderr, err := Run("show-ref")
 	if err != nil {
 		return
 	}

@@ -157,8 +157,7 @@ func postBranch(parentBranch string) error {
 	if !flagNoRebase {
 		msg := fmt.Sprintf("Rebase branch '%v' onto '%v'", currentBranch, parentBranch)
 		log.Run(msg)
-		_, stderr, err := git.Git("rebase", parentBranch)
-		if err != nil {
+		if stderr, err := git.Rebase(parentBranch); err != nil {
 			handleError(msg, err, stderr)
 			asciiart.PrintGrimReaper("GIT REBASE FAILED")
 			fmt.Printf(`Git failed to rebase your branch onto '%v'.
@@ -382,7 +381,7 @@ Please pick up the story that these commits will be assigned to:`
 	for _, commit := range commits {
 		// Cherry-pick the commit.
 		msg := "Move the next commit onto the temporary branch"
-		if _, stderr, err := git.CherryPick(commit.SHA); err != nil {
+		if stderr, err := git.CherryPick(commit.SHA); err != nil {
 			return commits, errs.NewError(msg, stderr, err)
 		}
 
