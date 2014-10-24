@@ -380,7 +380,7 @@ Please pick up the story that these commits will be assigned to:`
 
 	for _, commit := range commits {
 		// Cherry-pick the commit.
-		msg := "Move the next commit onto the temporary branch"
+		msg := fmt.Sprintf("Move commit %v onto the temporary branch", commit.SHA)
 		if stderr, err := git.CherryPick(commit.SHA); err != nil {
 			return commits, errs.NewError(msg, stderr, err)
 		}
