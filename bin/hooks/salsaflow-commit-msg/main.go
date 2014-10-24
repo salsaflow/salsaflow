@@ -110,7 +110,7 @@ func run(messagePath string) error {
 	for lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
-	if !strings.HasPrefix(lines[len(lines)-1], "Story-Id") {
+	if line := strings.ToLower(lines[len(lines)-1]); !strings.HasPrefix(line, "story-id") {
 		lines = append(lines, "")
 	}
 
