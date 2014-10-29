@@ -24,6 +24,9 @@ func (story *story) Title() string {
 }
 
 func (story *story) Assignees() []common.User {
+	if story.Issue.Fields.Assignee == nil {
+		return nil
+	}
 	return []common.User{&user{story.Issue.Fields.Assignee}}
 }
 

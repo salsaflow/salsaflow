@@ -79,6 +79,33 @@ func runMain() (err error) {
 		return errs.LogFail(msg, errors.New("no startable stories found"))
 	}
 
+	// Filter out the stories that are not relevant,
+	// i.e. not owned by the current user or assigned to someone else.
+	msg = "Fetch the current user record from the issue tracker"
+	user, err := tracker.CurrentUser()
+	if err != nil {
+		return errs.LogFail(msg, err)
+	}
+
+	var filteredStories []common.Story
+StoryLoop:
+	for _, story := range stories {
+		assignees := story.Assignees()
+		// Include the story in case there is no assignee set yet.
+		if len(assignees) == 0 {
+			filteredStories = append(filteredStories, story)
+			continue StoryLoop
+		}
+		// Include the story in case the current user is assigned.
+		for _, assignee := range assignees {
+			if assignee.Id() == user.Id() {
+				filteredStories = append(filteredStories, story)
+				continue StoryLoop
+			}
+		}
+	}
+	stories = filteredStories
+
 	// Prompt the user to select a story.
 	story, err := prompt.PromptStory(
 		"\nYou can start working on one of the following stories:", stories)
@@ -108,10 +135,6 @@ func runMain() (err error) {
 	msg = "Amend the list of story assignees"
 	log.Run(msg)
 	originalAssignees := story.Assignees()
-	user, err := tracker.CurrentUser()
-	if err != nil {
-		return errs.LogFail(msg, err)
-	}
 	if err := story.AddAssignee(user); err != nil {
 		return errs.LogFail(msg, err)
 	}
