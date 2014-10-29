@@ -65,20 +65,23 @@ func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit, opts map[strin
 
 func (tool *codeReviewTool) PrintPostReviewRequestFollowup() {
 	log.Println(`
-Now, please, take some time to go through all the review requests,
-check and annotate them for the reviewers to make them more happy (less sad).
+Now, take some time to go through all the review requests, please,
+to check and annotate them for the reviewers to make their part easier.
 
-If you find any issues you want to fix right before publishing, fix them now,
-and if you still can, amend the relevant commits and use:
+If you find any issues you want to fix (even before publishing), do so now,
+and if you haven't merged or pushed yet, amend the relevant commit and use
 
-  $ rbt post -r <RB request id> <commit SHA>
+  $ salsaflow review post -update REVIEW_REQUEST_ID [REVISION]
 
-to update (replace) the relevant review request.
+to update (replace) the associated review request. Do this for every review
+request you want to overwrite.
 
-In case you cannot amend the relevant commits any more, use the usual
-review update command to update the review requests.
+In case you cannot amend the relevant commits any more, make sure the affected
+review request is published and use the usual process for fixing review issues
 
-When you think that you are ready, publish the review requests in Review Board.
+  $ salsaflow review post -fixes REVIEW_REQUEST_ID [REVISION]
+
+to create a new review request that is linked to the one being fixed.
 `)
 }
 
