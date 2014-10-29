@@ -219,7 +219,6 @@ func createBranch() (common.Action, error) {
 				fmt.Sprintf("Checkout the original branch '%v'", originalBranch), stderr, err)
 		}
 		// Delete the newly created branch.
-		log.Rollback(createMsg)
 		return deleteBranch()
 	}), nil
 }
