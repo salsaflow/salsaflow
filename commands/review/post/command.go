@@ -91,6 +91,17 @@ func run(cmd *gocli.Command, args []string) {
 
 	app.MustInit()
 
+	// Exit cleanly when the panic is actually ErrCanceled.
+	defer func() {
+		if r := recover(); r != nil {
+			if r == prompt.ErrCanceled {
+				log.Println("\nOperation canceled. You are welcome to come back any time!")
+			} else {
+				panic(r)
+			}
+		}
+	}()
+
 	var err error
 	switch {
 	case len(args) == 1:
@@ -104,13 +115,12 @@ func run(cmd *gocli.Command, args []string) {
 		err = postRevision("HEAD")
 	}
 	if err != nil {
-		log.Fatalln("\nError: " + err.Error())
+		log.Fatalln("\nFatal error: " + err.Error())
 	}
 }
 
 func handleError(task string, err error, stderr *bytes.Buffer) error {
-	errs.NewError(task, stderr, err).Log(log.V(log.Info))
-	return err
+	return errs.Log(errs.NewError(task, stderr, err))
 }
 
 func postRevision(revision string) error {
@@ -377,6 +387,9 @@ Some of the commits listed above are not assigned to any story.
 Please pick up the story that these commits will be assigned to:`
 		selectedStory, err := prompt.PromptStory(header, stories)
 		if err != nil {
+			if err == prompt.ErrCanceled {
+				panic(err)
+			}
 			return commits, err
 		}
 		story = selectedStory
@@ -401,6 +414,9 @@ The following commit is not assigned to any story:
 Please pick up the story to assign the commit to:`, commit.SHA, commit.MessageTitle)
 				selectedStory, err := prompt.PromptStory(header, stories)
 				if err != nil {
+					if err == prompt.ErrCanceled {
+						panic(err)
+					}
 					return commits, err
 				}
 				story = selectedStory

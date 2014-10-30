@@ -3,6 +3,7 @@ package prompt
 import (
 	// Stdlib
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,6 +18,24 @@ import (
 	// Other
 	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 )
+
+var ErrCanceled = errors.New("operation canceled")
+
+type InvalidInputError struct {
+	input string
+}
+
+func (i *InvalidInputError) Error() string {
+	return "Invalid input: " + i.input
+}
+
+type OutOfBoundsError struct {
+	input string
+}
+
+func (i *OutOfBoundsError) Error() string {
+	return "Index out of bounds: " + i.input
+}
 
 func Confirm(question string) (bool, error) {
 	printQuestion := func() {
@@ -47,22 +66,6 @@ func Confirm(question string) (bool, error) {
 	return line == "y", nil
 }
 
-type InvalidInputError struct {
-	input string
-}
-
-func (i *InvalidInputError) Error() string {
-	return "Invalid input: " + i.input
-}
-
-type OutOfBoundsError struct {
-	input string
-}
-
-func (i *OutOfBoundsError) Error() string {
-	return "Index out of bounds: " + i.input
-}
-
 func Prompt(msg string) (string, error) {
 	fmt.Print(msg)
 	scanner := bufio.NewScanner(os.Stdin)
@@ -70,13 +73,16 @@ func Prompt(msg string) (string, error) {
 	if err := scanner.Err(); err != nil {
 		return "", err
 	}
-	return strings.ToLower(scanner.Text()), nil
+	return scanner.Text(), nil
 }
 
 func PromptIndex(msg string, min, max int) (int, error) {
 	line, err := Prompt(msg)
 	if err != nil {
 		return 0, err
+	}
+	if line == "" {
+		return 0, ErrCanceled
 	}
 
 	index, err := strconv.Atoi(line)
@@ -110,6 +116,9 @@ func PromptStory(msg string, stories []common.Story) (common.Story, error) {
 	task := "Prompt the user to select a story"
 	index, err := PromptIndex("Choose a story by inserting its index: ", 0, len(stories)-1)
 	if err != nil {
+		if err == ErrCanceled {
+			return nil, ErrCanceled
+		}
 		return nil, errs.NewError(task, nil, err)
 	}
 	return stories[index], nil

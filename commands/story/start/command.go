@@ -55,14 +55,24 @@ func run(cmd *gocli.Command, args []string) {
 
 	app.MustInit()
 
+	// Exit cleanly when the panic is actually ErrCanceled.
+	defer func() {
+		if r := recover(); r != nil {
+			if r == prompt.ErrCanceled {
+				log.Println("\nOperation canceled. You are welcome to come back any time!")
+			} else {
+				panic(r)
+			}
+		}
+	}()
+
 	if err := runMain(); err != nil {
 		log.Fatalln("\nFatal error: " + err.Error())
 	}
 }
 
 func handleError(task string, err error, stderr *bytes.Buffer) error {
-	errs.NewError(task, stderr, err).Log(log.V(log.Info))
-	return err
+	return errs.Log(errs.NewError(task, stderr, err))
 }
 
 func runMain() (err error) {
@@ -110,6 +120,9 @@ StoryLoop:
 	story, err := prompt.PromptStory(
 		"\nYou can start working on one of the following stories:", stories)
 	if err != nil {
+		if err == prompt.ErrCanceled {
+			panic(err)
+		}
 		return errs.Log(err)
 	}
 	fmt.Println()
