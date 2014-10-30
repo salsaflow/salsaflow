@@ -13,7 +13,7 @@ import (
 
 	// Internal: modules
 	"github.com/salsita/salsaflow/modules/jira"
-	"github.com/salsita/salsaflow/modules/pivotaltracker"
+	// "github.com/salsita/salsaflow/modules/pivotaltracker" - DISABLED
 )
 
 // IssueTracker instantiation --------------------------------------------------
@@ -36,8 +36,8 @@ func mustInitIssueTracker() {
 func initIssueTracker() *errs.Error {
 	// Register all available issue trackers here.
 	factories := map[string]IssueTrackerFactory{
-		jira.Id:           jira.Factory,
-		pivotaltracker.Id: pivotaltracker.Factory,
+		jira.Id: jira.Factory,
+		// pivotaltracker.Id: pivotaltracker.Factory, - DISABLED
 	}
 
 	// Choose the issue tracker based on the configuration.
