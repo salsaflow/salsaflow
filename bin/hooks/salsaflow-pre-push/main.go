@@ -86,13 +86,13 @@ func run(remoteName, pushURL string) error {
 
 		// Check only updates to the core branches,
 		// i.e. trunk, release, client or master.
-		var checkReference bool
+		var isCoreBranch bool
 		for _, ref := range coreRefs {
 			if remoteRef == ref {
-				checkReference = true
+				isCoreBranch = true
 			}
 		}
-		if !checkReference {
+		if !isCoreBranch {
 			continue
 		}
 
