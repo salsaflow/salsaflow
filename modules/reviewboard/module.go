@@ -35,17 +35,26 @@ func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit, opts map[strin
 		panic("story ID not set for the commit being posted")
 	}
 
-	// Post the review request.
+	// Parse the options.
 	var (
 		fixes  = formatOptInteger(opts["fixes"])
 		update = formatOptInteger(opts["update"])
+		open   bool
 	)
+	if _, ok := opts["open"]; ok {
+		open = true
+	}
+
+	// Post the review request.
 	args := []string{"rbt", "post", "--guess-fields", "yes", "--bugs-closed", commit.StoryId}
 	if fixes != "" {
 		args = append(args, "--depends-on", fixes)
 	}
 	if update != "" {
 		args = append(args, "--review-request-id", update)
+	}
+	if open {
+		args = append(args, "--open")
 	}
 	args = append(args, commit.SHA)
 

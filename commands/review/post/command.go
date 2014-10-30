@@ -29,9 +29,10 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  post [-update=RRID] [-fixes=RRID] [REVISION]
+  post [-update=RRID] [-fixes=RRID] [-open] [REVISION]
 
-  post [-fixes=RRID] [-no_fetch] [-no_rebase] [-ask_once] -parent=BRANCH`,
+  post [-fixes=RRID] [-no_fetch] [-no_rebase]
+       [-ask_once] [-open] -parent=BRANCH`,
 	Short: "post code review requests",
 	Long: `
   Post a code review request for each commit specified.
@@ -58,6 +59,7 @@ var (
 	flagFixes    uint
 	flagNoFetch  bool
 	flagNoRebase bool
+	flagOpen     bool
 	flagParent   string
 	flagUpdate   uint
 )
@@ -71,6 +73,8 @@ func init() {
 		"do not fetch the upstream repository")
 	Command.Flags.BoolVar(&flagNoRebase, "no_rebase", flagNoRebase,
 		"do not rebase onto the parent branch")
+	Command.Flags.BoolVar(&flagOpen, "open", flagOpen,
+		"open the review requests in the browser")
 	Command.Flags.StringVar(&flagParent, "parent", flagParent,
 		"branch to be used in computing the revision range")
 	Command.Flags.UintVar(&flagUpdate, "update", flagUpdate,
@@ -468,6 +472,9 @@ func sendReviewRequests(commits []*git.Commit) error {
 	}
 	if flagUpdate != 0 {
 		postOpts["update"] = flagUpdate
+	}
+	if flagOpen {
+		postOpts["open"] = true
 	}
 
 	var wg sync.WaitGroup
