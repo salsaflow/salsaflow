@@ -4,6 +4,7 @@ import (
 	// Stdlib
 	"bytes"
 	"net/http"
+	"net/url"
 
 	// Internal
 	"github.com/salsita/salsaflow/modules/jira/client"
@@ -21,7 +22,9 @@ func (rt *BasicAuthRoundTripper) RoundTrip(req *http.Request) (*http.Response, e
 }
 
 func newClient() *client.Client {
-	return client.New(config.BaseURL(), &http.Client{
+	relativeURL, _ := url.Parse("rest/api/2/")
+	baseURL := config.BaseURL().ResolveReference(relativeURL)
+	return client.New(baseURL, &http.Client{
 		Transport: &BasicAuthRoundTripper{http.DefaultTransport},
 	})
 }
