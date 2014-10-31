@@ -19,6 +19,10 @@ import (
 	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 )
 
+// maxStoryTitleColumnWidth specifies the width of the story title column for story listing.
+// The story title is truncated to this width in case it is too long.
+const maxStoryTitleColumnWidth = 80
+
 var ErrCanceled = errors.New("operation canceled")
 
 type InvalidInputError struct {
@@ -107,7 +111,7 @@ func PromptStory(msg string, stories []common.Story) (common.Story, error) {
 	io.WriteString(tw, "  Index\tStory ID\tStory Title\n")
 	io.WriteString(tw, "  =====\t========\t===========\n")
 	for i, story := range stories {
-		fmt.Fprintf(tw, "  %v\t%v\t%v\n", i, story.ReadableId(), story.Title())
+		fmt.Fprintf(tw, "  %v\t%v\t%v\n", i, story.ReadableId(), formatStoryTitle(story.Title()))
 	}
 	io.WriteString(tw, "\n")
 	tw.Flush()
@@ -164,4 +168,20 @@ func printStoriesConfirmationDialog(headerLine string, stories []*pivotal.Story)
 
 	io.WriteString(tw, "\nDo you want to proceed? [y/N]:")
 	tw.Flush()
+}
+
+func formatStoryTitle(title string) string {
+	if len(title) < maxStoryTitleColumnWidth {
+		return title
+	}
+
+	// maxStoryTitleColumnWidth incorporates the trailing " ...",
+	// so that is why we subtract len(" ...") when truncating.
+	truncatedTitle := title[:maxStoryTitleColumnWidth-4]
+	if title[maxStoryTitleColumnWidth-4] != ' ' {
+		if i := strings.LastIndex(truncatedTitle, " "); i != -1 {
+			truncatedTitle = truncatedTitle[:i]
+		}
+	}
+	return truncatedTitle + " ..."
 }
