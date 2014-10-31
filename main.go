@@ -9,7 +9,6 @@ import (
 	// Internal
 	"github.com/salsita/salsaflow/app"
 	"github.com/salsita/salsaflow/commands/pkg"
-	"github.com/salsita/salsaflow/commands/release"
 	"github.com/salsita/salsaflow/commands/repo"
 	"github.com/salsita/salsaflow/commands/review"
 	"github.com/salsita/salsaflow/commands/story"
@@ -34,7 +33,6 @@ func main() {
 
 	// Register subcommands.
 	trunk.MustRegisterSubcommand(pkgCmd.Command)
-	trunk.MustRegisterSubcommand(releaseCmd.Command)
 	trunk.MustRegisterSubcommand(repoCmd.Command)
 	trunk.MustRegisterSubcommand(reviewCmd.Command)
 	trunk.MustRegisterSubcommand(storyCmd.Command)
