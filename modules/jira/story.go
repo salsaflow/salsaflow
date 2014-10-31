@@ -1,6 +1,9 @@
 package jira
 
 import (
+	// Stdlib
+	"fmt"
+
 	// Internal
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/modules/common"
@@ -46,7 +49,7 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 	data.Fields.Assignee.Name = name
 	_, err := newClient().Issues.Update(story.Id(), data)
 	if err != nil {
-		return errs.NewError("Updating story", nil, err)
+		return errs.NewError(fmt.Sprintf("Set assignees for story %v", story.Issue.Key), err, nil)
 	}
 	return nil
 }
@@ -54,7 +57,7 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 func (story *story) Start() *errs.Error {
 	_, err := newClient().Issues.PerformTransition(story.Issue.Id, transitionIdStartImplementing)
 	if err != nil {
-		return errs.NewError("Starting JIRA story", nil, err)
+		return errs.NewError(fmt.Sprintf("Start story %v", story.Issue.Key), err, nil)
 	}
 	return nil
 }

@@ -29,7 +29,7 @@ var issueTracker common.IssueTracker
 func mustInitIssueTracker() {
 	var logger = log.V(log.Info)
 	if err := initIssueTracker(); err != nil {
-		err.Fatal(logger)
+		err.LogAndDie(logger)
 	}
 }
 
@@ -41,9 +41,7 @@ func initIssueTracker() *errs.Error {
 	}
 
 	// Choose the issue tracker based on the configuration.
-	var (
-		taskName = "Instantiate the selected issue tracker plugin"
-	)
+	var task = "Instantiate the selected issue tracker plugin"
 	factory, ok := factories[config.IssueTrackerId()]
 	if !ok {
 		// Collect the available tracker ids.
@@ -52,17 +50,18 @@ func initIssueTracker() *errs.Error {
 			ids = append(ids, id)
 		}
 
-		var b bytes.Buffer
-		fmt.Fprintf(&b, "(unknown issue tracker: %v)", config.IssueTrackerId())
-		fmt.Fprintf(&b, "(available issue trackers: %v)", ids)
-		fmt.Fprintf(&b, "\nError: failed to instantiate the issue tracker plugin")
-		return errs.NewError(taskName, &b, nil)
+		hint := new(bytes.Buffer)
+		fmt.Fprintf(hint, "\nAvailable issue trackers: %v\n\n", ids)
+		return errs.NewError(
+			task,
+			fmt.Errorf("unknown issue tracker: %v", config.IssueTrackerId()),
+			hint)
 	}
 
 	// Try to instantiate the issue tracker.
 	tracker, err := factory()
 	if err != nil {
-		return errs.NewError(taskName, nil, err)
+		return errs.NewError(task, err, nil)
 	}
 
 	// Set the global issue tracker instance, at last.

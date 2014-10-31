@@ -48,7 +48,7 @@ func (story *story) AddAssignee(user common.User) *errs.Error {
 
 	id, err := strconv.Atoi(user.Id())
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	return story.SetAssignees(append(story.Assignees(), userId(id)))
@@ -60,7 +60,7 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 	for i, user := range users {
 		id, err := strconv.Atoi(user.Id())
 		if err != nil {
-			return errs.NewError(msg, nil, err)
+			return errs.NewError(msg, err, nil)
 		}
 		ownerIds[i] = id
 	}
@@ -69,7 +69,7 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 		return updateRequest
 	})
 	if err != nil {
-		return errs.NewError(msg, stderr, err)
+		return errs.NewError(msg, err, stderr)
 	}
 	return nil
 }

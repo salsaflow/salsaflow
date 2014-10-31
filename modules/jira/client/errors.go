@@ -35,13 +35,18 @@ type ErrAPI struct {
 }
 
 func (err *ErrAPI) Error() string {
-	req := err.Response.Request
-	return fmt.Sprintf(
-		"%v %v -> %v (error = %+v)",
-		req.Method,
-		req.URL,
-		err.Response.Status,
-		err.Err)
+	var (
+		req    = err.Response.Request
+		format = "%v %v -> %v"
+		values = make([]interface{}, 0, 4)
+	)
+	values = append(values, req.Method, req.URL, err.Response.Status)
+
+	if err.Err != nil {
+		format = "%v %v -> %v (JIRA error = %+v)"
+		values = append(values, err.Err)
+	}
+	return fmt.Sprintf(format, values...)
 }
 
 // ErrFieldNotSet --------------------------------------------------------------

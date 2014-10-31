@@ -35,12 +35,12 @@ func loadConfig() (*config, error) {
 	msg := "Load global GitHub config"
 	proxy := &config{&GlobalConfig{}}
 	if err := cfg.FillGlobalConfig(proxy.global); err != nil {
-		return nil, errs.NewError(msg, nil, err)
+		return nil, errs.NewError(msg, err, nil)
 	}
 
 	msg = "Validate global GitHub config"
 	if err := proxy.global.validate(); err != nil {
-		return nil, errs.NewError(msg, nil, err)
+		return nil, errs.NewError(msg, err, nil)
 	}
 
 	return proxy, nil

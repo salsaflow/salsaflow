@@ -61,7 +61,7 @@ func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit, opts map[strin
 	msg := "Post review request for commit " + commit.SHA
 	stdout, stderr, err := shell.Run(args...)
 	if err != nil {
-		return errs.NewError(msg, stderr, err)
+		return errs.NewError(msg, err, stderr)
 	}
 	logger := log.V(log.Info)
 	logger.Lock()
@@ -125,14 +125,14 @@ func ensureRbtVersion() error {
 	// rbt prints the version string to stderr. WHY? Who knows...
 	_, stderr, err := shell.Run("rbt", "--version")
 	if err != nil {
-		return errs.NewError(msg, stderr, err)
+		return errs.NewError(msg, err, stderr)
 	}
 
 	pattern := regexp.MustCompile("^RBTools (([0-9]+)[.]([0-9]+).*)")
 	parts := pattern.FindStringSubmatch(stderr.String())
 	if len(parts) != 4 {
 		err := errors.New("failed to parse 'rbt --version' output: " + stderr.String())
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 	rbtVersion := parts[1]
 	// No need to check errors, we know the format is correct.
@@ -150,8 +150,8 @@ to install the correct version.
 `
 		return errs.NewError(
 			msg,
-			bytes.NewBufferString(hint),
-			errors.New("unsupported rbt version detected: "+rbtVersion))
+			errors.New("unsupported rbt version detected: "+rbtVersion),
+			bytes.NewBufferString(hint))
 	}
 
 	return nil

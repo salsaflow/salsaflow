@@ -50,8 +50,7 @@ func Init() *errs.Error {
 }
 
 func MustInit() {
-	var logger = log.V(log.Info)
-	if err := Init(); err != nil && err.Err != repo.ErrInitialised {
-		err.Fatal(logger)
+	if err := Init(); err != nil && err.Trigger() != repo.ErrInitialised {
+		errs.Fatal(err)
 	}
 }

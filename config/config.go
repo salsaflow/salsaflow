@@ -49,14 +49,14 @@ func Load() *errs.Error {
 	// Make sure the local configuration file is committed.
 	msg := "Make sure the local configuration file is committed"
 	if stderr, err := ensureLocalConfigCommitted(); err != nil {
-		return errs.NewError(msg, stderr, err)
+		return errs.NewError(msg, err, stderr)
 	}
 
 	// Read the local configuration file.
 	msg = "Read local configuration file"
 	localConfig, stderr, err := ReadLocalConfig()
 	if err != nil {
-		return errs.NewError(msg, stderr, err)
+		return errs.NewError(msg, err, stderr)
 	}
 	localConfigContent = localConfig.Bytes()
 
@@ -64,7 +64,7 @@ func Load() *errs.Error {
 	msg = "Read global configuration file"
 	globalConfig, err := ReadGlobalConfig()
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 	globalConfigContent = globalConfig.Bytes()
 
@@ -75,13 +75,13 @@ func Load() *errs.Error {
 		CodeReviewTool string `yaml:"code_review_tool"`
 	}
 	if err := yaml.Unmarshal(localConfigContent, &config); err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 	switch {
 	case config.IssueTracker == "":
-		return errs.NewError(msg, nil, &ErrKeyNotSet{"issue_tracker"})
+		return errs.NewError(msg, &ErrKeyNotSet{"issue_tracker"}, nil)
 	case config.CodeReviewTool == "":
-		return errs.NewError(msg, nil, &ErrKeyNotSet{"code_review_tool"})
+		return errs.NewError(msg, &ErrKeyNotSet{"code_review_tool"}, nil)
 	}
 
 	// Set the global variables.

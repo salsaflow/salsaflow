@@ -15,7 +15,6 @@ import (
 	// Internal
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
-	"github.com/salsita/salsaflow/log"
 )
 
 const (
@@ -147,11 +146,8 @@ func (ver *Version) CommitToBranch(branch string) (stderr *bytes.Buffer, err err
 		//
 		// We cannot lose any changes by doing so, because we make sure that
 		// package.json is clean at the beginning of CommitToBranch.
-		if serr, ex := git.Checkout("--", absPath); ex != nil {
-			errs.NewError(
-				fmt.Sprintf("Roll back changes to %v", PackageFileName),
-				serr,
-				err).Log(log.V(log.Info))
+		if stderr, err := git.Checkout("--", absPath); err != nil {
+			errs.LogError(fmt.Sprintf("Roll back changes to %v", PackageFileName), err, stderr)
 		}
 	}()
 

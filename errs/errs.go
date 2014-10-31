@@ -10,71 +10,87 @@ import (
 )
 
 type Error struct {
-	TaskName string
-	Stderr   *bytes.Buffer
-	Err      error
+	taskName string
+	err      error
+	errHint  *bytes.Buffer
 }
 
-func NewError(taskName string, stderr *bytes.Buffer, err error) *Error {
-	return &Error{taskName, stderr, err}
+func NewError(taskName string, err error, errHint *bytes.Buffer) *Error {
+	// The task name and the error must be set, always. Only the error hint is optional.
+	switch {
+	case taskName == "":
+		panic("errs.NewError: argument 'taskName' is empty")
+	case err == nil:
+		panic("errs.NewError: argument 'err' is empty")
+	}
+
+	// We are cool now, return the new Error instance.
+	return &Error{taskName, err, errHint}
 }
 
-func (err *Error) Log(logger log.Logger) {
-	logger.Lock()
-	logger.UnsafeFail(err.TaskName)
-	if err.Err != nil {
-		logger.UnsafeNewLine(fmt.Sprintf("(error = %v)", err.Err))
-	}
-	if err.Stderr != nil {
-		logger.UnsafeStderr(err.Stderr)
-	}
-	logger.Unlock()
-	// Call myself recursively in case err.Err is also an Error.
-	if ex, ok := err.Err.(*Error); ok {
-		ex.Log(logger)
-	}
-}
-
-func (err *Error) Fatal(logger log.Logger) {
+func (err *Error) Log(logger log.Logger) *Error {
 	logger.Lock()
 	defer logger.Unlock()
-	logger.UnsafeFail(err.TaskName)
-	if err.Err != nil {
-		logger.UnsafeNewLine(fmt.Sprintf("(%v)", err.Err))
+	return err.unsafeLog(logger)
+}
+
+func (err *Error) LogAndDie(logger log.Logger) {
+	logger.Lock()
+	defer logger.Unlock()
+	err.unsafeLog(logger)
+	logger.Fatalln("\nFatal error: " + err.Error())
+}
+
+func (err *Error) unsafeLog(logger log.Logger) *Error {
+	// Check whether err.err is also an Error.
+	// In case it is, print that error first so that format the output
+	// in a similar way to an unrolling stack, i.e. deeper error first.
+	if err.err != nil {
+		if next, ok := err.err.(*Error); ok && next != nil {
+			next.Log(logger)
+		}
 	}
-	if err.Stderr != nil {
-		logger.UnsafeStderr(err.Stderr)
+
+	// Print the error saved in this Error struct.
+	logger.UnsafeFail(err.taskName)
+	if err.err != nil {
+		logger.UnsafeNewLine(fmt.Sprintf("(error = %v)", err.err))
 	}
-	if err.Err != nil {
-		logger.UnsafeFatalln("\nError: " + err.Err.Error())
-	} else {
-		logger.UnsafeFatalln("\nError: task failed")
+	if err.errHint != nil {
+		logger.UnsafeStderr(err.errHint)
 	}
+
+	// Return self to be able to chain calls or return.
+	return err
+}
+
+// Trigger returns the deepest error, in other words, the error that started the error chain.
+func (err *Error) Trigger() error {
+	if next, ok := err.err.(*Error); ok && next != nil {
+		return next.Trigger()
+	}
+	return err.err
 }
 
 func (err *Error) Error() string {
-	return err.Err.Error()
+	return err.err.Error()
 }
 
 func Log(err error) error {
 	if ex, ok := err.(*Error); ok {
-		ex.Log(log.V(log.Info))
+		return ex.Log(log.V(log.Info))
+	} else {
+		return NewError("unknown task", err, nil).Log(log.V(log.Info))
 	}
-	return err
 }
 
-func LogFail(task string, err error) error {
+func LogError(taskName string, err error, errHint *bytes.Buffer) {
+	Log(NewError(taskName, err, errHint))
+}
+
+func Fatal(err error) {
 	if ex, ok := err.(*Error); ok {
 		ex.Log(log.V(log.Info))
-		if task != ex.TaskName {
-			log.Fail(task)
-		}
-	} else {
-		logger := log.V(log.Info)
-		logger.Lock()
-		logger.UnsafeFail(task)
-		logger.UnsafeNewLine(fmt.Sprintf("(err = %v)", err))
-		logger.Unlock()
 	}
-	return err
+	log.Fatalln("\nFatal error: " + err.Error())
 }

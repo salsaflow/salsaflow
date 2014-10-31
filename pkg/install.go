@@ -37,14 +37,14 @@ func Install(version string, opts *InstallOptions) error {
 	msg := "Load GitHub config"
 	config, err := loadConfig()
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	// Instantiate a GitHub client.
 	msg = "Instantiate a GitHub client"
 	client, err := newGitHubClient(config.GitHubToken())
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	// Fetch the list of available GitHub releases.
@@ -52,7 +52,7 @@ func Install(version string, opts *InstallOptions) error {
 	log.Run(msg)
 	releases, _, err := client.Repositories.ListReleases(owner, repo, nil)
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	// Get the release matching the chosen version string.
@@ -68,7 +68,7 @@ func Install(version string, opts *InstallOptions) error {
 		}
 	}
 	if release == nil {
-		return errs.NewError(msg, nil, fmt.Errorf("SalsaFlow version %v not found", version))
+		return errs.NewError(msg, fmt.Errorf("SalsaFlow version %v not found", version), nil)
 	}
 
 	// Prompt the user to confirm the the installation.
@@ -77,7 +77,7 @@ func Install(version string, opts *InstallOptions) error {
 	confirmed, err := prompt.Confirm(fmt.Sprintf(
 		"SalsaFlow version %v is about to be installed. Shall we proceed?", version))
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 	if !confirmed {
 		return ErrAborted

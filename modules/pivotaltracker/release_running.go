@@ -49,7 +49,7 @@ func (release *runningRelease) Deliver() (common.Action, error) {
 	log.Run(msg)
 	stories, stderr, err := setStoriesState(release.stories, pivotal.StoryStateDelivered)
 	if err != nil {
-		errs.NewError(msg, stderr, err).Log(log.V(log.Info))
+		errs.NewError(msg, err, stderr).Log(log.V(log.Info))
 		return nil, err
 	}
 	release.stories = stories
@@ -57,7 +57,7 @@ func (release *runningRelease) Deliver() (common.Action, error) {
 		// On error, set the story state back to Finished.
 		stories, stderr, err := setStoriesState(release.stories, pivotal.StoryStateFinished)
 		if err != nil {
-			errs.NewError(msg, stderr, err).Log(log.V(log.Info))
+			errs.NewError(msg, err, stderr).Log(log.V(log.Info))
 			return err
 		}
 		release.stories = stories

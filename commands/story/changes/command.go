@@ -2,7 +2,6 @@ package changesCmd
 
 import (
 	// Stdlib
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -11,9 +10,9 @@ import (
 	// Internal
 	"github.com/salsita/salsaflow/app"
 	"github.com/salsita/salsaflow/changes"
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/flag"
 	"github.com/salsita/salsaflow/git"
-	"github.com/salsita/salsaflow/log"
 
 	// Other
 	"gopkg.in/tchap/gocli.v1"
@@ -65,27 +64,16 @@ func run(cmd *gocli.Command, args []string) {
 	app.MustInit()
 
 	if err := runMain(args[0]); err != nil {
-		log.Fatalln("\nError: " + err.Error())
+		errs.Fatal(err)
 	}
 }
 
 func runMain(storyId string) (err error) {
-	var (
-		msg    string
-		stderr *bytes.Buffer
-	)
-	defer func() {
-		// Print error details.
-		if err != nil {
-			log.FailWithDetails(msg, stderr)
-		}
-	}()
-
 	// Get the list of all relevant story commits.
-	msg = "Get the list of relevant story commits"
+	task := "Get the list of relevant story commits"
 	commits, stderr, err := git.ListStoryCommits(storyId)
 	if err != nil {
-		return
+		return errs.NewError(task, err, stderr)
 	}
 
 	// Group the commits by change ID.

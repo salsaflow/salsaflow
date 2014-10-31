@@ -2,6 +2,7 @@ package installCmd
 
 import (
 	// Stdlib
+	"fmt"
 	"os"
 
 	// Internal
@@ -46,8 +47,11 @@ func run(cmd *gocli.Command, args []string) {
 	app.MustInit()
 
 	if err := runMain(args[0]); err != nil {
-		errs.Log(err)
-		log.Fatalln("\nError: " + err.Error())
+		if err == pkg.ErrAborted {
+			fmt.Println("\nYour wish is my command, exiting now!")
+			return
+		}
+		errs.Fatal(err)
 	}
 
 	log.Log("SalsaFlow was installed successfully")
@@ -58,12 +62,5 @@ func runMain(versionString string) error {
 		return err
 	}
 
-	if err := pkg.Install(versionString, &pkg.InstallOptions{flagOwner, flagRepo}); err != nil {
-		if err == pkg.ErrAborted {
-			log.Fatalln("\nYour wish is my command, exiting now.")
-		}
-		return err
-	}
-
-	return nil
+	return pkg.Install(versionString, &pkg.InstallOptions{flagOwner, flagRepo})
 }

@@ -119,7 +119,7 @@ func PromptStory(msg string, stories []common.Story) (common.Story, error) {
 		if err == ErrCanceled {
 			return nil, ErrCanceled
 		}
-		return nil, errs.NewError(task, nil, err)
+		return nil, errs.NewError(task, err, nil)
 	}
 	return stories[index], nil
 }
