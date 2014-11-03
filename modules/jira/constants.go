@@ -1,5 +1,21 @@
 package jira
 
+// Issue Types -----------------------------------------------------------------
+
+const (
+	issueTypeIdBug              = "1"
+	issueTypeIdTechnicalTask    = "10401"
+	issueTypeIdTechnicalSubTask = "10002"
+	issueTypeIdUserStory        = "10500"
+)
+
+var codingIssueTypeIds = []string{
+	issueTypeIdBug,
+	issueTypeIdTechnicalTask,
+	issueTypeIdTechnicalSubTask,
+	issueTypeIdUserStory,
+}
+
 // States --------------------------------------------------------------------
 
 const (

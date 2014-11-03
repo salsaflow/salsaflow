@@ -4,7 +4,6 @@ import (
 	// Stdlib
 	"fmt"
 	"net/url"
-	"strings"
 
 	// Internal
 	"github.com/salsita/salsaflow/log"
@@ -86,8 +85,8 @@ func selectActiveIssueIds(ids []string) (activeIds []string, err error) {
 }
 
 func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
-	query := fmt.Sprintf("project=%s and (status=%s)",
-		config.ProjectKey(), strings.Join(startableStateIds, " OR status="))
+	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", config.ProjectKey(),
+		toAND("type", codingIssueTypeIds...), toAND("status", startableStateIds...))
 
 	issues, _, err := newClient().Issues.Search(&client.SearchOptions{
 		JQL:        query,
@@ -101,8 +100,8 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 }
 
 func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
-	query := fmt.Sprintf("project=%s and (status=%s)",
-		config.ProjectKey(), strings.Join(inDevelopmentStateIds, " OR status="))
+	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", config.ProjectKey(),
+		toAND("type", codingIssueTypeIds...), toAND("status", inDevelopmentStateIds...))
 
 	issues, _, err := newClient().Issues.Search(&client.SearchOptions{
 		JQL:        query,
