@@ -47,7 +47,7 @@ func (err *Error) unsafeLog(logger log.Logger) *Error {
 	// in a similar way to an unrolling stack, i.e. deeper error first.
 	if err.err != nil {
 		if next, ok := err.err.(*Error); ok && next != nil {
-			next.Log(logger)
+			next.unsafeLog(logger)
 		}
 	}
 
@@ -64,10 +64,10 @@ func (err *Error) unsafeLog(logger log.Logger) *Error {
 	return err
 }
 
-// Trigger returns the deepest error, in other words, the error that started the error chain.
-func (err *Error) Trigger() error {
+// RootCause returns the deepest error, in other words, the error that started the error chain.
+func (err *Error) RootCause() error {
 	if next, ok := err.err.(*Error); ok && next != nil {
-		return next.Trigger()
+		return next.RootCause()
 	}
 	return err.err
 }

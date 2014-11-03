@@ -50,7 +50,7 @@ func Init() *errs.Error {
 }
 
 func MustInit() {
-	if err := Init(); err != nil && err.Trigger() != repo.ErrInitialised {
+	if err := Init(); err != nil && err.RootCause() != repo.ErrInitialised {
 		errs.Fatal(err)
 	}
 }
