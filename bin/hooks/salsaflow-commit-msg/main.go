@@ -69,15 +69,16 @@ func run(messagePath string) error {
 			dropEmptyLines = false
 		}
 
-		// Drop comments.
-		if strings.HasPrefix(trimmedLine, "#") {
-			continue
-		}
-
 		// Drop the diff that can be appended do the commit message when
 		// git commit -v is used. Git would drop the diff later anyway.
 		if line == diffSeparator {
 			break
+		}
+
+		// Drop other comments. This must happen after we check for the separator,
+		// otherwise the separator is just dropped as a comment.
+		if strings.HasPrefix(trimmedLine, "#") {
+			continue
 		}
 
 		// Check for the Change-Id tag.
