@@ -39,7 +39,7 @@ func doInstall(client *github.Client, owner, repo string, assets []github.Releas
 		}
 	}
 	if assetURL == "" {
-		return errs.NewError(msg, nil, errors.New("no suitable release asset found"))
+		return errs.NewError(msg, errors.New("no suitable release asset found"), nil)
 	}
 
 	// Download the selected release asset.
@@ -56,7 +56,7 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 	log.Run(msg)
 	resp, err := http.Get(assetURL)
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 	defer resp.Body.Close()
 
@@ -70,18 +70,18 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 	bodyBuffer := bytes.NewBuffer(make([]byte, 0, capacity))
 	_, err = io.Copy(bodyBuffer, resp.Body)
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	msg = "Replace SalsaFlow executables"
 	archive, err := zip.NewReader(bytes.NewReader(bodyBuffer.Bytes()), int64(bodyBuffer.Len()))
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	exeDir, err := osext.ExecutableFolder()
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	var numThreads int
@@ -103,7 +103,7 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 
 			src, err := file.Open()
 			if err != nil {
-				errCh <- errs.NewError(msg, nil, err)
+				errCh <- errs.NewError(msg, err, nil)
 				return
 			}
 
@@ -111,7 +111,7 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 			log.Go(msg)
 			if err := replaceExecutable(src, exeDir, baseName); err != nil {
 				src.Close()
-				errCh <- errs.NewError(msg, nil, err)
+				errCh <- errs.NewError(msg, err, nil)
 				return
 			}
 

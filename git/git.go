@@ -10,84 +10,75 @@ import (
 	"strings"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/shell"
 )
 
-func UpdateRemotes(remotes ...string) (stderr *bytes.Buffer, err error) {
-	argsList := append([]string{"remote", "update"}, remotes...)
-	_, stderr, err = Git(argsList...)
+func Add(args ...string) (stderr *bytes.Buffer, err error) {
+	_, stderr, err = RunCommand("add", args...)
 	return
 }
 
-func MergeInto(branch string, args ...string) (stderr *bytes.Buffer, err error) {
-	// Get the current branch.
-	currentBranch, stderr, err := CurrentBranch()
-	if err != nil {
-		return stderr, err
-	}
-	defer func() {
-		// On return, checkout the original branch.
-		if serr, ex := Checkout(currentBranch); ex != nil {
-			if err == nil {
-				stderr = serr
-				err = ex
-			} else {
-				errs.Log(errs.NewError(
-					fmt.Sprintf("Checkout branch '%v'", currentBranch), serr, ex))
-			}
-		}
-	}()
-
-	// Checkout the target branch.
-	if stderr, err := Checkout(branch); err != nil {
-		return stderr, err
-	}
-
-	// Do the merging.
-	argsList := make([]string, 2, 2+len(args))
-	argsList[0] = "merge"
-	argsList[1] = currentBranch
-	argsList = append(argsList, args...)
-	_, stderr, err = Git(argsList...)
+func Branch(args ...string) (stderr *bytes.Buffer, err error) {
+	_, stderr, err = RunCommand("branch", args...)
 	return stderr, err
 }
 
-func Log(args ...string) (stdout, stderr *bytes.Buffer, err error) {
-	return RunGitCommand("log", args...)
+func Checkout(args ...string) (stderr *bytes.Buffer, err error) {
+	_, stderr, err = RunCommand("checkout", args...)
+	return
 }
 
-func CherryPick(args ...string) (stdout, stderr *bytes.Buffer, err error) {
-	return RunGitCommand("cherry-pick", args...)
+func CherryPick(args ...string) (stderr *bytes.Buffer, err error) {
+	_, stderr, err = RunCommand("cherry-pick", args...)
+	return
+}
+
+func Log(args ...string) (stdout, stderr *bytes.Buffer, err error) {
+	return RunCommand("log", args...)
+}
+
+func Rebase(args ...string) (stderr *bytes.Buffer, err error) {
+	_, stderr, err = RunCommand("rebase", args...)
+	return
+}
+
+func Status(args ...string) (stdout, stderr *bytes.Buffer, err error) {
+	return RunCommand("status", args...)
+}
+
+func Tag(args ...string) (stderr *bytes.Buffer, err error) {
+	_, stderr, err = RunCommand("tag", args...)
+	return stderr, err
+}
+
+func DeleteTag(tag string) (stderr *bytes.Buffer, err error) {
+	return Tag("-d", tag)
 }
 
 func Push(remote string, args ...string) (stderr *bytes.Buffer, err error) {
 	argsList := make([]string, 3, 3+len(args))
-	argsList[0] = "push"
-	argsList[1] = "-u"
-	argsList[2] = remote
+	argsList[0], argsList[1], argsList[2] = "push", "-u", remote
 	argsList = append(argsList, args...)
-	_, stderr, err = Git(argsList...)
+	_, stderr, err = Run(argsList...)
 	return
 }
 
 func PushForce(remote string, args ...string) (stderr *bytes.Buffer, err error) {
 	argsList := make([]string, 3, 3+len(args))
-	argsList[0] = "push"
-	argsList[1] = "-f"
-	argsList[2] = remote
+	argsList[0], argsList[1], argsList[2] = "push", "-f", remote
 	argsList = append(argsList, args...)
-	_, stderr, err = Git(argsList...)
+	_, stderr, err = Run(argsList...)
 	return
 }
 
-func Branch(args ...string) (stderr *bytes.Buffer, err error) {
-	_, stderr, err = RunGitCommand("branch", args...)
-	return stderr, err
+func UpdateRemotes(remotes ...string) (stderr *bytes.Buffer, err error) {
+	argsList := append([]string{"remote", "update"}, remotes...)
+	_, stderr, err = Run(argsList...)
+	return
 }
 
 func RefExists(ref string) (exists bool, stderr *bytes.Buffer, err error) {
-	_, out, err := Git("show-ref", "--quiet", ref)
+	_, out, err := Run("show-ref", "--quiet", ref)
 	if err != nil {
 		if out.Len() != 0 {
 			// Non-empty error output means that there was an error.
@@ -103,7 +94,7 @@ func RefExists(ref string) (exists bool, stderr *bytes.Buffer, err error) {
 // RefExistsStrict requires the whole ref path to be specified,
 // e.g. refs/remotes/origin/master.
 func RefExistsStrict(ref string) (exists bool, stderr *bytes.Buffer, err error) {
-	_, out, err := Git("show-ref", "--verify", "--quiet", ref)
+	_, out, err := Run("show-ref", "--verify", "--quiet", ref)
 	if err != nil {
 		if out.Len() != 0 {
 			// Non-empty error output means that there was an error.
@@ -181,38 +172,22 @@ func CreateOrResetBranch(branch, target string) (stderr *bytes.Buffer, err error
 	return Branch(branch, target)
 }
 
-func Checkout(branch string) (stderr *bytes.Buffer, err error) {
-	_, stderr, err = Git("checkout", branch)
-	return
-}
-
 func ResetKeep(branch, ref string) (stderr *bytes.Buffer, err error) {
 	stderr, err = Checkout(branch)
 	if err != nil {
 		return
 	}
 
-	_, stderr, err = Git("reset", "--keep", ref)
+	_, stderr, err = Run("reset", "--keep", ref)
 	return
 }
 
 func ShowByBranch(branch, file string) (content, stderr *bytes.Buffer, err error) {
-	return Git("show", branch+":"+file)
-}
-
-func Tag(args ...string) (stderr *bytes.Buffer, err error) {
-	argsList := append([]string{"tag"}, args...)
-	_, stderr, err = Git(argsList...)
-	return
-}
-
-func DeleteTag(tag string) (stderr *bytes.Buffer, err error) {
-	_, stderr, err = Git("tag", "-d", tag)
-	return
+	return Run("show", branch+":"+file)
 }
 
 func Hexsha(ref string) (hexsha string, stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := Git("show-ref", "--verify", ref)
+	stdout, stderr, err := Run("show-ref", "--verify", ref)
 	if err != nil {
 		return
 	}
@@ -250,7 +225,7 @@ func EnsureBranchSynchronized(branch, remote string) (stderr *bytes.Buffer, err 
 }
 
 func EnsureCleanWorkingTree() (status *bytes.Buffer, stderr *bytes.Buffer, err error) {
-	status, stderr, err = Git("status", "--porcelain")
+	status, stderr, err = Run("status", "--porcelain")
 	if err != nil {
 		return nil, stderr, err
 	}
@@ -261,7 +236,7 @@ func EnsureCleanWorkingTree() (status *bytes.Buffer, stderr *bytes.Buffer, err e
 }
 
 func EnsureFileClean(relativePath string) (stderr *bytes.Buffer, err error) {
-	status, stderr, err := Git("status", "--porcelain", relativePath)
+	status, stderr, err := Run("status", "--porcelain", relativePath)
 	if err != nil {
 		return stderr, err
 	}
@@ -272,7 +247,7 @@ func EnsureFileClean(relativePath string) (stderr *bytes.Buffer, err error) {
 }
 
 func CurrentBranch() (branch string, stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := Git("rev-parse", "--abbrev-ref", "HEAD")
+	stdout, stderr, err := Run("rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
 		return
 	}
@@ -282,7 +257,7 @@ func CurrentBranch() (branch string, stderr *bytes.Buffer, err error) {
 }
 
 func RepositoryRootAbsolutePath() (path string, stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := Git("rev-parse", "--show-toplevel")
+	stdout, stderr, err := Run("rev-parse", "--show-toplevel")
 	if err != nil {
 		return
 	}
@@ -316,7 +291,7 @@ func RelativePath(pathFromRoot string) (relativePath string, stderr *bytes.Buffe
 }
 
 func GetConfigBool(key string) (value bool, stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := Git("config", key)
+	stdout, stderr, err := Run("config", key)
 	if err != nil {
 		if stderr.Len() == 0 {
 			// git config returns exit code 1 when the key is not set.
@@ -336,18 +311,20 @@ func GetConfigBool(key string) (value bool, stderr *bytes.Buffer, err error) {
 }
 
 func SetConfigBool(key string, value bool) (stderr *bytes.Buffer, err error) {
-	_, stderr, err = Git("config", key, strconv.FormatBool(value))
+	_, stderr, err = Run("config", key, strconv.FormatBool(value))
 	return
 }
 
-func Git(args ...string) (stdout, stderr *bytes.Buffer, err error) {
-	args = append([]string{"git", "--no-pager"}, args...)
-	return shell.Run(args...)
+func Run(args ...string) (stdout, stderr *bytes.Buffer, err error) {
+	argsList := make([]string, 2, 2+len(args))
+	argsList[0], argsList[1] = "git", "--no-pager"
+	argsList = append(argsList, args...)
+	return shell.Run(argsList...)
 }
 
-func RunGitCommand(command string, args ...string) (stdout, stderr *bytes.Buffer, err error) {
-	argsList := make([]string, 1, 1+len(args))
-	argsList[0] = command
+func RunCommand(command string, args ...string) (stdout, stderr *bytes.Buffer, err error) {
+	argsList := make([]string, 3, 3+len(args))
+	argsList[0], argsList[1], argsList[2] = "git", "--no-pager", command
 	argsList = append(argsList, args...)
-	return Git(argsList...)
+	return shell.Run(argsList...)
 }

@@ -2,7 +2,6 @@ package startCmd
 
 import (
 	// Stdlib
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -55,35 +54,71 @@ func run(cmd *gocli.Command, args []string) {
 
 	app.MustInit()
 
-	if err := runMain(); err != nil {
-		log.Fatalln("\nFatal error: " + err.Error())
-	}
-}
+	// Exit cleanly when the panic is actually ErrCanceled.
+	defer func() {
+		if r := recover(); r != nil {
+			if r == prompt.ErrCanceled {
+				log.Println("\nOperation canceled. You are welcome to come back any time!")
+			} else {
+				panic(r)
+			}
+		}
+	}()
 
-func handleError(task string, err error, stderr *bytes.Buffer) error {
-	errs.NewError(task, stderr, err).Log(log.V(log.Info))
-	return err
+	if err := runMain(); err != nil {
+		errs.Fatal(err)
+	}
 }
 
 func runMain() (err error) {
 	tracker := modules.GetIssueTracker()
 
 	// Fetch stories from the issue tracker.
-	msg := "Fetch stories from the issue tracker"
-	log.Run(msg)
+	task := "Fetch stories from the issue tracker"
+	log.Run(task)
 	stories, err := tracker.StartableStories()
 	if err != nil {
-		return errs.LogFail(msg, err)
+		return errs.NewError(task, err, nil)
 	}
 	if len(stories) == 0 {
-		return errs.LogFail(msg, errors.New("no startable stories found"))
+		return errs.NewError(task, errors.New("no startable stories found"), nil)
 	}
+
+	// Filter out the stories that are not relevant,
+	// i.e. not owned by the current user or assigned to someone else.
+	task = "Fetch the current user record from the issue tracker"
+	user, err := tracker.CurrentUser()
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+
+	var filteredStories []common.Story
+StoryLoop:
+	for _, story := range stories {
+		assignees := story.Assignees()
+		// Include the story in case there is no assignee set yet.
+		if len(assignees) == 0 {
+			filteredStories = append(filteredStories, story)
+			continue StoryLoop
+		}
+		// Include the story in case the current user is assigned.
+		for _, assignee := range assignees {
+			if assignee.Id() == user.Id() {
+				filteredStories = append(filteredStories, story)
+				continue StoryLoop
+			}
+		}
+	}
+	stories = filteredStories
 
 	// Prompt the user to select a story.
 	story, err := prompt.PromptStory(
 		"\nYou can start working on one of the following stories:", stories)
 	if err != nil {
-		return errs.Log(err)
+		if err == prompt.ErrCanceled {
+			panic(err)
+		}
+		return err
 	}
 	fmt.Println()
 
@@ -105,31 +140,27 @@ func runMain() (err error) {
 	}
 
 	// Add the current user to the list of story assignees.
-	msg = "Amend the list of story assignees"
-	log.Run(msg)
+	task = "Amend the list of story assignees"
+	log.Run(task)
 	originalAssignees := story.Assignees()
-	user, err := tracker.CurrentUser()
-	if err != nil {
-		return errs.LogFail(msg, err)
-	}
 	if err := story.AddAssignee(user); err != nil {
-		return errs.LogFail(msg, err)
+		return errs.NewError(task, err, nil)
 	}
-	defer func(msg string) {
+	defer func(task string) {
 		// On error, reset the list of story assignees.
 		if err != nil {
-			log.Rollback(msg)
+			log.Rollback(task)
 			if err := story.SetAssignees(originalAssignees); err != nil {
-				errs.Log(errs.NewError("Reset the list of story assignees", nil, err))
+				errs.LogError("Reset the list of story assignees", err, nil)
 			}
 		}
-	}(msg)
+	}(task)
 
 	// Start the selected story. No need to roll back.
-	msg = "Start the selected story"
-	log.Run(msg)
+	task = "Start the selected story"
+	log.Run(task)
 	if err := story.Start(); err != nil {
-		return errs.Log(err)
+		return errs.NewError(task, err, nil)
 	}
 
 	return nil
@@ -137,33 +168,33 @@ func runMain() (err error) {
 
 func createBranch() (common.Action, error) {
 	// Get the current branch name.
-	msg := "Get the current branch name"
+	task := "Get the current branch name"
 	originalBranch, stderr, err := git.CurrentBranch()
 	if err != nil {
-		return nil, handleError(msg, err, stderr)
+		return nil, errs.NewError(task, err, stderr)
 	}
 
 	// Fetch the remote repository.
-	msg = "Fetch the remote repository"
-	log.Run(msg)
+	task = "Fetch the remote repository"
+	log.Run(task)
 	stderr, err = git.UpdateRemotes(config.OriginName)
 	if err != nil {
-		return nil, handleError(msg, err, stderr)
+		return nil, errs.NewError(task, err, stderr)
 	}
 
 	// Make sure the trunk branch is up to date.
-	msg = fmt.Sprintf("Make sure branch '%v' is up to date", config.TrunkBranch)
-	log.Run(msg)
+	task = fmt.Sprintf("Make sure branch '%v' is up to date", config.TrunkBranch)
+	log.Run(task)
 	stderr, err = git.EnsureBranchSynchronized(config.TrunkBranch, config.OriginName)
 	if err != nil {
-		return nil, handleError(msg, err, stderr)
+		return nil, errs.NewError(task, err, stderr)
 	}
 
 	// Prompt the user for the branch name.
-	msg = "Prompt the user for the branch name"
+	task = "Prompt the user for the branch name"
 	line, err := prompt.Prompt("\nPlease insert branch slug: ")
 	if err != nil {
-		return nil, errs.LogFail(msg, err)
+		return nil, errs.NewError(task, err, nil)
 	}
 
 	exitFunc := func() {
@@ -180,7 +211,7 @@ func createBranch() (common.Action, error) {
 	ok, err := prompt.Confirm(
 		fmt.Sprintf("\nThe branch that is going to be created will be called '%s'.\nIs that alright?", branchName))
 	if err != nil {
-		return nil, errs.LogFail(msg, err)
+		return nil, errs.NewError(task, err, nil)
 	}
 	if !ok {
 		exitFunc()
@@ -191,7 +222,7 @@ func createBranch() (common.Action, error) {
 		"Create branch '%v' on top of branch '%v'", branchName, config.TrunkBranch)
 	log.Run(createMsg)
 	if stderr, err = git.Branch(branchName, config.TrunkBranch); err != nil {
-		return nil, handleError(msg, err, stderr)
+		return nil, errs.NewError(task, err, stderr)
 	}
 
 	deleteMsg := fmt.Sprintf("Delete branch '%v'", branchName)
@@ -199,7 +230,7 @@ func createBranch() (common.Action, error) {
 		// Roll back and delete the newly created branch.
 		log.Rollback(createMsg)
 		if stderr, err := git.Branch("-D", branchName); err != nil {
-			return errs.NewError(deleteMsg, stderr, err)
+			return errs.NewError(deleteMsg, err, stderr)
 		}
 		return nil
 	}
@@ -208,7 +239,7 @@ func createBranch() (common.Action, error) {
 	log.Run(checkoutMsg)
 	if stderr, err = git.Checkout(branchName); err != nil {
 		errs.Log(deleteBranch())
-		return nil, handleError(msg, err, stderr)
+		return nil, errs.NewError(task, err, stderr)
 	}
 
 	return common.ActionFunc(func() error {
@@ -216,10 +247,9 @@ func createBranch() (common.Action, error) {
 		log.Rollback(checkoutMsg)
 		if stderr, err := git.Checkout(originalBranch); err != nil {
 			return errs.NewError(
-				fmt.Sprintf("Checkout the original branch '%v'", originalBranch), stderr, err)
+				fmt.Sprintf("Checkout the original branch '%v'", originalBranch), err, stderr)
 		}
 		// Delete the newly created branch.
-		log.Rollback(createMsg)
 		return deleteBranch()
 	}), nil
 }

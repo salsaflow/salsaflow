@@ -37,14 +37,14 @@ func Upgrade(opts *InstallOptions) error {
 	msg := "Load GitHub config"
 	config, err := loadConfig()
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	// Instantiate a GitHub client.
 	msg = "Instantiate a GitHub client"
 	client, err := newGitHubClient(config.GitHubToken())
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	// Fetch the list of available GitHub releases.
@@ -52,7 +52,7 @@ func Upgrade(opts *InstallOptions) error {
 	log.Run(msg)
 	releases, _, err := client.Repositories.ListReleases(owner, repo, nil)
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	// Sort the releases by version and get the most recent release.
@@ -76,7 +76,7 @@ func Upgrade(opts *InstallOptions) error {
 		})
 	}
 	if rs.Len() == 0 {
-		return errs.NewError(msg, nil, errors.New("no suitable GitHub releases found"))
+		return errs.NewError(msg, errors.New("no suitable GitHub releases found"), nil)
 	}
 
 	sort.Sort(rs)
@@ -100,7 +100,7 @@ func Upgrade(opts *InstallOptions) error {
 	confirmed, err := prompt.Confirm(fmt.Sprintf(
 		"SalsaFlow version %v is available. Upgrade now?", release.version))
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 	if !confirmed {
 		return ErrAborted

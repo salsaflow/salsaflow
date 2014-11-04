@@ -42,9 +42,7 @@ func main() {
 
 	// Run the main function.
 	if err := run(os.Args[1], os.Args[2]); err != nil {
-		errs.Log(err)
-		fmt.Println()
-		os.Exit(1)
+		errs.Fatal(err)
 	}
 }
 
@@ -74,7 +72,7 @@ func run(remoteName, pushURL string) error {
 			parts = strings.Split(line, " ")
 		)
 		if len(parts) != 4 {
-			return errs.NewError(msg, nil, errors.New("invalid input line: "+line))
+			return errs.NewError(msg, errors.New("invalid input line: "+line), nil)
 		}
 
 		localSha, remoteRef, remoteSha := parts[1], parts[2], parts[3]
@@ -86,13 +84,13 @@ func run(remoteName, pushURL string) error {
 
 		// Check only updates to the core branches,
 		// i.e. trunk, release, client or master.
-		var checkReference bool
+		var isCoreBranch bool
 		for _, ref := range coreRefs {
 			if remoteRef == ref {
-				checkReference = true
+				isCoreBranch = true
 			}
 		}
-		if !checkReference {
+		if !isCoreBranch {
 			continue
 		}
 
@@ -111,7 +109,7 @@ func run(remoteName, pushURL string) error {
 		revRanges = append(revRanges, revRange)
 	}
 	if err := scanner.Err(); err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	// Get the relevant commit objects.
@@ -120,7 +118,7 @@ func run(remoteName, pushURL string) error {
 	for _, revRange := range revRanges {
 		cs, stderr, err := git.ShowCommitRange(revRange)
 		if err != nil {
-			return errs.NewError(msg, stderr, err)
+			return errs.NewError(msg, err, stderr)
 		}
 		commits = append(commits, cs...)
 	}
@@ -153,7 +151,7 @@ func run(remoteName, pushURL string) error {
 	if invalid {
 		tw.Flush()
 		stderr.WriteString("\n")
-		return errs.NewError(msg, stderr, nil)
+		return errs.NewError(msg, errors.New("invalid commit message"), stderr)
 	}
 	return nil
 }

@@ -93,7 +93,7 @@ func (release *nextRelease) Start() (common.Action, error) {
 	log.Run(msg)
 	stories, stderr, err := addLabel(release.stories, releaseLabel(release.ver))
 	if err != nil {
-		return nil, errs.NewError(msg, stderr, err)
+		return nil, errs.NewError(msg, err, stderr)
 	}
 	release.stories = stories
 
@@ -102,7 +102,7 @@ func (release *nextRelease) Start() (common.Action, error) {
 		log.Rollback(msg)
 		stories, stderr, err := removeLabel(release.stories, releaseLabel(release.ver))
 		if err != nil {
-			return errs.NewError(msg, stderr, err)
+			return errs.NewError(msg, err, stderr)
 		}
 		release.stories = stories
 		return nil

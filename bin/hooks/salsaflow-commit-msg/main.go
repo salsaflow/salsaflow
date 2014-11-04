@@ -35,7 +35,7 @@ func main() {
 
 	if err := run(os.Args[1]); err != nil {
 		asciiart.PrintGrimReaper("COMMIT ABORTED")
-		log.Fatalln("Error:", err)
+		log.Fatalln("Fatal error:", err)
 	}
 }
 

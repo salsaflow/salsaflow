@@ -47,11 +47,10 @@ func run(cmd *gocli.Command, args []string) {
 
 	if err := pkg.Upgrade(&pkg.InstallOptions{flagOwner, flagRepo}); err != nil {
 		if err == pkg.ErrAborted {
-			fmt.Println("\nYour wish is my command, exiting now.")
+			fmt.Println("\nYour wish is my command, exiting now!")
 			return
 		}
-		errs.Log(err)
-		log.Fatalln("\nError: " + err.Error())
+		errs.Fatal(err)
 	}
 
 	log.Log("SalsaFlow was upgraded successfully")

@@ -3,13 +3,16 @@ package jira
 import (
 	// Stdlib
 	"fmt"
-	"strings"
+	"net/url"
 
 	// Internal
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/modules/common"
 	"github.com/salsita/salsaflow/modules/jira/client"
 	"github.com/salsita/salsaflow/version"
+
+	// Other
+	"github.com/toqueteos/webbrowser"
 )
 
 type issueTracker struct{}
@@ -29,16 +32,21 @@ func (tracker *issueTracker) CurrentUser() (common.User, error) {
 	return &user{data}, nil
 }
 
-func (tracker *issueTracker) SelectActiveStoryIds(ids []string) (activeIds []string, err error) {
-	return selectActiveIssueIds(ids)
-}
-
 func (tracker *issueTracker) NextRelease(ver *version.Version) (common.NextRelease, error) {
 	return newNextRelease(ver)
 }
 
 func (tracker *issueTracker) RunningRelease(ver *version.Version) (common.RunningRelease, error) {
 	return newRunningRelease(ver)
+}
+
+func (tracker *issueTracker) SelectActiveStoryIds(ids []string) (activeIds []string, err error) {
+	return selectActiveIssueIds(ids)
+}
+
+func (tracker *issueTracker) OpenStory(storyId string) error {
+	relativeURL, _ := url.Parse("browse/" + storyId)
+	return webbrowser.Open(config.BaseURL().ResolveReference(relativeURL).String())
 }
 
 func selectActiveIssueIds(ids []string) (activeIds []string, err error) {
@@ -77,8 +85,8 @@ func selectActiveIssueIds(ids []string) (activeIds []string, err error) {
 }
 
 func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
-	query := fmt.Sprintf("project=%s and (status=%s)",
-		config.ProjectKey(), strings.Join(startableStateIds, " OR status="))
+	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", config.ProjectKey(),
+		toAND("type", codingIssueTypeIds...), toAND("status", startableStateIds...))
 
 	issues, _, err := newClient().Issues.Search(&client.SearchOptions{
 		JQL:        query,
@@ -92,8 +100,8 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 }
 
 func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
-	query := fmt.Sprintf("project=%s and (status=%s)",
-		config.ProjectKey(), strings.Join(inDevelopmentStateIds, " OR status="))
+	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", config.ProjectKey(),
+		toAND("type", codingIssueTypeIds...), toAND("status", inDevelopmentStateIds...))
 
 	issues, _, err := newClient().Issues.Search(&client.SearchOptions{
 		JQL:        query,

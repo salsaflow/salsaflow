@@ -3,6 +3,7 @@ package prompt
 import (
 	// Stdlib
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,6 +18,28 @@ import (
 	// Other
 	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
 )
+
+// maxStoryTitleColumnWidth specifies the width of the story title column for story listing.
+// The story title is truncated to this width in case it is too long.
+const maxStoryTitleColumnWidth = 80
+
+var ErrCanceled = errors.New("operation canceled")
+
+type InvalidInputError struct {
+	input string
+}
+
+func (i *InvalidInputError) Error() string {
+	return "Invalid input: " + i.input
+}
+
+type OutOfBoundsError struct {
+	input string
+}
+
+func (i *OutOfBoundsError) Error() string {
+	return "Index out of bounds: " + i.input
+}
 
 func Confirm(question string) (bool, error) {
 	printQuestion := func() {
@@ -47,22 +70,6 @@ func Confirm(question string) (bool, error) {
 	return line == "y", nil
 }
 
-type InvalidInputError struct {
-	input string
-}
-
-func (i *InvalidInputError) Error() string {
-	return "Invalid input: " + i.input
-}
-
-type OutOfBoundsError struct {
-	input string
-}
-
-func (i *OutOfBoundsError) Error() string {
-	return "Index out of bounds: " + i.input
-}
-
 func Prompt(msg string) (string, error) {
 	fmt.Print(msg)
 	scanner := bufio.NewScanner(os.Stdin)
@@ -70,13 +77,16 @@ func Prompt(msg string) (string, error) {
 	if err := scanner.Err(); err != nil {
 		return "", err
 	}
-	return strings.ToLower(scanner.Text()), nil
+	return scanner.Text(), nil
 }
 
 func PromptIndex(msg string, min, max int) (int, error) {
 	line, err := Prompt(msg)
 	if err != nil {
 		return 0, err
+	}
+	if line == "" {
+		return 0, ErrCanceled
 	}
 
 	index, err := strconv.Atoi(line)
@@ -101,7 +111,7 @@ func PromptStory(msg string, stories []common.Story) (common.Story, error) {
 	io.WriteString(tw, "  Index\tStory ID\tStory Title\n")
 	io.WriteString(tw, "  =====\t========\t===========\n")
 	for i, story := range stories {
-		fmt.Fprintf(tw, "  %v\t%v\t%v\n", i, story.ReadableId(), story.Title())
+		fmt.Fprintf(tw, "  %v\t%v\t%v\n", i, story.ReadableId(), formatStoryTitle(story.Title()))
 	}
 	io.WriteString(tw, "\n")
 	tw.Flush()
@@ -110,7 +120,10 @@ func PromptStory(msg string, stories []common.Story) (common.Story, error) {
 	task := "Prompt the user to select a story"
 	index, err := PromptIndex("Choose a story by inserting its index: ", 0, len(stories)-1)
 	if err != nil {
-		return nil, errs.NewError(task, nil, err)
+		if err == ErrCanceled {
+			return nil, ErrCanceled
+		}
+		return nil, errs.NewError(task, err, nil)
 	}
 	return stories[index], nil
 }
@@ -155,4 +168,20 @@ func printStoriesConfirmationDialog(headerLine string, stories []*pivotal.Story)
 
 	io.WriteString(tw, "\nDo you want to proceed? [y/N]:")
 	tw.Flush()
+}
+
+func formatStoryTitle(title string) string {
+	if len(title) < maxStoryTitleColumnWidth {
+		return title
+	}
+
+	// maxStoryTitleColumnWidth incorporates the trailing " ...",
+	// so that is why we subtract len(" ...") when truncating.
+	truncatedTitle := title[:maxStoryTitleColumnWidth-4]
+	if title[maxStoryTitleColumnWidth-4] != ' ' {
+		if i := strings.LastIndex(truncatedTitle, " "); i != -1 {
+			truncatedTitle = truncatedTitle[:i]
+		}
+	}
+	return truncatedTitle + " ..."
 }

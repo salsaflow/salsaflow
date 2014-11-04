@@ -3,7 +3,10 @@ package jira
 import (
 	// Stdlib
 	"bytes"
+	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 
 	// Internal
 	"github.com/salsita/salsaflow/modules/jira/client"
@@ -21,7 +24,9 @@ func (rt *BasicAuthRoundTripper) RoundTrip(req *http.Request) (*http.Response, e
 }
 
 func newClient() *client.Client {
-	return client.New(config.BaseURL(), &http.Client{
+	relativeURL, _ := url.Parse("rest/api/2/")
+	baseURL := config.BaseURL().ResolveReference(relativeURL)
+	return client.New(baseURL, &http.Client{
 		Transport: &BasicAuthRoundTripper{http.DefaultTransport},
 	})
 }
@@ -48,4 +53,18 @@ func listStoriesById(ids []string) ([]*client.Issue, error) {
 		JQL: jql.String(),
 	})
 	return stories, err
+}
+
+// toAND returns a conjunction JQL query for the given arguments, i.e.
+//
+//    toAND("status", "1", "2", "3")
+//
+// will return
+//
+//    "(status in (1,2,3))"
+func toAND(ident string, ids ...string) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("(%s in (%s))", ident, strings.Join(ids, ","))
 }

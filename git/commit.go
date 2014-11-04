@@ -91,7 +91,7 @@ func GrepCommits(filter string) (commits []*Commit, stderr *bytes.Buffer, err er
 		"--pretty=fuller",
 		"--grep=" + filter,
 	}
-	sout, serr, err := Git(args...)
+	sout, serr, err := Run(args...)
 	if err != nil {
 		return nil, serr, err
 	}
@@ -109,7 +109,7 @@ func ShowCommits(revisions ...string) (commits []*Commit, stderr *bytes.Buffer, 
 	args[3] = "--pretty=fuller"
 	args = append(args, revisions...)
 
-	sout, serr, err := Git(args...)
+	sout, serr, err := Run(args...)
 	if err != nil {
 		return nil, serr, err
 	}
@@ -127,7 +127,7 @@ func ShowCommitRange(revisions string) (commits []*Commit, stderr *bytes.Buffer,
 		"--pretty=fuller",
 		revisions,
 	}
-	sout, serr, err := Git(args...)
+	sout, serr, err := Run(args...)
 	if err != nil {
 		return nil, serr, err
 	}

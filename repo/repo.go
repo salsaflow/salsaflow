@@ -66,10 +66,10 @@ func Init() *errs.Error {
 	msg := "Check whether the repository has been initialised"
 	initialised, stderr, err := git.GetConfigBool("salsaflow.initialised")
 	if err != nil {
-		return errs.NewError(msg, stderr, err)
+		return errs.NewError(msg, err, stderr)
 	}
 	if initialised {
-		return errs.NewError(msg, nil, ErrInitialised)
+		return errs.NewError(msg, ErrInitialised, nil)
 	}
 
 	log.Log("Initialising the repository for SalsaFlow")
@@ -81,14 +81,14 @@ func Init() *errs.Error {
 	// version of git is installed, it most probably stays.
 	msg = "Check the git version being used"
 	log.Run(msg)
-	stdout, stderr, err := git.Git("--version")
+	stdout, stderr, err := git.Run("--version")
 	if err != nil {
-		return errs.NewError(msg, stderr, err)
+		return errs.NewError(msg, err, stderr)
 	}
 	pattern := regexp.MustCompile("^git version (([0-9]+)[.]([0-9]+).*)")
 	parts := pattern.FindStringSubmatch(stdout.String())
 	if len(parts) != 4 {
-		return errs.NewError(msg, nil, errors.New("unexpected git --version output"))
+		return errs.NewError(msg, errors.New("unexpected git --version output"), nil)
 	}
 	gitVersion := parts[1]
 	// This cannot fail since we matched the regexp.
@@ -107,8 +107,8 @@ You need Git version 1.9.0 or newer.
 `
 		return errs.NewError(
 			msg,
-			bytes.NewBufferString(hint),
-			errors.New("unsupported git version detected: "+gitVersion))
+			errors.New("unsupported git version detected: "+gitVersion),
+			bytes.NewBufferString(hint))
 	}
 
 	// Make sure that the master branch exists.
@@ -116,13 +116,13 @@ You need Git version 1.9.0 or newer.
 	log.Run(msg)
 	exists, stderr, err := git.RefExists(config.MasterBranch)
 	if err != nil {
-		return errs.NewError(msg, stderr, err)
+		return errs.NewError(msg, err, stderr)
 	}
 	if !exists {
 		stderr := bytes.NewBufferString(fmt.Sprintf(
 			"Make sure that branch '%v' exists and run init again.", config.MasterBranch))
 		err := fmt.Errorf("branch '%v' not found", config.MasterBranch)
-		return errs.NewError(msg, stderr, err)
+		return errs.NewError(msg, err, stderr)
 	}
 
 	// Make sure that the trunk branch exists.
@@ -130,7 +130,7 @@ You need Git version 1.9.0 or newer.
 	log.Run(msg)
 	exists, stderr, err = git.RefExists(config.TrunkBranch)
 	if err != nil {
-		return errs.NewError(msg, stderr, err)
+		return errs.NewError(msg, err, stderr)
 	}
 	if !exists {
 		msg := "Create the trunk branch"
@@ -140,15 +140,14 @@ You need Git version 1.9.0 or newer.
 			"The newly created branch is pointing to '%v'.", config.MasterBranch))
 		stderr, err := git.Branch(config.TrunkBranch, config.MasterBranch)
 		if err != nil {
-			return errs.NewError(msg, stderr, err)
+			return errs.NewError(msg, err, stderr)
 		}
 
 		msg = "Push the newly created trunk branch"
 		log.Run(msg)
-		_, stderr, err = git.Git("push", "-u", config.OriginName,
-			config.TrunkBranch+":"+config.TrunkBranch)
+		stderr, err = git.Push(config.OriginName, config.TrunkBranch+":"+config.TrunkBranch)
 		if err != nil {
-			return errs.NewError(msg, stderr, err)
+			return errs.NewError(msg, err, stderr)
 		}
 	}
 
@@ -156,44 +155,47 @@ You need Git version 1.9.0 or newer.
 	msg = "Check the global SalsaFlow configuration"
 	log.Run(msg)
 	if _, err := config.ReadGlobalConfig(); err != nil {
-		return errs.NewError(msg, nil,
+		return errs.NewError(
+			msg,
 			fmt.Errorf("could not read config file '%v': %v",
-				"$HOME/"+config.GlobalConfigFileName, err))
+				"$HOME/"+config.GlobalConfigFileName, err),
+			nil)
 	}
 
 	// Check the project-specific configuration file.
 	msg = "Check the local SalsaFlow configuration"
 	log.Run(msg)
 	if _, stderr, err = config.ReadLocalConfig(); err != nil {
-		return errs.NewError(msg, stderr,
+		return errs.NewError(msg,
 			fmt.Errorf("could not read config file '%v' on branch '%v': %v",
-				config.LocalConfigFileName, config.ConfigBranch, err))
+				config.LocalConfigFileName, config.ConfigBranch, err),
+			stderr)
 	}
 
 	// Verify our git hooks are installed and used.
 	msg = "Check the current git commit-msg hook"
 	log.Run(msg)
 	if err := checkGitHook(hookTypeCommitMsg); err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	msg = "Check the current git pre-push hook"
 	log.Run(msg)
 	if err := checkGitHook(hookTypePrePush); err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	// Run other registered init hooks.
 	msg = "Running the registered repository init hooks"
 	log.Log(msg)
 	if err := executeInitHooks(); err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	// Success! Mark the repository as initialised in git config.
 	msg = "Mark the repository as initialised"
 	if stderr, err := git.SetConfigBool("salsaflow.initialised", true); err != nil {
-		return errs.NewError(msg, stderr, err)
+		return errs.NewError(msg, err, stderr)
 	}
 	asciiart.PrintThumbsUp()
 	fmt.Println()
@@ -211,7 +213,7 @@ func checkGitHook(typ hookType) *errs.Error {
 	msg := "Get the repository root absolute path"
 	repoRoot, _, err := git.RepositoryRootAbsolutePath()
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	hookPath := filepath.Join(repoRoot, ".git", "hooks", string(typ))
@@ -226,7 +228,7 @@ func checkGitHook(typ hookType) *errs.Error {
 	// in the same directory as the salsaflow executable itself.
 	binDir, err := osext.ExecutableFolder()
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 	hookBin := filepath.Join(binDir, getHookFileName(typ))
 
@@ -237,7 +239,7 @@ func checkGitHook(typ hookType) *errs.Error {
 		if os.IsNotExist(err) {
 			goto CopyHook
 		}
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 
 	// Prompt the user to confirm the SalsaFlow git commit-msg hook.
@@ -247,7 +249,7 @@ I need my own git ` + string(typ) + ` hook to be placed in the repository.
 Shall I create or replace your current ` + string(typ) + ` hook?`)
 	fmt.Println()
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 	if !confirmed {
 		// User stubbornly refuses to let us overwrite their webhook.
@@ -261,7 +263,7 @@ Please make sure the executable located at
 runs as your `+string(typ)+` hook and run me again!
 
 `, hookBin)
-		return errs.NewError(msg, nil, fmt.Errorf("SalsaFlow git %v hook not detected", typ))
+		return errs.NewError(msg, fmt.Errorf("SalsaFlow git %v hook not detected", typ), nil)
 	}
 
 CopyHook:
@@ -269,7 +271,7 @@ CopyHook:
 	// from the expected absolute path to the git config hook directory.
 	msg = fmt.Sprintf("Install the SalsaFlow git %v hook", typ)
 	if err := CopyFile(hookBin, hookPath); err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(msg, err, nil)
 	}
 	log.Log(fmt.Sprintf("SalsaFlow git %v hook installed", typ))
 

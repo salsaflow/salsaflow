@@ -10,6 +10,7 @@ update-deps:
 	go get -d -u github.com/extemporalgenome/slug
 	go get -d -u github.com/google/go-github/github
 	go get -d -u github.com/google/go-querystring/query
+	go get -d -u github.com/toqueteos/webbrowser
 	go get -d -u gopkg.in/tchap/gocli.v1
 	go get -d -u gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal
 	go get -d -u gopkg.in/yaml.v2

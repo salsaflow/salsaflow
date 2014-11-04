@@ -28,7 +28,7 @@ var codeReviewTool common.CodeReviewTool
 func mustInitCodeReviewTool() {
 	var logger = log.V(log.Info)
 	if err := initCodeReviewTool(); err != nil {
-		err.Fatal(logger)
+		err.LogAndDie(logger)
 	}
 }
 
@@ -39,7 +39,7 @@ func initCodeReviewTool() *errs.Error {
 	}
 
 	// Choose the code review tool based on the configuration.
-	msg := "Instantiate the selected code review plugin"
+	var task = "Instantiate the selected code review plugin"
 	factory, ok := factories[config.CodeReviewToolId()]
 	if !ok {
 		// Collect the available code review tool ids.
@@ -48,17 +48,18 @@ func initCodeReviewTool() *errs.Error {
 			ids = append(ids, id)
 		}
 
-		var b bytes.Buffer
-		fmt.Fprintf(&b, "(unknown code review tool: %v)", config.CodeReviewToolId())
-		fmt.Fprintf(&b, "(available code review tools: %v)", ids)
-		fmt.Fprintf(&b, "\nError: failed to instantiate the code review plugin")
-		return errs.NewError(msg, &b, nil)
+		hint := new(bytes.Buffer)
+		fmt.Fprintf(hint, "\nAvailable code review tools: %v\n\n", ids)
+		return errs.NewError(
+			task,
+			fmt.Errorf("unknown code review tool: %v", config.CodeReviewToolId()),
+			hint)
 	}
 
 	// Try to instantiate the code review tool.
 	tool, err := factory()
 	if err != nil {
-		return errs.NewError(msg, nil, err)
+		return errs.NewError(task, err, nil)
 	}
 
 	// Set the global code review tool instance, at last.
