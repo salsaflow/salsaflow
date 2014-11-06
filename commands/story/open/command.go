@@ -30,7 +30,7 @@ func run(cmd *gocli.Command, args []string) {
 		os.Exit(2)
 	}
 
-	app.MustInit()
+	app.InitOrDie()
 
 	if err := runMain(args[0]); err != nil {
 		errs.Fatal(err)
@@ -38,9 +38,14 @@ func run(cmd *gocli.Command, args []string) {
 }
 
 func runMain(storyId string) error {
+	tracker, err := modules.GetIssueTracker()
+	if err != nil {
+		return err
+	}
+
 	task := fmt.Sprintf("Open story %s", storyId)
 	log.Run(task)
-	if err := modules.GetIssueTracker().OpenStory(storyId); err != nil {
+	if err := tracker.OpenStory(storyId); err != nil {
 		return errs.NewError(task, err, nil)
 	}
 	return nil

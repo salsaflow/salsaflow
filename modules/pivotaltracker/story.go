@@ -39,7 +39,7 @@ func (story *story) Assignees() []common.User {
 }
 
 func (story *story) AddAssignee(user common.User) *errs.Error {
-	msg := fmt.Sprintf("Add user as the owner to story %v", user.Id(), story.Id)
+	task := fmt.Sprintf("Add user as the owner to story %v", user.Id(), story.Id)
 	for _, id := range story.OwnerIds {
 		if strconv.Itoa(id) == user.Id() {
 			return nil
@@ -48,19 +48,19 @@ func (story *story) AddAssignee(user common.User) *errs.Error {
 
 	id, err := strconv.Atoi(user.Id())
 	if err != nil {
-		return errs.NewError(msg, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 
 	return story.SetAssignees(append(story.Assignees(), userId(id)))
 }
 
 func (story *story) SetAssignees(users []common.User) *errs.Error {
-	msg := fmt.Sprintf("Set owners for story %v", story.Story.Id)
+	task := fmt.Sprintf("Set owners for story %v", story.Story.Id)
 	ownerIds := make([]int, len(users))
 	for i, user := range users {
 		id, err := strconv.Atoi(user.Id())
 		if err != nil {
-			return errs.NewError(msg, err, nil)
+			return errs.NewError(task, err, nil)
 		}
 		ownerIds[i] = id
 	}
@@ -69,7 +69,7 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 		return updateRequest
 	})
 	if err != nil {
-		return errs.NewError(msg, err, stderr)
+		return errs.NewError(task, err, stderr)
 	}
 	return nil
 }

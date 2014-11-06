@@ -11,31 +11,31 @@ import (
 
 	// Internal
 	"github.com/salsita/salsaflow/asciiart"
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
-	"github.com/salsita/salsaflow/log"
+	"github.com/salsita/salsaflow/hooks"
 	"github.com/salsita/salsaflow/uuid"
 )
 
 const diffSeparator = "# ------------------------ >8 ------------------------"
 
-const (
-	secretFilename = "AreYouWhoIThinkYouAreHuh"
-	secretReply    = "IAmSalsaFlowHookYaDoofus!"
-)
-
 func main() {
+	// Set up the identification command line flag.
+	hooks.IdentifyYourself()
+
+	// Tell the user what is happening.
+	fmt.Println("---> Running the SalsaFlow commit-msg hook")
+
+	// The hook is always invoked as `commit-msg <message-filename>`.
 	if len(os.Args) != 2 {
-		panic(fmt.Errorf("argv: %#v", os.Args))
+		fmt.Fprintf(os.Stderr, "Usage: %v <message-filename>\n", os.Args[0])
+		errs.Fatal(fmt.Errorf("invalid arguments: %#v\n", os.Args[1:]))
 	}
 
-	if os.Args[1] == secretFilename {
-		fmt.Println(secretReply)
-		return
-	}
-
+	// Run the main function.
 	if err := run(os.Args[1]); err != nil {
 		asciiart.PrintGrimReaper("COMMIT ABORTED")
-		log.Fatalln("Fatal error:", err)
+		errs.Fatal(err)
 	}
 }
 

@@ -1,7 +1,7 @@
 package pkg
 
 import (
-	cfg "github.com/salsita/salsaflow/config"
+	"github.com/salsita/salsaflow/config"
 	"github.com/salsita/salsaflow/errs"
 )
 
@@ -18,34 +18,46 @@ type GlobalConfig struct {
 	} `yaml:"github"`
 }
 
-func (gc *GlobalConfig) validate() error {
-	if gc.GitHub.Token == "" {
-		return &cfg.ErrKeyNotSet{"github.token"}
+func (global *GlobalConfig) validate() error {
+	task := "Validate the global GitHub configuration"
+	if global.GitHub.Token == "" {
+		return errs.NewError(task, &config.ErrKeyNotSet{"github.token"}, nil)
 	}
 	return nil
 }
 
 // Config proxy ----------------------------------------------------------------
 
-type config struct {
-	global *GlobalConfig
+type Config interface {
+	GitHubToken() string
 }
 
-func loadConfig() (*config, error) {
-	msg := "Load global GitHub config"
-	proxy := &config{&GlobalConfig{}}
-	if err := cfg.FillGlobalConfig(proxy.global); err != nil {
-		return nil, errs.NewError(msg, err, nil)
+var configCache Config
+
+func LoadConfig() (Config, error) {
+	// Try the cache first.
+	if configCache != nil {
+		return configCache, nil
 	}
 
-	msg = "Validate global GitHub config"
+	// Create a new configProxy instance.
+	proxy := &configProxy{&GlobalConfig{}}
+	if err := config.UnmarshalGlobalConfig(proxy.global); err != nil {
+		return nil, err
+	}
 	if err := proxy.global.validate(); err != nil {
-		return nil, errs.NewError(msg, err, nil)
+		return nil, err
 	}
 
+	// Save the new instance into the cache and return.
+	configCache = proxy
 	return proxy, nil
 }
 
-func (proxy *config) GitHubToken() string {
+type configProxy struct {
+	global *GlobalConfig
+}
+
+func (proxy *configProxy) GitHubToken() string {
 	return proxy.global.GitHub.Token
 }

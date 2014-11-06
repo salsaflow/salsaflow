@@ -8,7 +8,6 @@ import (
 
 	// Internal
 	"github.com/salsita/salsaflow/app"
-	"github.com/salsita/salsaflow/config"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/log"
@@ -52,7 +51,7 @@ func run(cmd *gocli.Command, args []string) {
 		os.Exit(2)
 	}
 
-	app.MustInit()
+	app.InitOrDie()
 
 	// Exit cleanly when the panic is actually ErrCanceled.
 	defer func() {
@@ -70,8 +69,11 @@ func run(cmd *gocli.Command, args []string) {
 	}
 }
 
-func runMain() (err error) {
-	tracker := modules.GetIssueTracker()
+func runMain() error {
+	tracker, err := modules.GetIssueTracker()
+	if err != nil {
+		return err
+	}
 
 	// Fetch stories from the issue tracker.
 	task := "Fetch stories from the issue tracker"
@@ -177,15 +179,25 @@ func createBranch() (common.Action, error) {
 	// Fetch the remote repository.
 	task = "Fetch the remote repository"
 	log.Run(task)
-	stderr, err = git.UpdateRemotes(config.OriginName)
+
+	gitConfig, err := git.LoadConfig()
+	if err != nil {
+		return nil, errs.NewError(task, err, nil)
+	}
+
+	var (
+		remoteName  = gitConfig.RemoteName()
+		trunkBranch = gitConfig.TrunkBranchName()
+	)
+	stderr, err = git.UpdateRemotes(remoteName)
 	if err != nil {
 		return nil, errs.NewError(task, err, stderr)
 	}
 
 	// Make sure the trunk branch is up to date.
-	task = fmt.Sprintf("Make sure branch '%v' is up to date", config.TrunkBranch)
+	task = fmt.Sprintf("Make sure branch '%v' is up to date", trunkBranch)
 	log.Run(task)
-	stderr, err = git.EnsureBranchSynchronized(config.TrunkBranch, config.OriginName)
+	stderr, err = git.EnsureBranchSynchronized(trunkBranch, remoteName)
 	if err != nil {
 		return nil, errs.NewError(task, err, stderr)
 	}
@@ -219,9 +231,9 @@ func createBranch() (common.Action, error) {
 	fmt.Println()
 
 	createMsg := fmt.Sprintf(
-		"Create branch '%v' on top of branch '%v'", branchName, config.TrunkBranch)
+		"Create branch '%v' on top of branch '%v'", branchName, trunkBranch)
 	log.Run(createMsg)
-	if stderr, err = git.Branch(branchName, config.TrunkBranch); err != nil {
+	if stderr, err = git.Branch(branchName, trunkBranch); err != nil {
 		return nil, errs.NewError(task, err, stderr)
 	}
 

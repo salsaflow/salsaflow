@@ -15,25 +15,30 @@ import (
 // API client instantiation ----------------------------------------------------
 
 type BasicAuthRoundTripper struct {
-	next http.RoundTripper
+	username string
+	password string
+	next     http.RoundTripper
 }
 
 func (rt *BasicAuthRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.SetBasicAuth(config.Username(), config.Password())
+	req.SetBasicAuth(rt.username, rt.password)
 	return rt.next.RoundTrip(req)
 }
 
-func newClient() *client.Client {
+func newClient(tracker *issueTracker) *client.Client {
 	relativeURL, _ := url.Parse("rest/api/2/")
-	baseURL := config.BaseURL().ResolveReference(relativeURL)
+	baseURL := tracker.config.BaseURL().ResolveReference(relativeURL)
 	return client.New(baseURL, &http.Client{
-		Transport: &BasicAuthRoundTripper{http.DefaultTransport},
+		Transport: &BasicAuthRoundTripper{
+			username: tracker.config.Username(),
+			password: tracker.config.Password(),
+			next:     http.DefaultTransport},
 	})
 }
 
 // Various userful helper functions --------------------------------------------
 
-func listStoriesById(ids []string) ([]*client.Issue, error) {
+func listStoriesById(tracker *issueTracker, ids []string) ([]*client.Issue, error) {
 	var jql bytes.Buffer
 	for _, id := range ids {
 		if jql.Len() != 0 {
@@ -49,7 +54,7 @@ func listStoriesById(ids []string) ([]*client.Issue, error) {
 		}
 	}
 
-	stories, _, err := newClient().Issues.Search(&client.SearchOptions{
+	stories, _, err := newClient(tracker).Issues.Search(&client.SearchOptions{
 		JQL: jql.String(),
 	})
 	return stories, err

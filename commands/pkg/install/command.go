@@ -44,7 +44,7 @@ func run(cmd *gocli.Command, args []string) {
 		os.Exit(2)
 	}
 
-	app.MustInit()
+	app.InitOrDie()
 
 	if err := runMain(args[0]); err != nil {
 		if err == pkg.ErrAborted {

@@ -8,6 +8,7 @@ import (
 
 	// Internal
 	"github.com/salsita/salsaflow/app"
+	"github.com/salsita/salsaflow/app/metadata"
 	"github.com/salsita/salsaflow/commands/pkg"
 	"github.com/salsita/salsaflow/commands/repo"
 	"github.com/salsita/salsaflow/commands/review"
@@ -23,7 +24,7 @@ func main() {
 	trunk := gocli.NewApp("salsaflow")
 	trunk.UsageLine = "salsaflow SUBCMD [SUBCMD_OPTION ...]"
 	trunk.Short = "the ultimate Trunk Based Development CLI utility"
-	trunk.Version = app.Version
+	trunk.Version = metadata.Version
 	trunk.Long = `
   salsaflow is a CLI utility that provides some useful shortcuts for
   Trunk Based Development. See the list of subcommands.`

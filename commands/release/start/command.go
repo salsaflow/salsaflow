@@ -71,42 +71,42 @@ func handleError(task string, err error, stderr *bytes.Buffer) error {
 
 func runMain() (err error) {
 	// Fetch the remote repository.
-	msg := "Fetch the remote repository"
-	log.Run(msg)
+	task := "Fetch the remote repository"
+	log.Run(task)
 	stderr, err := git.UpdateRemotes(config.OriginName)
 	if err != nil {
-		return handleError(msg, err, stderr)
+		return handleError(task, err, stderr)
 	}
 
 	// Make sure that the trunk branch is up to date.
-	msg = "Make sure that the trunk branch is up to date"
-	log.Run(msg)
+	task = "Make sure that the trunk branch is up to date"
+	log.Run(task)
 	stderr, err = git.EnsureBranchSynchronized(config.TrunkBranch, config.OriginName)
 	if err != nil {
-		return handleError(msg, err, stderr)
+		return handleError(task, err, stderr)
 	}
 
 	// Make sure that the release branch does not exist.
-	msg = "Make sure that the release branch does not exist"
-	log.Run(msg)
+	task = "Make sure that the release branch does not exist"
+	log.Run(task)
 	stderr, err = git.EnsureBranchNotExists(config.ReleaseBranch, config.OriginName)
 	if err != nil {
-		return handleError(msg, err, stderr)
+		return handleError(task, err, stderr)
 	}
 
 	// Read the current trunk version string.
-	msg = "Read the current trunk version string"
+	task = "Read the current trunk version string"
 	trunkVersion, stderr, err := version.ReadFromBranch(config.TrunkBranch)
 	if err != nil {
-		return handleError(msg, err, stderr)
+		return handleError(task, err, stderr)
 	}
 
 	// Fetch the stories from the issue tracker.
-	msg = "Fetch the stories from the issue tracker"
-	log.Run(msg)
+	task = "Fetch the stories from the issue tracker"
+	log.Run(task)
 	release, err := modules.GetIssueTracker().NextRelease(trunkVersion)
 	if err != nil {
-		return handleError(msg, err, nil)
+		return handleError(task, err, nil)
 	}
 
 	// Prompt the user to confirm the release.
@@ -121,17 +121,17 @@ func runMain() (err error) {
 	fmt.Println()
 
 	// Remember the current branch.
-	msg = "Remember the current branch"
+	task = "Remember the current branch"
 	currentBranch, stderr, err := git.CurrentBranch()
 	if err != nil {
-		return handleError(msg, err, stderr)
+		return handleError(task, err, stderr)
 	}
 	defer func() {
 		// Checkout the original branch on exit.
-		msg := "Checkout the original branch"
-		log.Run(msg)
+		task := "Checkout the original branch"
+		log.Run(task)
 		if stderr, err := git.Checkout(currentBranch); err != nil {
-			handleError(msg, err, stderr)
+			handleError(task, err, stderr)
 		}
 	}()
 
@@ -144,11 +144,11 @@ func runMain() (err error) {
 	}
 
 	// Create the release branch on top of the trunk branch.
-	msg = "Create the release branch on top of the trunk branch"
-	log.Run(msg)
+	task = "Create the release branch on top of the trunk branch"
+	log.Run(task)
 	stderr, err = git.Branch(config.ReleaseBranch, config.TrunkBranch)
 	if err != nil {
-		return handleError(msg, err, stderr)
+		return handleError(task, err, stderr)
 	}
 	defer func(taskMsg string) {
 		if err != nil {
@@ -158,18 +158,18 @@ func runMain() (err error) {
 				handleError("Delete the release branch", err, stderr)
 			}
 		}
-	}(msg)
+	}(task)
 
 	// Update the trunk version string.
-	msg = "Update the trunk version string"
-	log.Run(msg)
+	task = "Update the trunk version string"
+	log.Run(task)
 	origTrunk, stderr, err := git.Hexsha("refs/heads/" + config.TrunkBranch)
 	if err != nil {
-		return handleError(msg, err, stderr)
+		return handleError(task, err, stderr)
 	}
 	stderr, err = nextTrunkVersion.CommitToBranch(config.TrunkBranch)
 	if err != nil {
-		return handleError(msg, err, stderr)
+		return handleError(task, err, stderr)
 	}
 	defer func(taskMsg string) {
 		if err != nil {
@@ -179,10 +179,10 @@ func runMain() (err error) {
 				handleError("Reset the trunk branch to the original position", err, stderr)
 			}
 		}
-	}(msg)
+	}(task)
 
 	// Start the release in the issue tracker.
-	msg = ""
+	task = ""
 	action, err := release.Start()
 	if err != nil {
 		return errs.Log(err)
@@ -197,14 +197,14 @@ func runMain() (err error) {
 	}()
 
 	// Push the modified branches.
-	msg = "Push the modified branches"
-	log.Run(msg)
+	task = "Push the modified branches"
+	log.Run(task)
 	stderr, err = git.Push(
 		config.OriginName,
 		config.ReleaseBranch+":"+config.ReleaseBranch,
 		config.TrunkBranch+":"+config.TrunkBranch)
 	if err != nil {
-		return handleError(msg, err, stderr)
+		return handleError(task, err, stderr)
 	}
 
 	return nil

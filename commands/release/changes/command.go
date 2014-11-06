@@ -75,34 +75,34 @@ func run(cmd *gocli.Command, args []string) {
 
 func runMain() (err error) {
 	var (
-		msg    string
+		task   string
 		stderr *bytes.Buffer
 	)
 	defer func() {
 		// Print error details.
 		if err != nil && !porcelain {
-			log.FailWithDetails(msg, stderr)
+			log.FailWithDetails(task, stderr)
 		}
 	}()
 
 	// Make sure that the local release branch exists.
-	msg = "Make sure that the local release branch exists"
+	task = "Make sure that the local release branch exists"
 	stderr, err = git.CreateTrackingBranchUnlessExists(config.ReleaseBranch, config.OriginName)
 	if err != nil {
 		return
 	}
 
 	// Get the current release version string.
-	msg = "Get the current release version string"
+	task = "Get the current release version string"
 	releaseVersion, stderr, err := version.ReadFromBranch(config.ReleaseBranch)
 	if err != nil {
 		return
 	}
 
 	// Get the stories associated with the current release.
-	msg = "Fetch stories from the issue tracker"
+	task = "Fetch stories from the issue tracker"
 	if !porcelain {
-		log.Run(msg)
+		log.Run(task)
 	}
 	release, err := modules.GetIssueTracker().RunningRelease(releaseVersion)
 	if err != nil {
@@ -115,15 +115,15 @@ func runMain() (err error) {
 
 	// Just return in case there are no relevant stories found.
 	if len(stories) == 0 {
-		msg = ""
+		task = ""
 		fmt.Println("\nNo relevant stories found, exiting...")
 		return
 	}
 
 	// Get the list of all relevant story commits.
-	msg = "Collect the relevant commits"
+	task = "Collect the relevant commits"
 	if !porcelain {
-		log.Run(msg)
+		log.Run(task)
 	}
 	var (
 		commits     []*git.Commit

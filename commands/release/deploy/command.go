@@ -43,39 +43,39 @@ func run(cmd *gocli.Command, args []string) {
 
 func runMain(ref string) (err error) {
 	var (
-		msg           string
+		task          string
 		stderr        *bytes.Buffer
 		currentBranch string
 	)
 	defer func() {
 		// Print error details.
 		if err != nil {
-			log.FailWithDetails(msg, stderr)
+			log.FailWithDetails(task, stderr)
 		}
 
 		// Checkout the original branch.
 		if currentBranch == "" {
 			return
 		}
-		msg = "Checkout the original branch"
-		log.Run(msg)
+		task = "Checkout the original branch"
+		log.Run(task)
 		out, ex := git.Checkout(currentBranch)
 		if ex != nil {
-			log.FailWithDetails(msg, out)
+			log.FailWithDetails(task, out)
 			return
 		}
 	}()
 
 	// Remember the current branch.
-	msg = "Remember the current branch"
-	log.Run(msg)
+	task = "Remember the current branch"
+	log.Run(task)
 	currentBranch, stderr, err = git.CurrentBranch()
 	if err != nil {
 		return
 	}
 
 	// Make sure that the target ref exists.
-	msg = "Make sure that the target git reference exists"
+	task = "Make sure that the target git reference exists"
 	exists, stderr, err := git.RefExists(ref)
 	if err != nil {
 		return
@@ -86,8 +86,8 @@ func runMain(ref string) (err error) {
 	}
 
 	// Reset the master branch to point to the chosen ref.
-	msg = fmt.Sprintf("Reset the master branch to point to '%v'", ref)
-	log.Run(msg)
+	task = fmt.Sprintf("Reset the master branch to point to '%v'", ref)
+	log.Run(task)
 	origMaster, stderr, err := git.Hexsha("refs/heads/" + config.MasterBranch)
 	if err != nil {
 		return
@@ -99,17 +99,17 @@ func runMain(ref string) (err error) {
 	defer func(taskMsg string) {
 		// On error, reset the master branch to the origin position.
 		if err != nil {
-			log.Rollback(msg)
+			log.Rollback(task)
 			out, ex := git.ResetKeep(config.MasterBranch, origMaster)
 			if ex != nil {
 				log.FailWithDetails(taskMsg, out)
 			}
 		}
-	}(msg)
+	}(task)
 
 	// Push the master branch to trigger deployment.
-	msg = "Push the master branch to trigger deployment"
-	log.Run(msg)
+	task = "Push the master branch to trigger deployment"
+	log.Run(task)
 	stderr, err = git.PushForce(config.OriginName, config.MasterBranch+":"+config.MasterBranch)
 	return
 }

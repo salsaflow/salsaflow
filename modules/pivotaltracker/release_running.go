@@ -33,11 +33,11 @@ func (release *runningRelease) Stories() ([]common.Story, error) {
 
 func (release *runningRelease) EnsureDeliverable() error {
 	// Make sure that all stories are reviewed and QA'd.
-	msg := "Make sure that the relevant stories are deliverable"
-	log.Run(msg)
+	task := "Make sure that the relevant stories are deliverable"
+	log.Run(task)
 	ok, details := releaseDeliverable(release.stories)
 	if !ok {
-		log.FailWithDetails(msg, details)
+		log.FailWithDetails(task, details)
 		return ErrReleaseNotDeliverable
 	}
 	return nil
@@ -45,11 +45,11 @@ func (release *runningRelease) EnsureDeliverable() error {
 
 func (release *runningRelease) Deliver() (common.Action, error) {
 	// Deliver the stories in Pivotal Tracker.
-	msg := "Deliver the stories"
-	log.Run(msg)
+	task := "Deliver the stories"
+	log.Run(task)
 	stories, stderr, err := setStoriesState(release.stories, pivotal.StoryStateDelivered)
 	if err != nil {
-		errs.NewError(msg, err, stderr).Log(log.V(log.Info))
+		errs.NewError(task, err, stderr).Log(log.V(log.Info))
 		return nil, err
 	}
 	release.stories = stories
@@ -57,7 +57,7 @@ func (release *runningRelease) Deliver() (common.Action, error) {
 		// On error, set the story state back to Finished.
 		stories, stderr, err := setStoriesState(release.stories, pivotal.StoryStateFinished)
 		if err != nil {
-			errs.NewError(msg, err, stderr).Log(log.V(log.Info))
+			errs.NewError(task, err, stderr).Log(log.V(log.Info))
 			return err
 		}
 		release.stories = stories

@@ -48,77 +48,77 @@ func run(cmd *gocli.Command, args []string) {
 
 func runMain() (err error) {
 	var (
-		msg           string
+		task          string
 		stderr        *bytes.Buffer
 		currentBranch string
 	)
 	defer func() {
 		// Print error details.
 		if err != nil {
-			log.FailWithDetails(msg, stderr)
+			log.FailWithDetails(task, stderr)
 		}
 
 		// Checkout the original branch.
 		if currentBranch == "" {
 			return
 		}
-		msg = "Checkout the original branch"
-		log.Run(msg)
+		task = "Checkout the original branch"
+		log.Run(task)
 		out, ex := git.Checkout(currentBranch)
 		if ex != nil {
-			log.FailWithDetails(msg, out)
+			log.FailWithDetails(task, out)
 			return
 		}
 	}()
 
 	// Remember the current branch.
-	msg = "Remember the current branch"
-	log.Run(msg)
+	task = "Remember the current branch"
+	log.Run(task)
 	currentBranch, stderr, err = git.CurrentBranch()
 	if err != nil {
 		return
 	}
 
 	// Cannot be on the release branch, it will be deleted.
-	msg = "Make sure that the release branch is not checked out"
+	task = "Make sure that the release branch is not checked out"
 	if currentBranch == config.ReleaseBranch {
 		err = errors.New("cannot stage the release while on the release branch")
 		return
 	}
 
 	// Fetch the remote repository.
-	msg = "Fetch the remote repository"
-	log.Run(msg)
+	task = "Fetch the remote repository"
+	log.Run(task)
 	stderr, err = git.UpdateRemotes(config.OriginName)
 	if err != nil {
 		return
 	}
 
 	// Make sure that the local release branch exists.
-	msg = "Make sure that the local release branch exists"
+	task = "Make sure that the local release branch exists"
 	stderr, err = git.CreateTrackingBranchUnlessExists(config.ReleaseBranch, config.OriginName)
 	if err != nil {
 		return
 	}
 
 	// Make sure that the release branch is up to date.
-	msg = "Make sure that the release branch is up to date"
-	log.Run(msg)
+	task = "Make sure that the release branch is up to date"
+	log.Run(task)
 	stderr, err = git.EnsureBranchSynchronized(config.ReleaseBranch, config.OriginName)
 	if err != nil {
 		return
 	}
 
 	// Read the current release version.
-	msg = "Read the current release version"
+	task = "Read the current release version"
 	releaseVersion, stderr, err := version.ReadFromBranch(config.ReleaseBranch)
 	if err != nil {
 		return
 	}
 
 	// Instantiate an issue tracker release and ensure it is deliverable.
-	msg = "Fetch stories from the issue tracker"
-	log.Run(msg)
+	task = "Fetch stories from the issue tracker"
+	log.Run(task)
 	release, err := modules.GetIssueTracker().RunningRelease(releaseVersion)
 	if err != nil {
 		return
@@ -129,8 +129,8 @@ func runMain() (err error) {
 	}
 
 	// Tag the release branch with the associated version string.
-	msg = "Tag the release branch with the associated version string"
-	log.Run(msg)
+	task = "Tag the release branch with the associated version string"
+	log.Run(task)
 	tag := releaseVersion.ReleaseTagString()
 	stderr, err = git.Tag(tag, config.ReleaseBranch)
 	if err != nil {
@@ -145,11 +145,11 @@ func runMain() (err error) {
 				log.FailWithDetails(taskMsg, out)
 			}
 		}
-	}(msg)
+	}(task)
 
 	// Reset the client branch to point to the newly created tag.
-	msg = "Reset the client branch to point to the release tag"
-	log.Run(msg)
+	task = "Reset the client branch to point to the release tag"
+	log.Run(task)
 	origClient, stderr, err := git.Hexsha("refs/heads/" + config.ClientBranch)
 	if err != nil {
 		return
@@ -168,11 +168,11 @@ func runMain() (err error) {
 				log.FailWithDetails(taskMsg, out)
 			}
 		}
-	}(msg)
+	}(task)
 
 	// Delete the local release branch.
-	msg = "Delete the local release branch"
-	log.Run(msg)
+	task = "Delete the local release branch"
+	log.Run(task)
 	stderr, err = git.Branch("-d", config.ReleaseBranch)
 	if err != nil {
 		return
@@ -187,10 +187,10 @@ func runMain() (err error) {
 				log.FailWithDetails(taskMsg, out)
 			}
 		}
-	}(msg)
+	}(task)
 
 	// Deliver the release in the issue tracker.
-	msg = ""
+	task = ""
 	action, err := release.Deliver()
 	if err != nil {
 		return
@@ -202,8 +202,8 @@ func runMain() (err error) {
 	}()
 
 	// Push to create the tag, reset client and delete release in the remote repository.
-	msg = "Push to create the tag, reset client and delete release"
-	log.Run(msg)
+	task = "Push to create the tag, reset client and delete release"
+	log.Run(task)
 	stderr, err = git.Push(
 		config.OriginName,
 		"-f", "--tags",

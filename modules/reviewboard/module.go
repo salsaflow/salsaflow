@@ -19,10 +19,13 @@ import (
 
 const Id = "review_board"
 
+func init() {
+	repo.AddInitHook(ensureRbtVersion)
+}
+
 type codeReviewTool struct{}
 
 func Factory() (common.CodeReviewTool, error) {
-	repo.AddInitHook(ensureRbtVersion)
 	return &codeReviewTool{}, nil
 }
 
@@ -58,15 +61,15 @@ func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit, opts map[strin
 	}
 	args = append(args, commit.SHA)
 
-	msg := "Post review request for commit " + commit.SHA
+	task := "Post review request for commit " + commit.SHA
 	stdout, stderr, err := shell.Run(args...)
 	if err != nil {
-		return errs.NewError(msg, err, stderr)
+		return errs.NewError(task, err, stderr)
 	}
 	logger := log.V(log.Info)
 	logger.Lock()
 	logger.UnsafeNewLine("")
-	logger.UnsafeOk(msg)
+	logger.UnsafeOk(task)
 	fmt.Print(stdout)
 	logger.Unlock()
 	return nil
@@ -119,20 +122,30 @@ func formatOptInteger(value interface{}) string {
 }
 
 func ensureRbtVersion() error {
-	msg := "Check the RBTools version being used"
-	log.Run(msg)
+	// Load configuration and check the RBTools version only if Review Board is being used.
+	config, err := common.LoadConfig()
+	if err != nil {
+		return err
+	}
+	if config.CodeReviewToolId() != Id {
+		return nil
+	}
+
+	// Check the RBTools version being used.
+	task := "Check the RBTools version being used"
+	log.Run(task)
 
 	// rbt prints the version string to stderr. WHY? Who knows...
 	_, stderr, err := shell.Run("rbt", "--version")
 	if err != nil {
-		return errs.NewError(msg, err, stderr)
+		return errs.NewError(task, err, stderr)
 	}
 
 	pattern := regexp.MustCompile("^RBTools (([0-9]+)[.]([0-9]+).*)")
 	parts := pattern.FindStringSubmatch(stderr.String())
 	if len(parts) != 4 {
 		err := errors.New("failed to parse 'rbt --version' output: " + stderr.String())
-		return errs.NewError(msg, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 	rbtVersion := parts[1]
 	// No need to check errors, we know the format is correct.
@@ -149,7 +162,7 @@ to install the correct version.
 
 `
 		return errs.NewError(
-			msg,
+			task,
 			errors.New("unsupported rbt version detected: "+rbtVersion),
 			bytes.NewBufferString(hint))
 	}

@@ -46,19 +46,19 @@ var ptGlobalWrapper struct {
 }
 
 func loadGlobalConfig() error {
-	msg := "Load global Pivotal Tracker configuration"
+	task := "Load global Pivotal Tracker configuration"
 	if err := cfg.FillGlobalConfig(&ptGlobalWrapper); err != nil {
-		log.Fail(msg)
+		log.Fail(task)
 		return err
 	}
 
 	if ptGlobalWrapper.C == nil {
-		log.Fail(msg)
+		log.Fail(task)
 		return errors.New("Pivotal Tracker global configuration section missing")
 	}
 
 	if err := ptGlobalWrapper.C.Validate(); err != nil {
-		log.Fail(msg)
+		log.Fail(task)
 		return err
 	}
 
@@ -97,15 +97,15 @@ var ptLocalWrapper struct {
 }
 
 func loadLocalConfig() error {
-	msg := "Load local Pivotal Tracker configuration"
+	task := "Load local Pivotal Tracker configuration"
 	if err := cfg.FillLocalConfig(&ptLocalWrapper); err != nil {
-		log.Fail(msg)
+		log.Fail(task)
 		return err
 	}
 
 	config := ptLocalWrapper.C
 	if config == nil {
-		log.Fail(msg)
+		log.Fail(task)
 		return errors.New("Pivotal Tracker local configuration section missing")
 	}
 
@@ -121,7 +121,7 @@ func loadLocalConfig() error {
 	config.Labels.SkipCheckLabels = append(config.Labels.SkipCheckLabels, DefaultSkipLabels...)
 
 	if err := config.Validate(); err != nil {
-		log.Fail(msg)
+		log.Fail(task)
 		return err
 	}
 

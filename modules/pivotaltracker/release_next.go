@@ -89,20 +89,20 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 
 func (release *nextRelease) Start() (common.Action, error) {
 	// Add release labels to the relevant stories.
-	msg := "Label the stories with the release label"
-	log.Run(msg)
+	task := "Label the stories with the release label"
+	log.Run(task)
 	stories, stderr, err := addLabel(release.stories, releaseLabel(release.ver))
 	if err != nil {
-		return nil, errs.NewError(msg, err, stderr)
+		return nil, errs.NewError(task, err, stderr)
 	}
 	release.stories = stories
 
 	// Return the rollback action, which removes the release labels that were appended.
 	return common.ActionFunc(func() error {
-		log.Rollback(msg)
+		log.Rollback(task)
 		stories, stderr, err := removeLabel(release.stories, releaseLabel(release.ver))
 		if err != nil {
-			return errs.NewError(msg, err, stderr)
+			return errs.NewError(task, err, stderr)
 		}
 		release.stories = stories
 		return nil

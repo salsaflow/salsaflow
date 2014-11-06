@@ -47,8 +47,8 @@ func selectActiveIds(ids []string) (activeIds []string, err error) {
 	info := log.V(log.Info)
 
 	// Fetch the relevant stories
-	msg := "Fetch the relevant stories"
-	info.Run(msg)
+	task := "Fetch the relevant stories"
+	info.Run(task)
 
 	stories, err := listStoriesById(ids)
 	if err != nil {
@@ -61,12 +61,12 @@ func selectActiveIds(ids []string) (activeIds []string, err error) {
 	}
 
 	// Filter the stories according to the story state.
-	msg = "Filter the stories according to the story state"
+	task = "Filter the stories according to the story state"
 	var active []string
 	for _, id := range ids {
 		story, ok := storyMap[id]
 		if !ok {
-			info.Fail(msg)
+			info.Fail(task)
 			err = fmt.Errorf("story with id %v not found", id)
 			return nil, err
 		}

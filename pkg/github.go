@@ -5,9 +5,14 @@ import (
 	"github.com/google/go-github/github"
 )
 
-func newGitHubClient(token string) (*github.Client, error) {
+func newGitHubClient() (*github.Client, error) {
+	config, err := LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	transport := &oauth.Transport{
-		Token: &oauth.Token{AccessToken: token},
+		Token: &oauth.Token{AccessToken: config.GitHubToken()},
 	}
 	return github.NewClient(transport.Client()), nil
 }

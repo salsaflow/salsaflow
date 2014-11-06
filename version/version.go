@@ -15,6 +15,7 @@ import (
 	// Internal
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
+	"github.com/salsita/salsaflow/git/gitutil"
 )
 
 const (
@@ -33,24 +34,28 @@ type Version struct {
 	Patch uint
 }
 
-func ReadFromBranch(branch string) (ver *Version, stderr *bytes.Buffer, err error) {
-	content, stderr, err := git.ShowByBranch(branch, PackageFileName)
+func ReadFromBranch(branch string) (*Version, error) {
+	content, err := gitutil.ShowFileByBranch(PackageFileName, branch)
 	if err != nil {
-		return
+		return nil, err
 	}
 
+	task := "Read version from the local config file on branch " + branch
 	var pkg packageFile
 	err = json.Unmarshal(content.Bytes(), &pkg)
 	if err != nil {
-		return
+		return nil, errs.NewError(task, err, nil)
 	}
 	if pkg.Version == "" {
-		err = fmt.Errorf("version key not found in %v", PackageFileName)
-		return
+		return nil, errs.NewError(
+			task, fmt.Errorf("version key not found in %v", PackageFileName), nil)
 	}
 
-	ver, err = Parse(pkg.Version)
-	return
+	ver, err := Parse(pkg.Version)
+	if err != nil {
+		return nil, errs.NewError(task, err, nil)
+	}
+	return ver, nil
 }
 
 func (ver *Version) Zero() bool {
@@ -98,7 +103,7 @@ func (ver *Version) CommitToBranch(branch string) (stderr *bytes.Buffer, err err
 	}
 
 	// Get the absolute path of package.json
-	root, stderr, err := git.RepositoryRootAbsolutePath()
+	root, stderr, err := gitutil.RepositoryRootAbsolutePath()
 	if err != nil {
 		return
 	}

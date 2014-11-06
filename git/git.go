@@ -4,13 +4,13 @@ import (
 	// Stdlib
 	"bytes"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strconv"
 	"strings"
 
 	// Internal
-	"github.com/salsita/salsaflow/shell"
+	"github.com/salsita/salsaflow/errs"
+
+	// Internal
+	"github.com/salsita/salsaflow/git/gitutil"
 )
 
 func Add(args ...string) (stderr *bytes.Buffer, err error) {
@@ -182,10 +182,6 @@ func ResetKeep(branch, ref string) (stderr *bytes.Buffer, err error) {
 	return
 }
 
-func ShowByBranch(branch, file string) (content, stderr *bytes.Buffer, err error) {
-	return Run("show", branch+":"+file)
-}
-
 func Hexsha(ref string) (hexsha string, stderr *bytes.Buffer, err error) {
 	stdout, stderr, err := Run("show-ref", "--verify", ref)
 	if err != nil {
@@ -256,75 +252,36 @@ func CurrentBranch() (branch string, stderr *bytes.Buffer, err error) {
 	return
 }
 
-func RepositoryRootAbsolutePath() (path string, stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := Run("rev-parse", "--show-toplevel")
-	if err != nil {
-		return
-	}
-
-	path = string(bytes.TrimSpace(stdout.Bytes()))
-	return
-}
-
-// RelativePath returns the relative path from the current working directory to the file
-// specified by the relative path from the repository root.
-//
-// This is useful for some other Git commands, particularly git status.
-func RelativePath(pathFromRoot string) (relativePath string, stderr *bytes.Buffer, err error) {
-	root, stderr, err := RepositoryRootAbsolutePath()
-	if err != nil {
-		return "", stderr, err
-	}
-	absolutePath := filepath.Join(root, pathFromRoot)
-
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", nil, err
-	}
-
-	relativePath, err = filepath.Rel(cwd, absolutePath)
-	if err != nil {
-		return "", nil, err
-	}
-
-	return relativePath, nil, nil
-}
-
-func GetConfigBool(key string) (value bool, stderr *bytes.Buffer, err error) {
+func GetConfigString(key string) (value string, err error) {
+	task := fmt.Sprintf("Run 'git config %v'", key)
 	stdout, stderr, err := Run("config", key)
 	if err != nil {
 		if stderr.Len() == 0 {
 			// git config returns exit code 1 when the key is not set.
 			// This can be detected by stderr being of zero length.
-			// We treat this as the key being set to false.
-			return false, nil, nil
+			// We treat this as the key being set to "".
+			return "", nil
 		}
 		// Otherwise there is an error.
-		return false, stderr, err
+		return "", errs.NewError(task, err, stderr)
 	}
-	// Otherwise a boolean value is written into stdout, so we parse it.
-	v, err := strconv.ParseBool(strings.TrimSpace(stdout.String()))
-	if err != nil {
-		return false, nil, err
-	}
-	return v, nil, nil
+	// Just return what was printed to stdout.
+	return strings.TrimSpace(stdout.String()), nil
 }
 
-func SetConfigBool(key string, value bool) (stderr *bytes.Buffer, err error) {
-	_, stderr, err = Run("config", key, strconv.FormatBool(value))
-	return
+func SetConfigString(key string, value string) error {
+	task := fmt.Sprintf("Run 'git config %v %v'", key, value)
+	_, stderr, err := Run("config", key, value)
+	if err != nil {
+		return errs.NewError(task, err, stderr)
+	}
+	return nil
 }
 
 func Run(args ...string) (stdout, stderr *bytes.Buffer, err error) {
-	argsList := make([]string, 2, 2+len(args))
-	argsList[0], argsList[1] = "git", "--no-pager"
-	argsList = append(argsList, args...)
-	return shell.Run(argsList...)
+	return gitutil.Run(args...)
 }
 
 func RunCommand(command string, args ...string) (stdout, stderr *bytes.Buffer, err error) {
-	argsList := make([]string, 3, 3+len(args))
-	argsList[0], argsList[1], argsList[2] = "git", "--no-pager", command
-	argsList = append(argsList, args...)
-	return shell.Run(argsList...)
+	return gitutil.RunCommand(command, args...)
 }

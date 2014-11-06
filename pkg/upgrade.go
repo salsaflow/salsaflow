@@ -7,7 +7,7 @@ import (
 	"sort"
 
 	// Internal
-	"github.com/salsita/salsaflow/app"
+	"github.com/salsita/salsaflow/app/metadata"
 	"github.com/salsita/salsaflow/asciiart"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/log"
@@ -33,30 +33,23 @@ func Upgrade(opts *InstallOptions) error {
 		}
 	}
 
-	// Load GitHub config.
-	msg := "Load GitHub config"
-	config, err := loadConfig()
-	if err != nil {
-		return errs.NewError(msg, err, nil)
-	}
-
 	// Instantiate a GitHub client.
-	msg = "Instantiate a GitHub client"
-	client, err := newGitHubClient(config.GitHubToken())
+	task := "Instantiate a GitHub client"
+	client, err := newGitHubClient()
 	if err != nil {
-		return errs.NewError(msg, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 
 	// Fetch the list of available GitHub releases.
-	msg = fmt.Sprintf("Fetch GitHub releases for %v/%v", owner, repo)
-	log.Run(msg)
+	task = fmt.Sprintf("Fetch GitHub releases for %v/%v", owner, repo)
+	log.Run(task)
 	releases, _, err := client.Repositories.ListReleases(owner, repo, nil)
 	if err != nil {
-		return errs.NewError(msg, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 
 	// Sort the releases by version and get the most recent release.
-	msg = "Select the most suitable GitHub release"
+	task = "Select the most suitable GitHub release"
 	var rs releaseSlice
 	for _, release := range releases {
 		// Skip drafts and pre-releases.
@@ -76,18 +69,18 @@ func Upgrade(opts *InstallOptions) error {
 		})
 	}
 	if rs.Len() == 0 {
-		return errs.NewError(msg, errors.New("no suitable GitHub releases found"), nil)
+		return errs.NewError(task, errors.New("no suitable GitHub releases found"), nil)
 	}
 
 	sort.Sort(rs)
 	release := rs[0]
 
 	// Make sure the selected release is more recent than this executable.
-	currentVersion, err := semver.NewVersion(app.Version)
+	currentVersion, err := semver.NewVersion(metadata.Version)
 	if err != nil {
 		panic(err)
 	}
-	if release.version.String() == app.Version || release.version.LessThan(*currentVersion) {
+	if release.version.String() == metadata.Version || release.version.LessThan(*currentVersion) {
 		log.Log("SalsaFlow is up to date")
 		asciiart.PrintThumbsUp()
 		fmt.Println()
@@ -95,12 +88,12 @@ func Upgrade(opts *InstallOptions) error {
 	}
 
 	// Prompt the user to confirm the upgrade.
-	msg = "Prompt the user to confirm upgrade"
+	task = "Prompt the user to confirm upgrade"
 	fmt.Println()
 	confirmed, err := prompt.Confirm(fmt.Sprintf(
 		"SalsaFlow version %v is available. Upgrade now?", release.version))
 	if err != nil {
-		return errs.NewError(msg, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 	if !confirmed {
 		return ErrAborted
