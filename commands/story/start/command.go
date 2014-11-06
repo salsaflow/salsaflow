@@ -52,7 +52,7 @@ func run(cmd *gocli.Command, args []string) {
 		os.Exit(2)
 	}
 
-	app.MustInit()
+	app.InitOrDie()
 
 	// Exit cleanly when the panic is actually ErrCanceled.
 	defer func() {

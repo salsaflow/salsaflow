@@ -47,7 +47,7 @@ func Init() error {
 	return nil
 }
 
-func MustInit() {
+func InitOrDie() {
 	if err := Init(); err != nil {
 		if ex, ok := err.(*errs.Error); !ok || ex.RootCause() != repo.ErrInitialised {
 			errs.Fatal(err)

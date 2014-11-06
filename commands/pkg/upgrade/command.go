@@ -43,7 +43,7 @@ func run(cmd *gocli.Command, args []string) {
 		os.Exit(2)
 	}
 
-	app.MustInit()
+	app.InitOrDie()
 
 	if err := pkg.Upgrade(&pkg.InstallOptions{flagOwner, flagRepo}); err != nil {
 		if err == pkg.ErrAborted {
