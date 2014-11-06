@@ -34,24 +34,28 @@ type Version struct {
 	Patch uint
 }
 
-func ReadFromBranch(branch string) (ver *Version, stderr *bytes.Buffer, err error) {
+func ReadFromBranch(branch string) (*Version, error) {
 	content, err := gitutil.ShowFileByBranch(PackageFileName, branch)
 	if err != nil {
-		return
+		return nil, err
 	}
 
+	task := "Read version from the local config file on branch " + branch
 	var pkg packageFile
 	err = json.Unmarshal(content.Bytes(), &pkg)
 	if err != nil {
-		return
+		return nil, errs.NewError(task, err, nil)
 	}
 	if pkg.Version == "" {
-		err = fmt.Errorf("version key not found in %v", PackageFileName)
-		return
+		return nil, errs.NewError(
+			task, fmt.Errorf("version key not found in %v", PackageFileName), nil)
 	}
 
-	ver, err = Parse(pkg.Version)
-	return
+	ver, err := Parse(pkg.Version)
+	if err != nil {
+		return nil, errs.NewError(task, err, nil)
+	}
+	return ver, nil
 }
 
 func (ver *Version) Zero() bool {

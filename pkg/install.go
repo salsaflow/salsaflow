@@ -33,30 +33,23 @@ func Install(version string, opts *InstallOptions) error {
 		}
 	}
 
-	// Load GitHub config.
-	msg := "Load GitHub config"
-	config, err := loadConfig()
-	if err != nil {
-		return errs.NewError(msg, err, nil)
-	}
-
 	// Instantiate a GitHub client.
-	msg = "Instantiate a GitHub client"
-	client, err := newGitHubClient(config.GitHubToken())
+	task := "Instantiate a GitHub client"
+	client, err := newGitHubClient()
 	if err != nil {
-		return errs.NewError(msg, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 
 	// Fetch the list of available GitHub releases.
-	msg = fmt.Sprintf("Fetch GitHub releases for %v/%v", owner, repo)
-	log.Run(msg)
+	task = fmt.Sprintf("Fetch GitHub releases for %v/%v", owner, repo)
+	log.Run(task)
 	releases, _, err := client.Repositories.ListReleases(owner, repo, nil)
 	if err != nil {
-		return errs.NewError(msg, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 
 	// Get the release matching the chosen version string.
-	msg = "Get the release metadata"
+	task = "Get the release metadata"
 	var (
 		release *github.RepositoryRelease
 		tagName = "v" + version
@@ -68,16 +61,16 @@ func Install(version string, opts *InstallOptions) error {
 		}
 	}
 	if release == nil {
-		return errs.NewError(msg, fmt.Errorf("SalsaFlow version %v not found", version), nil)
+		return errs.NewError(task, fmt.Errorf("SalsaFlow version %v not found", version), nil)
 	}
 
 	// Prompt the user to confirm the the installation.
-	msg = "Prompt the user to confirm the installation"
+	task = "Prompt the user to confirm the installation"
 	fmt.Println()
 	confirmed, err := prompt.Confirm(fmt.Sprintf(
 		"SalsaFlow version %v is about to be installed. Shall we proceed?", version))
 	if err != nil {
-		return errs.NewError(msg, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 	if !confirmed {
 		return ErrAborted

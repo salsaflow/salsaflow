@@ -13,7 +13,6 @@ import (
 
 	// Internal
 	"github.com/salsita/salsaflow/asciiart"
-	"github.com/salsita/salsaflow/config"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/hooks"
@@ -43,9 +42,18 @@ func main() {
 }
 
 func run(remoteName, pushURL string) error {
+	// Load the git-related SalsaFlow config.
+	gitConfig, err := git.LoadConfig()
+	if err != nil {
+		return err
+	}
+
 	// Only check the project remote.
-	if remoteName != config.OriginName {
-		log.Log("Not pushing to the main project repository, check skipped")
+	if remoteName != gitConfig.RemoteName() {
+		log.Log(
+			fmt.Sprintf(
+				"Not pushing to the main project remote (%v), check skipped",
+				gitConfig.RemoteName()))
 		return nil
 	}
 
@@ -53,10 +61,10 @@ func run(remoteName, pushURL string) error {
 	// The format is <local ref> <local sha1> <remote ref> <remote sha1>,
 	// so we parse the input and collect all the local hexshas.
 	var coreRefs = []string{
-		"refs/heads/" + config.TrunkBranch,
-		"refs/heads/" + config.ReleaseBranch,
-		"refs/heads/" + config.ClientBranch,
-		"refs/heads/" + config.MasterBranch,
+		"refs/heads/" + gitConfig.TrunkBranchName(),
+		"refs/heads/" + gitConfig.ReleaseBranchName(),
+		"refs/heads/" + gitConfig.StagingBranchName(),
+		"refs/heads/" + gitConfig.StableBranchName(),
 	}
 
 	msg := "Parse the hook input"
@@ -97,7 +105,7 @@ func run(remoteName, pushURL string) error {
 		if remoteSha == zeroHash {
 			// In case we are pushing a new branch, check commits up to trunk.
 			// There is probably no better guess that we can do in general.
-			revRange = fmt.Sprintf("%s..%s", config.TrunkBranch, localSha)
+			revRange = fmt.Sprintf("%s..%s", gitConfig.TrunkBranchName(), localSha)
 		} else {
 			// Otherwise check the commits that are new compared to the remote ref.
 			revRange = fmt.Sprintf("%s..%s", remoteSha, localSha)

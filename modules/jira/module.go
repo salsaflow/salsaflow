@@ -15,17 +15,20 @@ import (
 	"github.com/toqueteos/webbrowser"
 )
 
-type issueTracker struct{}
+type issueTracker struct {
+	config Config
+}
 
 func Factory() (common.IssueTracker, error) {
-	if err := loadConfig(); err != nil {
+	config, err := LoadConfig()
+	if err != nil {
 		return nil, err
 	}
-	return &issueTracker{}, nil
+	return &issueTracker{config}, nil
 }
 
 func (tracker *issueTracker) CurrentUser() (common.User, error) {
-	data, _, err := newClient().Myself.Get()
+	data, _, err := newClient(tracker).Myself.Get()
 	if err != nil {
 		return nil, err
 	}
@@ -41,22 +44,13 @@ func (tracker *issueTracker) RunningRelease(ver *version.Version) (common.Runnin
 }
 
 func (tracker *issueTracker) SelectActiveStoryIds(ids []string) (activeIds []string, err error) {
-	return selectActiveIssueIds(ids)
-}
-
-func (tracker *issueTracker) OpenStory(storyId string) error {
-	relativeURL, _ := url.Parse("browse/" + storyId)
-	return webbrowser.Open(config.BaseURL().ResolveReference(relativeURL).String())
-}
-
-func selectActiveIssueIds(ids []string) (activeIds []string, err error) {
 	info := log.V(log.Info)
 
 	// Fetch the relevant issues
-	msg := "Fetch the relevant issues"
-	info.Run(msg)
+	task := "Fetch the relevant issues"
+	info.Run(task)
 
-	issues, err := listStoriesById(ids)
+	issues, err := listStoriesById(tracker, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -67,12 +61,12 @@ func selectActiveIssueIds(ids []string) (activeIds []string, err error) {
 	}
 
 	// Filter the issues according to the issue state.
-	msg = "Filter the issues according to the issue state"
+	task = "Filter the issues according to the issue state"
 	var active []string
 	for _, id := range ids {
 		_, ok := issueMap[id]
 		if !ok {
-			info.Fail(msg)
+			info.Fail(task)
 			err = fmt.Errorf("issue with id %v not found", id)
 			return nil, err
 		}
@@ -84,11 +78,16 @@ func selectActiveIssueIds(ids []string) (activeIds []string, err error) {
 	return active, nil
 }
 
+func (tracker *issueTracker) OpenStory(storyId string) error {
+	relativeURL, _ := url.Parse("browse/" + storyId)
+	return webbrowser.Open(tracker.config.BaseURL().ResolveReference(relativeURL).String())
+}
+
 func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
-	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", config.ProjectKey(),
+	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", tracker.config.ProjectKey(),
 		toAND("type", codingIssueTypeIds...), toAND("status", startableStateIds...))
 
-	issues, _, err := newClient().Issues.Search(&client.SearchOptions{
+	issues, _, err := newClient(tracker).Issues.Search(&client.SearchOptions{
 		JQL:        query,
 		MaxResults: 200,
 	})
@@ -96,14 +95,14 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		return nil, err
 	}
 
-	return toCommonStories(issues), nil
+	return toCommonStories(tracker, issues), nil
 }
 
 func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
-	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", config.ProjectKey(),
+	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", tracker.config.ProjectKey(),
 		toAND("type", codingIssueTypeIds...), toAND("status", inDevelopmentStateIds...))
 
-	issues, _, err := newClient().Issues.Search(&client.SearchOptions{
+	issues, _, err := newClient(tracker).Issues.Search(&client.SearchOptions{
 		JQL:        query,
 		MaxResults: 200,
 	})
@@ -111,13 +110,13 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 		return nil, err
 	}
 
-	return toCommonStories(issues), nil
+	return toCommonStories(tracker, issues), nil
 }
 
-func toCommonStories(issues []*client.Issue) []common.Story {
+func toCommonStories(tracker *issueTracker, issues []*client.Issue) []common.Story {
 	stories := make([]common.Story, len(issues))
 	for i := range issues {
-		stories[i] = &story{issues[i]}
+		stories[i] = &story{issues[i], tracker}
 	}
 	return stories
 }

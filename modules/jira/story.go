@@ -12,6 +12,7 @@ import (
 
 type story struct {
 	*client.Issue
+	tracker *issueTracker
 }
 
 func (story *story) Id() string {
@@ -47,7 +48,7 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 	}
 	name := users[0].Id()
 	data.Fields.Assignee.Name = name
-	_, err := newClient().Issues.Update(story.Id(), data)
+	_, err := newClient(story.tracker).Issues.Update(story.Id(), data)
 	if err != nil {
 		return errs.NewError(fmt.Sprintf("Set assignees for story %v", story.Issue.Key), err, nil)
 	}
@@ -55,7 +56,7 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 }
 
 func (story *story) Start() *errs.Error {
-	_, err := newClient().Issues.PerformTransition(story.Issue.Id, transitionIdStartImplementing)
+	_, err := newClient(story.tracker).Issues.PerformTransition(story.Issue.Id, transitionIdStartImplementing)
 	if err != nil {
 		return errs.NewError(fmt.Sprintf("Start story %v", story.Issue.Key), err, nil)
 	}

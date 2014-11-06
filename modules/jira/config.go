@@ -2,165 +2,140 @@ package jira
 
 import (
 	// Stdlib
-	"errors"
 	"net/url"
 	"strings"
 
 	// Internal
-	cfg "github.com/salsita/salsaflow/config"
-	"github.com/salsita/salsaflow/log"
+	"github.com/salsita/salsaflow/config"
+	"github.com/salsita/salsaflow/errs"
 )
 
-const (
-	Id = "jira"
-)
+const Id = "jira"
 
-func loadConfig() error {
-	// DO NOT SWITCH THE ORDER, IT MATTERS!
-	if err := loadGlobalConfig(); err != nil {
-		return err
+// Local configuration -------------------------------------------------------
+
+type LocalConfig struct {
+	JIRA struct {
+		BaseURL    string `yaml:"base_url"`
+		ProjectKey string `yaml:"project_key"`
+	} `yaml:"jira"`
+}
+
+func (local *LocalConfig) validate() error {
+	var (
+		task = "Validate the local JIRA configuration"
+		jr   = &local.JIRA
+	)
+	switch {
+	case jr.BaseURL == "":
+		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".base_url"}, nil)
+	case jr.ProjectKey == "":
+		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".project_key"}, nil)
 	}
-	if err := loadLocalConfig(); err != nil {
-		return err
+
+	if _, err := url.Parse(jr.BaseURL); err != nil {
+		return errs.NewError(task, &config.ErrKeyInvalid{Id + ".base_url", jr.BaseURL}, nil)
 	}
-	config = mustNewJiraConfig()
+
 	return nil
 }
 
 // Global configuration --------------------------------------------------------
 
-type globalConfig struct {
-	BaseURL  string `yaml:"base_url"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
+type GlobalConfig struct {
+	JIRA struct {
+		Username string `yaml:"username"`
+		Password string `yaml:"password"`
+	} `yaml:"jira"`
 }
 
-func (config *globalConfig) Validate() error {
+func (global *GlobalConfig) validate() error {
+	var (
+		task = "Validate the global JIRA configuration"
+		jr   = &global.JIRA
+	)
 	switch {
-	case config.Username == "":
-		return &cfg.ErrKeyNotSet{Id + ".username"}
-	case config.Password == "":
-		return &cfg.ErrKeyNotSet{Id + ".password"}
+	case jr.Username == "":
+		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".username"}, nil)
+	case jr.Password == "":
+		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".password"}, nil)
 	}
 	return nil
 }
 
-var globalWrapper struct {
-	C *globalConfig `yaml:"jira"`
+// Proxy struct ----------------------------------------------------------------
+
+type Config interface {
+	BaseURL() *url.URL
+	Username() string
+	Password() string
+	ProjectKey() string
 }
 
-func loadGlobalConfig() error {
-	msg := "Load global Jira configuration"
-	if err := cfg.FillGlobalConfig(&globalWrapper); err != nil {
-		log.Fail(msg)
-		return err
+var configCache Config
+
+func LoadConfig() (Config, error) {
+	// Try the cache first.
+	if configCache != nil {
+		return configCache, nil
 	}
 
-	if globalWrapper.C == nil {
-		log.Fail(msg)
-		return errors.New("Jira global configuration section missing")
+	// Create a new configProxy instance.
+	proxy := &configProxy{
+		local:  &LocalConfig{},
+		global: &GlobalConfig{},
 	}
 
-	if err := globalWrapper.C.Validate(); err != nil {
-		log.Fail(msg)
-		return err
+	// Load local config.
+	local := proxy.local
+	if err := config.UnmarshalLocalConfig(local); err != nil {
+		return nil, err
+	}
+	if err := local.validate(); err != nil {
+		return nil, err
 	}
 
-	return nil
-}
-
-// Local configuration -------------------------------------------------------
-
-type localConfig struct {
-	BaseURL    string `yaml:"base_url"`
-	ProjectKey string `yaml:"project_key"`
-}
-
-func (config *localConfig) Validate() error {
-	switch {
-	case config.BaseURL == "":
-		return &cfg.ErrKeyNotSet{Id + ".base_url"}
-	case config.ProjectKey == "":
-		return &cfg.ErrKeyNotSet{Id + ".project_key"}
-	}
-
-	if _, err := url.Parse(config.BaseURL); err != nil {
-		return &cfg.ErrKeyInvalid{Id + ".base_url", config.BaseURL}
-	}
-
-	return nil
-}
-
-var localWrapper struct {
-	C *localConfig `yaml:"jira"`
-}
-
-func loadLocalConfig() error {
-	msg := "Load local Jira configuration"
-	if err := cfg.FillLocalConfig(&localWrapper); err != nil {
-		log.Fail(msg)
-		return err
-	}
-
-	if localWrapper.C == nil {
-		log.Fail(msg)
-		return errors.New("Jira local configuration section missing")
-	}
-
-	// Use the global base URL in case the local one is not set.
-	if localWrapper.C.BaseURL == "" {
-		localWrapper.C.BaseURL = globalWrapper.C.BaseURL
-	}
-
-	if err := localWrapper.C.Validate(); err != nil {
-		log.Fail(msg)
-		return err
-	}
-
-	return nil
-}
-
-// Config proxy object ---------------------------------------------------------
-
-var config *jiraConfig
-
-type jiraConfig struct {
-	baseURL *url.URL
-}
-
-func mustNewJiraConfig() *jiraConfig {
-	// Make sure the URL is absolute.
-	base := localWrapper.C.BaseURL
+	base := local.JIRA.BaseURL
 	if !strings.HasSuffix(base, "/") {
 		base += "/"
 	}
-	baseURL, err := url.Parse(base)
-	if err != nil {
-		panic(err)
+	// This cannot really fail since we check this in the validation function.
+	baseURL, _ := url.Parse(base)
+	proxy.baseURL = baseURL
+
+	// Load global config.
+	global := proxy.global
+	if err := config.UnmarshalGlobalConfig(global); err != nil {
+		return nil, err
 	}
-	return &jiraConfig{baseURL}
+	if err := global.validate(); err != nil {
+		return nil, err
+	}
+
+	// Save the new instance into the cache and return.
+	configCache = proxy
+	return proxy, nil
 }
 
-/*
- * Global config
- */
+type configProxy struct {
+	local  *LocalConfig
+	global *GlobalConfig
 
-func (c *jiraConfig) Username() string {
-	return globalWrapper.C.Username
+	baseURL *url.URL
 }
 
-func (c *jiraConfig) Password() string {
-	return globalWrapper.C.Password
+func (proxy *configProxy) Username() string {
+	return proxy.global.JIRA.Username
 }
 
-/*
- * Local config
- */
-
-func (c *jiraConfig) BaseURL() *url.URL {
-	return c.baseURL
+func (proxy *configProxy) Password() string {
+	return proxy.global.JIRA.Password
 }
 
-func (c *jiraConfig) ProjectKey() string {
-	return localWrapper.C.ProjectKey
+func (proxy *configProxy) BaseURL() *url.URL {
+	return proxy.baseURL
+}
+
+func (proxy *configProxy) ProjectKey() string {
+	return proxy.local.JIRA.ProjectKey
 }

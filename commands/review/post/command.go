@@ -15,7 +15,6 @@ import (
 	// Internal
 	"github.com/salsita/salsaflow/app"
 	"github.com/salsita/salsaflow/asciiart"
-	"github.com/salsita/salsaflow/config"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/log"
@@ -142,14 +141,21 @@ func postBranch(parentBranch string) error {
 		// Fetch the remote repository.
 		task := "Fetch the remote repository"
 		log.Run(task)
-		if stderr, err := git.UpdateRemotes(config.OriginName); err != nil {
+
+		gitConfig, err := git.LoadConfig()
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
+
+		var remoteName = gitConfig.RemoteName()
+		if stderr, err := git.UpdateRemotes(remoteName); err != nil {
 			return errs.NewError(task, err, stderr)
 		}
 
 		// Make sure the parent branch is up to date.
 		task = fmt.Sprintf("Make sure branch '%v' is up to date", parentBranch)
 		log.Run(task)
-		stderr, err = git.EnsureBranchSynchronized(parentBranch, config.OriginName)
+		stderr, err = git.EnsureBranchSynchronized(parentBranch, remoteName)
 		if err != nil {
 			return errs.NewError(task, err, stderr)
 		}
@@ -157,7 +163,7 @@ func postBranch(parentBranch string) error {
 		// Make sure the current branch is up to date.
 		task = fmt.Sprintf("Make sure branch '%v' is up to date", currentBranch)
 		log.Run(task)
-		stderr, err = git.EnsureBranchSynchronized(currentBranch, config.OriginName)
+		stderr, err = git.EnsureBranchSynchronized(currentBranch, remoteName)
 		if err != nil {
 			return errs.NewError(task, err, stderr)
 		}
@@ -240,9 +246,6 @@ You are about to post review requests for the following commits:
 		return errs.NewError(task, err, nil)
 	}
 
-	// Tell the user what to do next.
-	printFollowup()
-
 	return nil
 }
 
@@ -304,7 +307,10 @@ and read the DESCRIPTION section.
 	storiesMsg := "Fetch stories from the issue tracker"
 	log.Run(storiesMsg)
 
-	tracker := modules.GetIssueTracker()
+	tracker, err := modules.GetIssueTracker()
+	if err != nil {
+		return commits, errs.NewError(storiesMsg, err, nil)
+	}
 
 	task := "Fetch the user record from the issue tracker"
 	me, err := tracker.CurrentUser()
@@ -473,10 +479,14 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 
 func sendReviewRequests(commits []*git.Commit) error {
 	var (
-		tool      = modules.GetCodeReviewTool()
 		topErr    error
 		topErrMux sync.Mutex
 	)
+
+	tool, err := modules.GetCodeReviewTool()
+	if err != nil {
+		return err
+	}
 
 	var postOpts = make(map[string]interface{}, 2)
 	if flagFixes != 0 {
@@ -506,12 +516,16 @@ func sendReviewRequests(commits []*git.Commit) error {
 	}
 	wg.Wait()
 
+	if topErr == nil {
+		printFollowup(tool)
+	}
+
 	return topErr
 }
 
-func printFollowup() {
+func printFollowup(tool common.CodeReviewTool) {
 	fmt.Println("\n----------")
-	modules.GetCodeReviewTool().PrintPostReviewRequestFollowup()
+	tool.PrintPostReviewRequestFollowup()
 	fmt.Print(`  ###########################################################
   # IMPORTANT: Your code has not been merged and/or pushed. #
   ###########################################################

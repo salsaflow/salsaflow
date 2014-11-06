@@ -2,15 +2,10 @@ package config
 
 import (
 	// Stdlib
-	"bufio"
 	"bytes"
-	"errors"
-	"fmt"
-	"io"
-	"os"
+	"io/ioutil"
 	"os/user"
 	"path/filepath"
-	"strings"
 
 	// Internal
 	"github.com/salsita/salsaflow/errs"
@@ -20,133 +15,96 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const (
-	LocalConfigFileName  = "salsaflow.yml"
-	GlobalConfigFileName = ".salsaflow.yml"
+// Local config ----------------------------------------------------------------
 
-	ConfigBranch = TrunkBranch
-)
+// LocalConfigFilename is the filename of the configuration file
+// that represents local project-specific SalsaFlow configuration.
+//
+// This file is expected to be placed in the repository root.
+const LocalConfigFilename = "salsaflow.yml"
 
-var (
-	issueTrackerId   string
-	codeReviewToolId string
-)
+var localContentCache []byte
 
-func IssueTrackerId() string {
-	return issueTrackerId
-}
-
-func CodeReviewToolId() string {
-	return codeReviewToolId
-}
-
-var (
-	localConfigContent  []byte
-	globalConfigContent []byte
-)
-
-func Load() *errs.Error {
-	// Make sure the local configuration file is committed.
-	msg := "Make sure the local configuration file is committed"
-	if stderr, err := ensureLocalConfigCommitted(); err != nil {
-		return errs.NewError(msg, err, stderr)
+func UnmarshalLocalConfig(v interface{}) error {
+	// Read the local config file into the cache in case it's not there yet.
+	if localContentCache == nil {
+		localContent, err := readLocalConfig()
+		if err != nil {
+			return err
+		}
+		localContentCache = localContent.Bytes()
 	}
 
-	// Read the local configuration file.
-	msg = "Read local configuration file"
-	localConfig, err := ReadLocalConfig()
-	if err != nil {
-		return errs.NewError(msg, err, nil)
+	// Unmarshall the local config file.
+	task := "Unmarshal the local config file"
+	if err := yaml.Unmarshal(localContentCache, v); err != nil {
+		return errs.NewError(
+			task, err, bytes.NewBufferString("Make sure the configuration file is valid YAML\n"))
 	}
-	localConfigContent = localConfig.Bytes()
-
-	// Read the global configuration file.
-	msg = "Read global configuration file"
-	globalConfig, err := ReadGlobalConfig()
-	if err != nil {
-		return errs.NewError(msg, err, nil)
-	}
-	globalConfigContent = globalConfig.Bytes()
-
-	// Parse the local config to know what config modules to bootstrap.
-	msg = "Parse project configuration file"
-	var config struct {
-		IssueTracker   string `yaml:"issue_tracker"`
-		CodeReviewTool string `yaml:"code_review_tool"`
-	}
-	if err := yaml.Unmarshal(localConfigContent, &config); err != nil {
-		return errs.NewError(msg, err, nil)
-	}
-	switch {
-	case config.IssueTracker == "":
-		return errs.NewError(msg, &ErrKeyNotSet{"issue_tracker"}, nil)
-	case config.CodeReviewTool == "":
-		return errs.NewError(msg, &ErrKeyNotSet{"code_review_tool"}, nil)
-	}
-
-	// Set the global variables.
-	issueTrackerId = config.IssueTracker
-	codeReviewToolId = config.CodeReviewTool
-
 	return nil
 }
 
-func ensureLocalConfigCommitted() (stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := gitutil.RunCommand("status", "--porcelain")
+func readLocalConfig() (content *bytes.Buffer, err error) {
+	// Get the config file absolute path.
+	task := "Get the repository root"
+	root, stderr, err := gitutil.RepositoryRootAbsolutePath()
 	if err != nil {
-		return stderr, err
+		return nil, errs.NewError(task, err, stderr)
 	}
-	var (
-		suffix  = " " + LocalConfigFileName
-		scanner = bufio.NewScanner(stdout)
-	)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasSuffix(line, suffix) {
-			hint := fmt.Sprintf(`
-Please commit your %v changes into branch '%v'.
-Only then will I let you pass and proceed further!
+	path := filepath.Join(root, LocalConfigFilename)
 
-`, LocalConfigFileName, TrunkBranch)
-			return bytes.NewBufferString(hint), errors.New("local configuration file modified")
+	// Read the content and return it.
+	task = "Read the local config file"
+	contentBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, errs.NewError(task, err, nil)
+	}
+	return bytes.NewBuffer(contentBytes), nil
+}
+
+// Global config ---------------------------------------------------------------
+
+// GlobalConfigFilename is the filename of the configuration file
+// that represents global user-specific SalsaFlow configuration.
+//
+// This file is expected to be placed in the user's home directory.
+const GlobalConfigFilename = ".salsaflow.yml"
+
+var globalContentCache []byte
+
+func UnmarshalGlobalConfig(v interface{}) error {
+	// Read the global config file into the cache in case it's not there yet.
+	if globalContentCache == nil {
+		globalContent, err := readGlobalConfig()
+		if err != nil {
+			return err
 		}
+		globalContentCache = globalContent.Bytes()
 	}
-	return nil, scanner.Err()
+
+	// Unmarshal the global config file.
+	task := "Unmarshal the global configuration file"
+	if err := yaml.Unmarshal(globalContentCache, v); err != nil {
+		return errs.NewError(
+			task, err, bytes.NewBufferString("Make sure the configuration file is valid YAML\n"))
+	}
+	return nil
 }
 
-func ReadLocalConfig() (content *bytes.Buffer, err error) {
-	// Return the file content as committed on the config branch.
-	return gitutil.ShowFileByBranch(LocalConfigFileName, ConfigBranch)
-}
-
-func ReadGlobalConfig() (content *bytes.Buffer, err error) {
-	// Generate the global config file path.
+func readGlobalConfig() (content *bytes.Buffer, err error) {
+	// Get the global config file path.
+	task := "Get the current user's home directory"
 	me, err := user.Current()
 	if err != nil {
-		return nil, err
+		return nil, errs.NewError(task, err, nil)
 	}
-	path := filepath.Join(me.HomeDir, GlobalConfigFileName)
+	path := filepath.Join(me.HomeDir, GlobalConfigFilename)
 
 	// Read the global config file.
-	file, err := os.Open(path)
+	task = "Read the global config file"
+	contentBytes, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, errs.NewError(task, err, nil)
 	}
-	defer file.Close()
-
-	var p bytes.Buffer
-	if _, err := io.Copy(&p, file); err != nil {
-		return nil, err
-	}
-
-	// Return the content.
-	return &p, nil
-}
-
-func FillLocalConfig(v interface{}) error {
-	return yaml.Unmarshal(localConfigContent, v)
-}
-
-func FillGlobalConfig(v interface{}) error {
-	return yaml.Unmarshal(globalConfigContent, v)
+	return bytes.NewBuffer(contentBytes), nil
 }

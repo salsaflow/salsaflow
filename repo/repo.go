@@ -11,7 +11,6 @@ import (
 	// Internal
 	"github.com/salsita/salsaflow/app/metadata"
 	"github.com/salsita/salsaflow/asciiart"
-	"github.com/salsita/salsaflow/config"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/hooks"
@@ -87,65 +86,52 @@ You need Git version 1.9.0 or newer.
 			bytes.NewBufferString(hint))
 	}
 
+	// Get hold of a git config instance.
+	gitConfig, err := git.LoadConfig()
+	if err != nil {
+		return err
+	}
+
 	// Make sure that the master branch exists.
 	msg = "Make sure the master branch exists"
 	log.Run(msg)
-	exists, stderr, err := git.RefExists(config.MasterBranch)
+	var stableBranch = gitConfig.StableBranchName()
+	exists, stderr, err := git.RefExists(stableBranch)
 	if err != nil {
 		return errs.NewError(msg, err, stderr)
 	}
 	if !exists {
 		stderr := bytes.NewBufferString(fmt.Sprintf(
-			"Make sure that branch '%v' exists and run init again.", config.MasterBranch))
-		err := fmt.Errorf("branch '%v' not found", config.MasterBranch)
+			"Make sure that branch '%v' exists and run init again.", stableBranch))
+		err := fmt.Errorf("branch '%v' not found", stableBranch)
 		return errs.NewError(msg, err, stderr)
 	}
 
 	// Make sure that the trunk branch exists.
 	msg = "Make sure the trunk branch exists"
 	log.Run(msg)
-	exists, stderr, err = git.RefExists(config.TrunkBranch)
+	var trunkBranch = gitConfig.TrunkBranchName()
+	exists, stderr, err = git.RefExists(trunkBranch)
 	if err != nil {
 		return errs.NewError(msg, err, stderr)
 	}
 	if !exists {
 		msg := "Create the trunk branch"
 		log.Log(fmt.Sprintf(
-			"No branch '%s' found. Will create one for you for free!", config.TrunkBranch))
+			"No branch '%s' found. Will create one for you for free!", trunkBranch))
 		log.NewLine(fmt.Sprintf(
-			"The newly created branch is pointing to '%v'.", config.MasterBranch))
-		stderr, err := git.Branch(config.TrunkBranch, config.MasterBranch)
+			"The newly created branch is pointing to '%v'.", stableBranch))
+		stderr, err := git.Branch(trunkBranch, stableBranch)
 		if err != nil {
 			return errs.NewError(msg, err, stderr)
 		}
 
 		msg = "Push the newly created trunk branch"
 		log.Run(msg)
-		stderr, err = git.Push(config.OriginName, config.TrunkBranch+":"+config.TrunkBranch)
+		stderr, err = git.Push(gitConfig.RemoteName(), trunkBranch+":"+trunkBranch)
 		if err != nil {
 			return errs.NewError(msg, err, stderr)
 		}
-	}
-
-	// Check the global configuration file.
-	msg = "Check the global SalsaFlow configuration"
-	log.Run(msg)
-	if _, err := config.ReadGlobalConfig(); err != nil {
-		return errs.NewError(
-			msg,
-			fmt.Errorf("could not read config file '%v': %v",
-				"$HOME/"+config.GlobalConfigFileName, err),
-			nil)
-	}
-
-	// Check the project-specific configuration file.
-	msg = "Check the local SalsaFlow configuration"
-	log.Run(msg)
-	if _, err = config.ReadLocalConfig(); err != nil {
-		return errs.NewError(msg,
-			fmt.Errorf("could not read config file '%v' on branch '%v': %v",
-				config.LocalConfigFileName, config.ConfigBranch, err),
-			nil)
 	}
 
 	// Verify our git hooks are installed and used.
