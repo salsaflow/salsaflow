@@ -12,36 +12,32 @@ import (
 	"text/tabwriter"
 
 	// Internal
+	"github.com/salsita/salsaflow/asciiart"
 	"github.com/salsita/salsaflow/config"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
+	"github.com/salsita/salsaflow/hooks"
 	"github.com/salsita/salsaflow/log"
-)
-
-const (
-	secretRemote = "AreYouWhoIThinkYouAreHuh"
-	secretReply  = "IAmSalsaFlowHookYaDoofus!"
 )
 
 const zeroHash = "0000000000000000000000000000000000000000"
 
 func main() {
-	// `repo init` uses this secret check to see whether this hook is installed.
-	if len(os.Args) == 2 && os.Args[1] == secretRemote {
-		fmt.Println(secretReply)
-		return
-	}
+	// Set up the identification command line flag.
+	hooks.IdentifyYourself()
 
 	// Tell the user what is happening.
 	fmt.Println("---> Running the SalsaFlow pre-push hook")
 
 	// The hook is always invoked as `pre-push <remote-name> <push-url>`.
 	if len(os.Args) != 3 {
-		log.Fatalf("Invalid arguments: %#v\n", os.Args)
+		fmt.Fprintf(os.Stderr, "Usage: %v <remote-name> <push-url>\n", os.Args[0])
+		errs.Fatal(fmt.Errorf("invalid arguments: %#v\n", os.Args[1:]))
 	}
 
 	// Run the main function.
 	if err := run(os.Args[1], os.Args[2]); err != nil {
+		asciiart.PrintGrimReaper("PUSH ABORTED")
 		errs.Fatal(err)
 	}
 }

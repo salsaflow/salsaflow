@@ -7,7 +7,7 @@ import (
 	"sort"
 
 	// Internal
-	"github.com/salsita/salsaflow/app"
+	"github.com/salsita/salsaflow/app/metadata"
 	"github.com/salsita/salsaflow/asciiart"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/log"
@@ -83,11 +83,11 @@ func Upgrade(opts *InstallOptions) error {
 	release := rs[0]
 
 	// Make sure the selected release is more recent than this executable.
-	currentVersion, err := semver.NewVersion(app.Version)
+	currentVersion, err := semver.NewVersion(metadata.Version)
 	if err != nil {
 		panic(err)
 	}
-	if release.version.String() == app.Version || release.version.LessThan(*currentVersion) {
+	if release.version.String() == metadata.Version || release.version.LessThan(*currentVersion) {
 		log.Log("SalsaFlow is up to date")
 		asciiart.PrintThumbsUp()
 		fmt.Println()

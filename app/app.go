@@ -14,8 +14,6 @@ import (
 	"github.com/salsita/salsaflow/repo"
 )
 
-const Version = "0.2.1"
-
 var ErrRepositoryNotInitialised = errors.New("repository not initialised")
 
 var (
@@ -27,7 +25,7 @@ func RegisterGlobalFlags(flags *flag.FlagSet) {
 	flags.Var(LogFlag, "log", "set logging verbosity; {trace|debug|verbose|info|off}")
 }
 
-func Init() *errs.Error {
+func Init() error {
 	// Set up logging.
 	log.SetV(log.MustStringToLevel(LogFlag.Value()))
 
@@ -50,7 +48,9 @@ func Init() *errs.Error {
 }
 
 func MustInit() {
-	if err := Init(); err != nil && err.RootCause() != repo.ErrInitialised {
-		errs.Fatal(err)
+	if err := Init(); err != nil {
+		if ex, ok := err.(*errs.Error); !ok || ex.RootCause() != repo.ErrInitialised {
+			errs.Fatal(err)
+		}
 	}
 }

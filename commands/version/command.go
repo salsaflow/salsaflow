@@ -6,7 +6,7 @@ import (
 	"os"
 
 	// Internal
-	"github.com/salsita/salsaflow/app"
+	"github.com/salsita/salsaflow/app/metadata"
 
 	// Other
 	"gopkg.in/tchap/gocli.v1"
@@ -24,6 +24,6 @@ var Command = &gocli.Command{
 			os.Exit(2)
 		}
 
-		fmt.Println(app.Version)
+		fmt.Println(metadata.Version)
 	},
 }
