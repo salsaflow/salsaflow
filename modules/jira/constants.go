@@ -3,16 +3,16 @@ package jira
 // Issue Types -----------------------------------------------------------------
 
 const (
-	issueTypeIdBug              = "1"
-	issueTypeIdTechnicalTask    = "10401"
-	issueTypeIdTechnicalSubTask = "10002"
-	issueTypeIdUserStory        = "10500"
+	issueTypeIdBug           = "1"
+	issueTypeIdCodingTask    = "10508"
+	issueTypeIdCodingSubTask = "10501"
+	issueTypeIdUserStory     = "10500"
 )
 
 var codingIssueTypeIds = []string{
 	issueTypeIdBug,
-	issueTypeIdTechnicalTask,
-	issueTypeIdTechnicalSubTask,
+	issueTypeIdCodingTask,
+	issueTypeIdCodingSubTask,
 	issueTypeIdUserStory,
 }
 
