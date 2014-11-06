@@ -67,7 +67,7 @@ func run(remoteName, pushURL string) error {
 		"refs/heads/" + gitConfig.StableBranchName(),
 	}
 
-	msg := "Parse the hook input"
+	task := "Parse the hook input"
 	var revRanges []string
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
@@ -76,7 +76,7 @@ func run(remoteName, pushURL string) error {
 			parts = strings.Split(line, " ")
 		)
 		if len(parts) != 4 {
-			return errs.NewError(msg, errors.New("invalid input line: "+line), nil)
+			return errs.NewError(task, errors.New("invalid input line: "+line), nil)
 		}
 
 		localSha, remoteRef, remoteSha := parts[1], parts[2], parts[3]
@@ -113,22 +113,22 @@ func run(remoteName, pushURL string) error {
 		revRanges = append(revRanges, revRange)
 	}
 	if err := scanner.Err(); err != nil {
-		return errs.NewError(msg, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 
 	// Get the relevant commit objects.
-	msg = "Get the commit objects to be pushed"
+	task = "Get the commit objects to be pushed"
 	var commits []*git.Commit
 	for _, revRange := range revRanges {
 		cs, stderr, err := git.ShowCommitRange(revRange)
 		if err != nil {
-			return errs.NewError(msg, err, stderr)
+			return errs.NewError(task, err, stderr)
 		}
 		commits = append(commits, cs...)
 	}
 
 	// Validate the commit messages.
-	msg = "Validate the commit messages"
+	task = "Validate the commit messages"
 	var invalid bool
 
 	stderr := new(bytes.Buffer)
@@ -155,7 +155,7 @@ func run(remoteName, pushURL string) error {
 	if invalid {
 		tw.Flush()
 		stderr.WriteString("\n")
-		return errs.NewError(msg, errors.New("invalid commit message"), stderr)
+		return errs.NewError(task, errors.New("invalid commit message"), stderr)
 	}
 	return nil
 }

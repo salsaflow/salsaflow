@@ -28,7 +28,7 @@ var ErrAborted = errors.New("aborted by the user")
 // and replaces the current executables with the ones just downloaded.
 func doInstall(client *github.Client, owner, repo string, assets []github.ReleaseAsset, version string) error {
 	// Choose the asset to be downloaded.
-	msg := "Pick the most suitable release asset"
+	task := "Pick the most suitable release asset"
 	var (
 		assetName = getAssetName(version)
 		assetURL  string
@@ -39,7 +39,7 @@ func doInstall(client *github.Client, owner, repo string, assets []github.Releas
 		}
 	}
 	if assetURL == "" {
-		return errs.NewError(msg, errors.New("no suitable release asset found"), nil)
+		return errs.NewError(task, errors.New("no suitable release asset found"), nil)
 	}
 
 	// Download the selected release asset.
@@ -52,17 +52,17 @@ func getAssetName(version string) string {
 
 func downloadAndInstallAsset(assetName, assetURL string) error {
 	// Download the asset.
-	msg := "Download " + assetName
-	log.Run(msg)
+	task := "Download " + assetName
+	log.Run(task)
 	resp, err := http.Get(assetURL)
 	if err != nil {
-		return errs.NewError(msg, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 	defer resp.Body.Close()
 
 	// Unpack the asset (in-memory).
 	// We keep the asset in the memory since it is never going to be that big.
-	msg = "Read the asset into an internal buffer"
+	task = "Read the asset into an internal buffer"
 	var capacity = resp.ContentLength
 	if capacity == -1 {
 		capacity = 0
@@ -70,18 +70,18 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 	bodyBuffer := bytes.NewBuffer(make([]byte, 0, capacity))
 	_, err = io.Copy(bodyBuffer, resp.Body)
 	if err != nil {
-		return errs.NewError(msg, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 
-	msg = "Replace SalsaFlow executables"
+	task = "Replace SalsaFlow executables"
 	archive, err := zip.NewReader(bytes.NewReader(bodyBuffer.Bytes()), int64(bodyBuffer.Len()))
 	if err != nil {
-		return errs.NewError(msg, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 
 	exeDir, err := osext.ExecutableFolder()
 	if err != nil {
-		return errs.NewError(msg, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 
 	var numThreads int
@@ -98,20 +98,20 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 
 		go func(file *zip.File) {
 			baseName := filepath.Base(file.Name)
-			msg := fmt.Sprintf("Uncompress executable '%v'", baseName)
-			log.Go(msg)
+			task := fmt.Sprintf("Uncompress executable '%v'", baseName)
+			log.Go(task)
 
 			src, err := file.Open()
 			if err != nil {
-				errCh <- errs.NewError(msg, err, nil)
+				errCh <- errs.NewError(task, err, nil)
 				return
 			}
 
-			msg = fmt.Sprintf("Move executable '%v' into place", baseName)
-			log.Go(msg)
+			task = fmt.Sprintf("Move executable '%v' into place", baseName)
+			log.Go(task)
 			if err := replaceExecutable(src, exeDir, baseName); err != nil {
 				src.Close()
-				errCh <- errs.NewError(msg, err, nil)
+				errCh <- errs.NewError(task, err, nil)
 				return
 			}
 

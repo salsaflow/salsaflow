@@ -62,20 +62,20 @@ func run(cmd *gocli.Command, args []string) {
 
 func runMain() (err error) {
 	var (
-		msg    string
+		task   string
 		stderr *bytes.Buffer
 	)
 	defer func() {
 		// Print error details.
 		if err != nil {
-			log.FailWithDetails(msg, stderr)
+			log.FailWithDetails(task, stderr)
 		}
 	}()
 
 	// Fetch the remote repository unless we are restricted to the local branches only.
 	if !flagLocalOnly {
-		msg = "Fetch the remote repository"
-		log.Run(msg)
+		task = "Fetch the remote repository"
+		log.Run(task)
 		stderr, err = git.UpdateRemotes(config.OriginName)
 		if err != nil {
 			return
@@ -83,8 +83,8 @@ func runMain() (err error) {
 	}
 
 	// Get the list of story references.
-	msg = "Collect all story branches"
-	log.Run(msg)
+	task = "Collect all story branches"
+	log.Run(task)
 	localRefs, remoteRefs, stderr, err := git.ListStoryRefs()
 	if err != nil {
 		return
@@ -101,7 +101,7 @@ func runMain() (err error) {
 	}
 
 	if len(refs) == 0 {
-		msg = ""
+		task = ""
 		log.Println("\nNo story branches found, exiting...")
 		return
 	}
@@ -130,7 +130,7 @@ func runMain() (err error) {
 	refs = selectInactiveRefs(refs, ids)
 
 	if len(refs) == 0 {
-		msg = ""
+		task = ""
 		log.Println("\nThere are no branches to be deleted, exiting...")
 		return
 	}
@@ -184,15 +184,15 @@ func runMain() (err error) {
 	fmt.Println()
 
 	if len(toDeleteLocally) == 0 && len(toDeleteRemotely) == 0 {
-		msg = ""
+		task = ""
 		fmt.Println("No branches selected, exiting...")
 		return
 	}
 
 	// Delete the local branches.
 	if len(toDeleteLocally) != 0 {
-		msg = "Delete the chosen local branches"
-		log.Run(msg)
+		task = "Delete the chosen local branches"
+		log.Run(task)
 
 		// Remember the position of the branches to be deleted.
 		// This is used in case we need to perform a rollback.
@@ -221,17 +221,17 @@ func runMain() (err error) {
 				for i, branchName := range toDeleteLocally {
 					out, ex := git.ResetKeep(branchName, currentPositions[i])
 					if ex != nil {
-						log.FailWithDetails(msg, out)
+						log.FailWithDetails(task, out)
 					}
 				}
 			}
-		}(msg)
+		}(task)
 	}
 
 	// Delete the remote branches.
 	if len(toDeleteRemotely) != 0 {
-		msg = "Delete the chosen remote branches"
-		log.Run(msg)
+		task = "Delete the chosen remote branches"
+		log.Run(task)
 		var refs []string
 		for _, branchName := range toDeleteRemotely {
 			refs = append(refs, ":"+branchName)

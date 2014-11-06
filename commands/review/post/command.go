@@ -304,12 +304,12 @@ and read the DESCRIPTION section.
 	}
 
 	// Fetch the stories in progress from the issue tracker.
-	storiesMsg := "Fetch stories from the issue tracker"
-	log.Run(storiesMsg)
+	storiesTask := "Fetch stories from the issue tracker"
+	log.Run(storiesTask)
 
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
-		return commits, errs.NewError(storiesMsg, err, nil)
+		return commits, errs.NewError(storiesTask, err, nil)
 	}
 
 	task := "Fetch the user record from the issue tracker"
@@ -320,7 +320,7 @@ and read the DESCRIPTION section.
 
 	stories, err := tracker.StoriesInDevelopment()
 	if err != nil {
-		return commits, errs.NewError(storiesMsg, err, nil)
+		return commits, errs.NewError(storiesTask, err, nil)
 	}
 
 	// Show only the stories owned by the current user.
