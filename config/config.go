@@ -14,7 +14,7 @@ import (
 
 	// Internal
 	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/git"
+	"github.com/salsita/salsaflow/git/gitutil"
 
 	// Other
 	"gopkg.in/yaml.v2"
@@ -54,9 +54,9 @@ func Load() *errs.Error {
 
 	// Read the local configuration file.
 	msg = "Read local configuration file"
-	localConfig, stderr, err := ReadLocalConfig()
+	localConfig, err := ReadLocalConfig()
 	if err != nil {
-		return errs.NewError(msg, err, stderr)
+		return errs.NewError(msg, err, nil)
 	}
 	localConfigContent = localConfig.Bytes()
 
@@ -92,7 +92,7 @@ func Load() *errs.Error {
 }
 
 func ensureLocalConfigCommitted() (stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := git.Status("--porcelain")
+	stdout, stderr, err := gitutil.RunCommand("status", "--porcelain")
 	if err != nil {
 		return stderr, err
 	}
@@ -114,9 +114,9 @@ Only then will I let you pass and proceed further!
 	return nil, scanner.Err()
 }
 
-func ReadLocalConfig() (content, stderr *bytes.Buffer, err error) {
+func ReadLocalConfig() (content *bytes.Buffer, err error) {
 	// Return the file content as committed on the config branch.
-	return git.ShowByBranch(ConfigBranch, LocalConfigFileName)
+	return gitutil.ShowFileByBranch(LocalConfigFileName, ConfigBranch)
 }
 
 func ReadGlobalConfig() (content *bytes.Buffer, err error) {

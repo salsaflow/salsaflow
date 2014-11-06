@@ -11,7 +11,7 @@ import (
 	// Internal
 	"github.com/salsita/salsaflow/app/metadata"
 	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/git"
+	"github.com/salsita/salsaflow/git/gitutil"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/prompt"
 	"github.com/salsita/salsaflow/shell"
@@ -44,7 +44,7 @@ func CheckAndUpsert(typ HookType) error {
 
 	// Ping the git hook with our secret argument.
 	task := "Get the repository root absolute path"
-	repoRoot, _, err := git.RepositoryRootAbsolutePath()
+	repoRoot, _, err := gitutil.RepositoryRootAbsolutePath()
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}

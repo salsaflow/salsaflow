@@ -15,6 +15,7 @@ import (
 	// Internal
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
+	"github.com/salsita/salsaflow/git/gitutil"
 )
 
 const (
@@ -34,7 +35,7 @@ type Version struct {
 }
 
 func ReadFromBranch(branch string) (ver *Version, stderr *bytes.Buffer, err error) {
-	content, stderr, err := git.ShowByBranch(branch, PackageFileName)
+	content, err := gitutil.ShowFileByBranch(PackageFileName, branch)
 	if err != nil {
 		return
 	}
@@ -98,7 +99,7 @@ func (ver *Version) CommitToBranch(branch string) (stderr *bytes.Buffer, err err
 	}
 
 	// Get the absolute path of package.json
-	root, stderr, err := git.RepositoryRootAbsolutePath()
+	root, stderr, err := gitutil.RepositoryRootAbsolutePath()
 	if err != nil {
 		return
 	}

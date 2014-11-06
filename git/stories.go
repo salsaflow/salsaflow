@@ -1,7 +1,6 @@
 package git
 
 import (
-	// Stdlib
 	"bufio"
 	"bytes"
 	"regexp"

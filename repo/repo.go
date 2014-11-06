@@ -141,11 +141,11 @@ You need Git version 1.9.0 or newer.
 	// Check the project-specific configuration file.
 	msg = "Check the local SalsaFlow configuration"
 	log.Run(msg)
-	if _, stderr, err = config.ReadLocalConfig(); err != nil {
+	if _, err = config.ReadLocalConfig(); err != nil {
 		return errs.NewError(msg,
 			fmt.Errorf("could not read config file '%v' on branch '%v': %v",
 				config.LocalConfigFileName, config.ConfigBranch, err),
-			stderr)
+			nil)
 	}
 
 	// Verify our git hooks are installed and used.
