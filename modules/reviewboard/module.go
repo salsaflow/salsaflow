@@ -49,7 +49,7 @@ func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit, opts map[strin
 	}
 
 	// Post the review request.
-	args := []string{"rbt", "post", "--guess-fields", "yes", "--bugs-closed", commit.StoryId}
+	args := []string{"post", "--guess-fields", "yes", "--bugs-closed", commit.StoryId}
 	if fixes != "" {
 		args = append(args, "--depends-on", fixes)
 	}
@@ -62,7 +62,7 @@ func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit, opts map[strin
 	args = append(args, commit.SHA)
 
 	task := "Post review request for commit " + commit.SHA
-	stdout, stderr, err := shell.Run(args...)
+	stdout, stderr, err := shell.Run("rbt", args...)
 	if err != nil {
 		return errs.NewError(task, err, stderr)
 	}

@@ -5,11 +5,11 @@ import (
 	"os/exec"
 )
 
-func Run(args ...string) (stdout, stderr *bytes.Buffer, err error) {
+func Run(name string, args ...string) (stdout, stderr *bytes.Buffer, err error) {
 	stdout = new(bytes.Buffer)
 	stderr = new(bytes.Buffer)
 
-	cmd := exec.Command(args[0], args[1:]...)
+	cmd := exec.Command(name, args...)
 
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr

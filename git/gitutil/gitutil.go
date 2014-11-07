@@ -13,17 +13,17 @@ import (
 )
 
 func Run(args ...string) (stdout, stderr *bytes.Buffer, err error) {
-	argsList := make([]string, 2, 2+len(args))
-	argsList[0], argsList[1] = "git", "--no-pager"
+	argsList := make([]string, 1, 1+len(args))
+	argsList[0] = "--no-pager"
 	argsList = append(argsList, args...)
-	return shell.Run(argsList...)
+	return shell.Run("git", argsList...)
 }
 
 func RunCommand(command string, args ...string) (stdout, stderr *bytes.Buffer, err error) {
-	argsList := make([]string, 3, 3+len(args))
-	argsList[0], argsList[1], argsList[2] = "git", "--no-pager", command
+	argsList := make([]string, 2, 2+len(args))
+	argsList[0], argsList[1] = "--no-pager", command
 	argsList = append(argsList, args...)
-	return shell.Run(argsList...)
+	return shell.Run("git", argsList...)
 }
 
 func RepositoryRootAbsolutePath() (path string, stderr *bytes.Buffer, err error) {
