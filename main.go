@@ -29,6 +29,17 @@ func main() {
   salsaflow is a CLI utility that provides some useful shortcuts for
   Trunk Based Development. See the list of subcommands.`
 
+	// Set up the top-level action function.
+	var flagVersion bool
+	trunk.Flags.BoolVar(&flagVersion, "version", flagVersion, "print SalsaFlow version and exit")
+	trunk.Action = func(cmd *gocli.Command, args []string) {
+		if len(args) != 0 || !flagVersion {
+			cmd.Usage()
+			os.Exit(2)
+		}
+		fmt.Println(metadata.Version)
+	}
+
 	// Register global flags.
 	app.RegisterGlobalFlags(&trunk.Flags)
 
