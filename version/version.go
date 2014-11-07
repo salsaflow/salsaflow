@@ -2,60 +2,24 @@ package version
 
 import (
 	// Stdlib
-	"bytes"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 
 	// Internal
 	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/git"
-	"github.com/salsita/salsaflow/git/gitutil"
 )
 
 const (
-	PackageFileName    = "package.json"
-	GroupMatcherString = "([0-9]+)[.]([0-9]+)[.]([0-9]+)"
 	MatcherString      = "[0-9]+[.][0-9]+[.][0-9]+"
+	GroupMatcherString = "([0-9]+)[.]([0-9]+)[.]([0-9]+)"
 )
-
-type packageFile struct {
-	Version string
-}
 
 type Version struct {
 	Major uint
 	Minor uint
 	Patch uint
-}
-
-func ReadFromBranch(branch string) (*Version, error) {
-	content, err := gitutil.ShowFileByBranch(PackageFileName, branch)
-	if err != nil {
-		return nil, err
-	}
-
-	task := "Read version from the local config file on branch " + branch
-	var pkg packageFile
-	err = json.Unmarshal(content.Bytes(), &pkg)
-	if err != nil {
-		return nil, errs.NewError(task, err, nil)
-	}
-	if pkg.Version == "" {
-		return nil, errs.NewError(
-			task, fmt.Errorf("version key not found in %v", PackageFileName), nil)
-	}
-
-	ver, err := Parse(pkg.Version)
-	if err != nil {
-		return nil, errs.NewError(task, err, nil)
-	}
-	return ver, nil
 }
 
 func (ver *Version) Zero() bool {
@@ -89,88 +53,12 @@ func (ver *Version) ReleaseTagString() string {
 	return "v" + ver.String()
 }
 
-func (ver *Version) CommitToBranch(branch string) (stderr *bytes.Buffer, err error) {
-	// Make sure package.json is clean.
-	stderr, err = git.EnsureFileClean(PackageFileName)
-	if err != nil {
-		return
-	}
-
-	// Checkout the branch.
-	stderr, err = git.Checkout(branch)
-	if err != nil {
-		return
-	}
-
-	// Get the absolute path of package.json
-	root, stderr, err := gitutil.RepositoryRootAbsolutePath()
-	if err != nil {
-		return
-	}
-	absPath := filepath.Join(root, PackageFileName)
-
-	// Read package.json
-	file, err := os.OpenFile(absPath, os.O_RDWR, 0)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-
-	content, err := ioutil.ReadAll(file)
-	if err != nil {
-		return
-	}
-
-	// Parse and replace stuff in package.json
-	pattern := regexp.MustCompile(fmt.Sprintf("\"version\": \"%v\"", MatcherString))
-	newContent := pattern.ReplaceAllLiteral(content,
-		[]byte(fmt.Sprintf("\"version\": \"%v\"", ver)))
-	if bytes.Equal(content, newContent) {
-		err = fmt.Errorf("%v: failed to replace version string", PackageFileName)
-		return
-	}
-
-	// Write package.json
-	_, err = file.Seek(0, os.SEEK_SET)
-	if err != nil {
-		return
-	}
-	err = file.Truncate(0)
-	if err != nil {
-		return
-	}
-	_, err = io.Copy(file, bytes.NewReader(newContent))
-	if err != nil {
-		return
-	}
-	defer func() {
-		if err == nil {
-			return
-		}
-		// On error, checkout package.json to cancel the changes.
-		//
-		// We cannot lose any changes by doing so, because we make sure that
-		// package.json is clean at the beginning of CommitToBranch.
-		if stderr, err := git.Checkout("--", absPath); err != nil {
-			errs.LogError(fmt.Sprintf("Roll back changes to %v", PackageFileName), err, stderr)
-		}
-	}()
-
-	// Commit package.json
-	stderr, err = git.Add(absPath)
-	if err != nil {
-		return
-	}
-
-	_, stderr, err = git.Run("commit", "-m", fmt.Sprintf("Bump version to %v", ver))
-	return
-}
-
 func Parse(versionString string) (ver *Version, err error) {
+	task := "Parse version string: " + versionString
 	pattern := regexp.MustCompile("^" + GroupMatcherString + "$")
 	parts := pattern.FindStringSubmatch(versionString)
 	if len(parts) != 4 {
-		return nil, fmt.Errorf("invalid version string: %v", versionString)
+		return nil, errs.NewError(task, errors.New("invalid version string: "+versionString), nil)
 	}
 
 	// regexp passed, we know that we are not going to fail here.
