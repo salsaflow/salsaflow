@@ -85,7 +85,8 @@ func (tracker *issueTracker) OpenStory(storyId string) error {
 
 func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
 	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", tracker.config.ProjectKey(),
-		toAND("type", codingIssueTypeIds...), toAND("status", startableStateIds...))
+		formatInRange("type", codingIssueTypeIds...),
+		formatInRange("status", startableStateIds...))
 
 	issues, _, err := newClient(tracker).Issues.Search(&client.SearchOptions{
 		JQL:        query,
@@ -100,7 +101,8 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 
 func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
 	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", tracker.config.ProjectKey(),
-		toAND("type", codingIssueTypeIds...), toAND("status", inDevelopmentStateIds...))
+		formatInRange("type", codingIssueTypeIds...),
+		formatInRange("status", inDevelopmentStateIds...))
 
 	issues, _, err := newClient(tracker).Issues.Search(&client.SearchOptions{
 		JQL:        query,

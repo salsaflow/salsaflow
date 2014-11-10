@@ -60,14 +60,14 @@ func listStoriesById(tracker *issueTracker, ids []string) ([]*client.Issue, erro
 	return stories, err
 }
 
-// toAND returns a conjunction JQL query for the given arguments, i.e.
+// formatInRange takes the arguments and creates a JQL IN query for them, i.e.
 //
-//    toAND("status", "1", "2", "3")
+//    formatInRange("status", "1", "2", "3")
 //
 // will return
 //
 //    "(status in (1,2,3))"
-func toAND(ident string, ids ...string) string {
+func formatInRange(ident string, ids ...string) string {
 	if len(ids) == 0 {
 		return ""
 	}
