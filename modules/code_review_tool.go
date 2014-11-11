@@ -24,7 +24,7 @@ var codeReviewToolFactories = map[string]CodeReviewToolFactory{
 func GetCodeReviewTool() (common.CodeReviewTool, error) {
 	// Load configuration.
 	config, err := common.LoadConfig()
-	if err != nil {
+	if err != nil && config == nil {
 		return nil, err
 	}
 
@@ -41,7 +41,7 @@ func GetCodeReviewTool() (common.CodeReviewTool, error) {
 
 		hint := new(bytes.Buffer)
 		fmt.Fprintf(hint, "\nAvailable code review tools: %v\n\n", ids)
-		return nil, errs.NewError(task, fmt.Errorf("unknown code review tool: %v", id), hint)
+		return nil, errs.NewError(task, fmt.Errorf("unknown code review tool: '%v'", id), hint)
 	}
 
 	// Try to instantiate the code review tool.

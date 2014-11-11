@@ -24,7 +24,7 @@ var issueTrackerFactories = map[string]IssueTrackerFactory{
 func GetIssueTracker() (common.IssueTracker, error) {
 	// Load configuration.
 	config, err := common.LoadConfig()
-	if err != nil {
+	if err != nil && config == nil {
 		return nil, err
 	}
 
@@ -41,7 +41,7 @@ func GetIssueTracker() (common.IssueTracker, error) {
 
 		hint := new(bytes.Buffer)
 		fmt.Fprintf(hint, "\nAvailable issue trackers: %v\n\n", ids)
-		return nil, errs.NewError(task, fmt.Errorf("unknown issue tracker: %v", id), hint)
+		return nil, errs.NewError(task, fmt.Errorf("unknown issue tracker: '%v'", id), hint)
 	}
 
 	// Try to instantiate the issue tracker.

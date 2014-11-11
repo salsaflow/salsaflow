@@ -15,13 +15,21 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Local config ----------------------------------------------------------------
+const (
+	// LocalConfigFilename is the filename of the configuration file
+	// that represents local project-specific SalsaFlow configuration.
+	//
+	// This file is expected to be placed in the repository root.
+	LocalConfigFilename = "salsaflow.yml"
 
-// LocalConfigFilename is the filename of the configuration file
-// that represents local project-specific SalsaFlow configuration.
-//
-// This file is expected to be placed in the repository root.
-const LocalConfigFilename = "salsaflow.yml"
+	// GlobalConfigFilename is the filename of the configuration file
+	// that represents global user-specific SalsaFlow configuration.
+	//
+	// This file is expected to be placed in the user's home directory.
+	GlobalConfigFilename = ".salsaflow.yml"
+)
+
+// Local config ----------------------------------------------------------------
 
 var localContentCache []byte
 
@@ -63,12 +71,6 @@ func readLocalConfig() (content *bytes.Buffer, err error) {
 }
 
 // Global config ---------------------------------------------------------------
-
-// GlobalConfigFilename is the filename of the configuration file
-// that represents global user-specific SalsaFlow configuration.
-//
-// This file is expected to be placed in the user's home directory.
-const GlobalConfigFilename = ".salsaflow.yml"
 
 var globalContentCache []byte
 
