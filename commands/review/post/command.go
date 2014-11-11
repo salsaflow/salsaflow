@@ -152,7 +152,7 @@ func postBranch(parentBranch string) error {
 		}
 
 		// Make sure the parent branch is up to date.
-		task = fmt.Sprintf("Make sure branch '%v' is up to date", parentBranch)
+		task = fmt.Sprintf("Make sure reference '%v' is up to date", parentBranch)
 		log.Run(task)
 		if err := git.EnsureBranchSynchronized(parentBranch, remoteName); err != nil {
 			return errs.NewError(task, err, nil)
