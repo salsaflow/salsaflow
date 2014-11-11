@@ -125,7 +125,9 @@ StoryLoop:
 	fmt.Println()
 
 	// Create the story branch, optionally.
-	if !flagNoBranch {
+	if flagNoBranch {
+		log.Log("Not creating any feature branch")
+	} else {
 		var action common.Action
 		action, err = createBranch()
 		if err != nil {
@@ -206,14 +208,11 @@ func createBranch() (common.Action, error) {
 		return nil, errs.NewError(task, err, nil)
 	}
 
-	exitFunc := func() {
-		fmt.Println("\nI will exit now. Just run me again later if you want.")
-		os.Exit(0)
-	}
-
 	sluggedLine := slug.Slug(line)
 	if sluggedLine == "" {
-		exitFunc()
+		fmt.Println()
+		log.Log("Not creating any feature branch")
+		return nil, nil
 	}
 
 	branchName := "story/" + sluggedLine
@@ -223,7 +222,7 @@ func createBranch() (common.Action, error) {
 		return nil, errs.NewError(task, err, nil)
 	}
 	if !ok {
-		exitFunc()
+		panic(prompt.ErrCanceled)
 	}
 	fmt.Println()
 
