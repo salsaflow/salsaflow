@@ -102,6 +102,14 @@ func PromptIndex(msg string, min, max int) (int, error) {
 }
 
 func PromptStory(msg string, stories []common.Story) (common.Story, error) {
+	var task = "Prompt the user to select a story"
+
+	// Make sure there are actually some stories to be printed.
+	if len(stories) == 0 {
+		fmt.Println("There are no stories to choose from!")
+		return nil, errs.NewError(task, errors.New("no stories to be offered"), nil)
+	}
+
 	// Print the into message.
 	fmt.Println(msg)
 	fmt.Println()
@@ -117,7 +125,6 @@ func PromptStory(msg string, stories []common.Story) (common.Story, error) {
 	tw.Flush()
 
 	// Prompt the user to select a story to assign the commit with.
-	task := "Prompt the user to select a story"
 	index, err := PromptIndex("Choose a story by inserting its index: ", 0, len(stories)-1)
 	if err != nil {
 		if err == ErrCanceled {
