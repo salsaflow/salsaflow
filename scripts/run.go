@@ -25,10 +25,9 @@ func Run(name string, args ...string) (stdout *bytes.Buffer, err error) {
 	}
 
 	// Get the repository root.
-	task := "Get the repository root absolute path"
-	root, stderr, err := gitutil.RepositoryRootAbsolutePath()
+	root, err := gitutil.RepositoryRootAbsolutePath()
 	if err != nil {
-		return nil, errs.NewError(task, err, stderr)
+		return nil, err
 	}
 
 	// Get the script relative path.
@@ -43,7 +42,7 @@ func Run(name string, args ...string) (stdout *bytes.Buffer, err error) {
 	}
 
 	// Run the given script in the repository root.
-	task = fmt.Sprintf("Run the %v script", name)
+	task := fmt.Sprintf("Run the %v script", name)
 	scriptAbsPath := filepath.Join(root, relativePath)
 	var (
 		sout bytes.Buffer

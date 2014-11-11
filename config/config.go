@@ -54,15 +54,14 @@ func UnmarshalLocalConfig(v interface{}) error {
 
 func readLocalConfig() (content *bytes.Buffer, err error) {
 	// Get the config file absolute path.
-	task := "Get the repository root"
-	root, stderr, err := gitutil.RepositoryRootAbsolutePath()
+	root, err := gitutil.RepositoryRootAbsolutePath()
 	if err != nil {
-		return nil, errs.NewError(task, err, stderr)
+		return nil, err
 	}
 	path := filepath.Join(root, LocalConfigFilename)
 
 	// Read the content and return it.
-	task = "Read the local config file"
+	task := "Read the local config file"
 	contentBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, errs.NewError(task, err, nil)

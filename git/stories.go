@@ -2,7 +2,6 @@ package git
 
 import (
 	"bufio"
-	"bytes"
 	"regexp"
 	"strings"
 )
@@ -14,10 +13,10 @@ var (
 	remoteRefMatcher = "^refs/remotes/" + OriginName + "/story/.+/.+$"
 )
 
-func ListStoryRefs() (localRefs, remoteRefs []string, stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := Run("show-ref")
+func ListStoryRefs() (localRefs, remoteRefs []string, err error) {
+	stdout, err := Run("show-ref")
 	if err != nil {
-		return
+		return nil, nil, err
 	}
 
 	var (
@@ -41,10 +40,10 @@ func ListStoryRefs() (localRefs, remoteRefs []string, stderr *bytes.Buffer, err 
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
-	return local, remote, nil, nil
+	return local, remote, nil
 }
 
 func RefToStoryId(ref string) (storyId string, err error) {

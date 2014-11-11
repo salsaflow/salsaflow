@@ -120,9 +120,9 @@ func run(remoteName, pushURL string) error {
 	task = "Get the commit objects to be pushed"
 	var commits []*git.Commit
 	for _, revRange := range revRanges {
-		cs, stderr, err := git.ShowCommitRange(revRange)
+		cs, err := git.ShowCommitRange(revRange)
 		if err != nil {
-			return errs.NewError(task, err, stderr)
+			return errs.NewError(task, err, nil)
 		}
 		commits = append(commits, cs...)
 	}

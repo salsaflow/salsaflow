@@ -77,12 +77,11 @@ func (commit *Commit) Dump(wr io.Writer) error {
 }
 
 // ListStoryCommits returns the list of all commits that are associated with the given story.
-func ListStoryCommits(storyId string) (commits []*Commit, stderr *bytes.Buffer, err error) {
+func ListStoryCommits(storyId string) ([]*Commit, error) {
 	return GrepCommits("Story-Id: " + storyId)
 }
 
-func GrepCommits(filter string) (commits []*Commit, stderr *bytes.Buffer, err error) {
-	// Get the raw Git output.
+func GrepCommits(filter string) ([]*Commit, error) {
 	args := []string{
 		"log",
 		"--all",
@@ -91,17 +90,16 @@ func GrepCommits(filter string) (commits []*Commit, stderr *bytes.Buffer, err er
 		"--pretty=fuller",
 		"--grep=" + filter,
 	}
-	sout, serr, err := Run(args...)
+	stdout, err := Run(args...)
 	if err != nil {
-		return nil, serr, err
+		return nil, err
 	}
 
-	commits, err = ParseCommits(sout)
-	return
+	return ParseCommits(stdout.Bytes())
 }
 
 // ShowCommits returns the list of commits associated with the given revisions.
-func ShowCommits(revisions ...string) (commits []*Commit, stderr *bytes.Buffer, err error) {
+func ShowCommits(revisions ...string) ([]*Commit, error) {
 	args := make([]string, 4, 4+len(revisions))
 	args[0] = "show"
 	args[1] = "--source"
@@ -109,31 +107,29 @@ func ShowCommits(revisions ...string) (commits []*Commit, stderr *bytes.Buffer, 
 	args[3] = "--pretty=fuller"
 	args = append(args, revisions...)
 
-	sout, serr, err := Run(args...)
+	stdout, err := Run(args...)
 	if err != nil {
-		return nil, serr, err
+		return nil, err
 	}
 
-	commits, err = ParseCommits(sout)
-	return
+	return ParseCommits(stdout.Bytes())
 }
 
 // ShowCommitRange returns the list of commits specified by the given Git revision range.
-func ShowCommitRange(revisions string) (commits []*Commit, stderr *bytes.Buffer, err error) {
+func ShowCommitRange(revisionRange string) ([]*Commit, error) {
 	args := []string{
 		"log",
 		"--source",
 		"--abbrev-commit",
 		"--pretty=fuller",
-		revisions,
+		revisionRange,
 	}
-	sout, serr, err := Run(args...)
+	stdout, err := Run(args...)
 	if err != nil {
-		return nil, serr, err
+		return nil, err
 	}
 
-	commits, err = ParseCommits(sout)
-	return
+	return ParseCommits(stdout.Bytes())
 }
 
 // Parse git log output, which is a sequence of Git commits looking like
@@ -148,7 +144,11 @@ func ShowCommitRange(revisions string) (commits []*Commit, stderr *bytes.Buffer,
 //
 //    Change-Id: $changeId
 //    Story-Id: $storyId
-func ParseCommits(sout *bytes.Buffer) (commits []*Commit, err error) {
+//
+// The reason why we are parsing the regular output (not using --pretty=format:)
+// is that not all formatting options are supported. For example, log --all --source
+// contains some information that cannot be easily taken by using --pretty=format:
+func ParseCommits(input []byte) (commits []*Commit, err error) {
 	cs := make([]*Commit, 0)
 
 	var (
@@ -161,7 +161,7 @@ func ParseCommits(sout *bytes.Buffer) (commits []*Commit, err error) {
 
 		headPattern = regexp.MustCompile("^commit[ \t]+([0-9a-f]+)[ \t]+(.+)$")
 		numSpaces   int
-		scanner     = bufio.NewScanner(sout)
+		scanner     = bufio.NewScanner(bytes.NewReader(input))
 	)
 	for scanner.Scan() {
 		line := scanner.Text()

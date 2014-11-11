@@ -170,14 +170,13 @@ StoryLoop:
 
 func createBranch() (common.Action, error) {
 	// Get the current branch name.
-	task := "Get the current branch name"
-	originalBranch, stderr, err := git.CurrentBranch()
+	originalBranch, err := git.CurrentBranch()
 	if err != nil {
-		return nil, errs.NewError(task, err, stderr)
+		return nil, err
 	}
 
 	// Fetch the remote repository.
-	task = "Fetch the remote repository"
+	task := "Fetch the remote repository"
 	log.Run(task)
 
 	gitConfig, err := git.LoadConfig()
@@ -189,17 +188,15 @@ func createBranch() (common.Action, error) {
 		remoteName  = gitConfig.RemoteName()
 		trunkBranch = gitConfig.TrunkBranchName()
 	)
-	stderr, err = git.UpdateRemotes(remoteName)
-	if err != nil {
-		return nil, errs.NewError(task, err, stderr)
+	if err := git.UpdateRemotes(remoteName); err != nil {
+		return nil, errs.NewError(task, err, nil)
 	}
 
 	// Make sure the trunk branch is up to date.
 	task = fmt.Sprintf("Make sure branch '%v' is up to date", trunkBranch)
 	log.Run(task)
-	stderr, err = git.EnsureBranchSynchronized(trunkBranch, remoteName)
-	if err != nil {
-		return nil, errs.NewError(task, err, stderr)
+	if err := git.EnsureBranchSynchronized(trunkBranch, remoteName); err != nil {
+		return nil, errs.NewError(task, err, nil)
 	}
 
 	// Prompt the user for the branch name.
@@ -230,36 +227,36 @@ func createBranch() (common.Action, error) {
 	}
 	fmt.Println()
 
-	createMsg := fmt.Sprintf(
+	createTask := fmt.Sprintf(
 		"Create branch '%v' on top of branch '%v'", branchName, trunkBranch)
-	log.Run(createMsg)
-	if stderr, err = git.Branch(branchName, trunkBranch); err != nil {
-		return nil, errs.NewError(task, err, stderr)
+	log.Run(createTask)
+	if err := git.Branch(branchName, trunkBranch); err != nil {
+		return nil, errs.NewError(createTask, err, nil)
 	}
 
-	deleteMsg := fmt.Sprintf("Delete branch '%v'", branchName)
+	deleteTask := fmt.Sprintf("Delete branch '%v'", branchName)
 	deleteBranch := func() error {
 		// Roll back and delete the newly created branch.
-		log.Rollback(createMsg)
-		if stderr, err := git.Branch("-D", branchName); err != nil {
-			return errs.NewError(deleteMsg, err, stderr)
+		log.Rollback(createTask)
+		if err := git.Branch("-D", branchName); err != nil {
+			return errs.NewError(deleteTask, err, nil)
 		}
 		return nil
 	}
 
-	checkoutMsg := fmt.Sprintf("Checkout branch '%v'", branchName)
-	log.Run(checkoutMsg)
-	if stderr, err = git.Checkout(branchName); err != nil {
+	checkoutTask := fmt.Sprintf("Checkout branch '%v'", branchName)
+	log.Run(checkoutTask)
+	if err := git.Checkout(branchName); err != nil {
 		errs.Log(deleteBranch())
-		return nil, errs.NewError(task, err, stderr)
+		return nil, errs.NewError(checkoutTask, err, nil)
 	}
 
 	return common.ActionFunc(func() error {
 		// Checkout the original branch.
-		log.Rollback(checkoutMsg)
-		if stderr, err := git.Checkout(originalBranch); err != nil {
+		log.Rollback(checkoutTask)
+		if err := git.Checkout(originalBranch); err != nil {
 			return errs.NewError(
-				fmt.Sprintf("Checkout the original branch '%v'", originalBranch), err, stderr)
+				fmt.Sprintf("Checkout the original branch '%v'", originalBranch), err, nil)
 		}
 		// Delete the newly created branch.
 		return deleteBranch()

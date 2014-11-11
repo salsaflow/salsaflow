@@ -71,9 +71,9 @@ func run(cmd *gocli.Command, args []string) {
 func runMain(storyId string) (err error) {
 	// Get the list of all relevant story commits.
 	task := "Get the list of relevant story commits"
-	commits, stderr, err := git.ListStoryCommits(storyId)
+	commits, err := git.ListStoryCommits(storyId)
 	if err != nil {
-		return errs.NewError(task, err, stderr)
+		return errs.NewError(task, err, nil)
 	}
 
 	// Group the commits by change ID.

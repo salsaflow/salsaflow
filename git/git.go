@@ -8,162 +8,167 @@ import (
 
 	// Internal
 	"github.com/salsita/salsaflow/errs"
+	"github.com/salsita/salsaflow/shell"
 
 	// Internal
 	"github.com/salsita/salsaflow/git/gitutil"
 )
 
-func Add(args ...string) (stderr *bytes.Buffer, err error) {
-	_, stderr, err = RunCommand("add", args...)
-	return
+func Add(args ...string) error {
+	_, err := RunCommand("add", args...)
+	return err
 }
 
-func Branch(args ...string) (stderr *bytes.Buffer, err error) {
-	_, stderr, err = RunCommand("branch", args...)
-	return stderr, err
+func Branch(args ...string) error {
+	_, err := RunCommand("branch", args...)
+	return err
 }
 
-func Checkout(args ...string) (stderr *bytes.Buffer, err error) {
-	_, stderr, err = RunCommand("checkout", args...)
-	return
+func Checkout(args ...string) error {
+	_, err := RunCommand("checkout", args...)
+	return err
 }
 
-func CherryPick(args ...string) (stderr *bytes.Buffer, err error) {
-	_, stderr, err = RunCommand("cherry-pick", args...)
-	return
+func CherryPick(args ...string) error {
+	_, err := RunCommand("cherry-pick", args...)
+	return err
 }
 
-func Log(args ...string) (stdout, stderr *bytes.Buffer, err error) {
+func Log(args ...string) (stdout *bytes.Buffer, err error) {
 	return RunCommand("log", args...)
 }
 
-func Rebase(args ...string) (stderr *bytes.Buffer, err error) {
-	_, stderr, err = RunCommand("rebase", args...)
-	return
+func Rebase(args ...string) error {
+	_, err := RunCommand("rebase", args...)
+	return err
 }
 
-func Status(args ...string) (stdout, stderr *bytes.Buffer, err error) {
+func Status(args ...string) (stdout *bytes.Buffer, err error) {
 	return RunCommand("status", args...)
 }
 
-func Tag(args ...string) (stderr *bytes.Buffer, err error) {
-	_, stderr, err = RunCommand("tag", args...)
-	return stderr, err
+func Tag(args ...string) error {
+	_, err := RunCommand("tag", args...)
+	return err
 }
 
-func DeleteTag(tag string) (stderr *bytes.Buffer, err error) {
+func DeleteTag(tag string) error {
 	return Tag("-d", tag)
 }
 
-func Push(remote string, args ...string) (stderr *bytes.Buffer, err error) {
+func Push(remote string, args ...string) error {
 	argsList := make([]string, 3, 3+len(args))
 	argsList[0], argsList[1], argsList[2] = "push", "-u", remote
 	argsList = append(argsList, args...)
-	_, stderr, err = Run(argsList...)
-	return
+	_, err := Run(argsList...)
+	return err
 }
 
-func PushForce(remote string, args ...string) (stderr *bytes.Buffer, err error) {
+func PushForce(remote string, args ...string) error {
 	argsList := make([]string, 3, 3+len(args))
 	argsList[0], argsList[1], argsList[2] = "push", "-f", remote
 	argsList = append(argsList, args...)
-	_, stderr, err = Run(argsList...)
-	return
+	_, err := Run(argsList...)
+	return err
 }
 
-func UpdateRemotes(remotes ...string) (stderr *bytes.Buffer, err error) {
-	argsList := append([]string{"remote", "update"}, remotes...)
-	_, stderr, err = Run(argsList...)
-	return
+func UpdateRemotes(remotes ...string) error {
+	argsList := make([]string, 2, 2+len(remotes))
+	argsList[0] = "remote"
+	argsList[1] = "update"
+	argsList = append(argsList, remotes...)
+	_, err := Run(argsList...)
+	return err
 }
 
-func RefExists(ref string) (exists bool, stderr *bytes.Buffer, err error) {
-	_, out, err := Run("show-ref", "--quiet", ref)
+func RefExists(ref string) (exists bool, err error) {
+	task := fmt.Sprintf("Run 'git show-ref --quiet %v'", ref)
+	_, stderr, err := shell.Run("git", "show-ref", "--quiet", ref)
 	if err != nil {
-		if out.Len() != 0 {
+		if stderr.Len() != 0 {
 			// Non-empty error output means that there was an error.
-			return false, out, err
+			return false, errs.NewError(task, err, stderr)
 		}
 		// Otherwise the ref does not exist.
-		return false, out, nil
+		return false, nil
 	}
 	// No error means that the ref exists.
-	return true, out, nil
+	return true, nil
 }
 
 // RefExistsStrict requires the whole ref path to be specified,
 // e.g. refs/remotes/origin/master.
-func RefExistsStrict(ref string) (exists bool, stderr *bytes.Buffer, err error) {
-	_, out, err := Run("show-ref", "--verify", "--quiet", ref)
+func RefExistsStrict(ref string) (exists bool, err error) {
+	task := fmt.Sprintf("Run 'git show-ref --quiet --verify %v'", ref)
+	_, stderr, err := shell.Run("show-ref", "--verify", "--quiet", ref)
 	if err != nil {
-		if out.Len() != 0 {
+		if stderr.Len() != 0 {
 			// Non-empty error output means that there was an error.
-			return false, out, err
+			return false, errs.NewError(task, err, stderr)
 		}
 		// Otherwise the ref does not exist.
-		return false, out, nil
+		return false, nil
 	}
 	// No error means that the ref exists.
-	return true, out, nil
+	return true, nil
 }
 
-func EnsureBranchNotExists(branch string, remote string) (stderr *bytes.Buffer, err error) {
-	exists, stderr, err := LocalBranchExists(branch)
+func EnsureBranchNotExists(branch string, remote string) error {
+	exists, err := LocalBranchExists(branch)
 	if err != nil {
-		return
+		return err
 	}
 	if exists {
-		err = fmt.Errorf("branch '%v' already exists", branch)
-		return
+		return fmt.Errorf("branch '%v' already exists", branch)
 	}
 
-	exists, stderr, err = RemoteBranchExists(branch, remote)
+	exists, err = RemoteBranchExists(branch, remote)
 	if err != nil {
-		return
+		return err
 	}
 	if exists {
-		err = fmt.Errorf("branch '%v' already exists in remote '%v'", branch, remote)
+		return fmt.Errorf("branch '%v' already exists in remote '%v'", branch, remote)
 	}
-	return
+
+	return nil
 }
 
-func LocalBranchExists(branch string) (exists bool, stderr *bytes.Buffer, err error) {
-	ref := "refs/heads/" + branch
-	return RefExistsStrict(ref)
+func LocalBranchExists(branch string) (exists bool, err error) {
+	return RefExistsStrict("refs/heads/" + branch)
 }
 
-func RemoteBranchExists(branch string, remote string) (exists bool, stderr *bytes.Buffer, err error) {
-	ref := fmt.Sprintf("refs/remotes/%v/%v", remote, branch)
-	return RefExistsStrict(ref)
+func RemoteBranchExists(branch string, remote string) (exists bool, err error) {
+	return RefExistsStrict(fmt.Sprintf("refs/remotes/%v/%v", remote, branch))
 }
 
-func CreateTrackingBranchUnlessExists(branch string, remote string) (stderr *bytes.Buffer, err error) {
+func CreateTrackingBranchUnlessExists(branch string, remote string) error {
 	// Check whether the local branch exists and just return in that case.
-	exists, stderr, err := LocalBranchExists(branch)
-	if exists || err != nil {
-		return
+	exists, err := LocalBranchExists(branch)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return nil
 	}
 
 	// Check whether the remote counterpart exists.
-	exists, stderr, err = RemoteBranchExists(branch, remote)
+	exists, err = RemoteBranchExists(branch, remote)
 	if err != nil {
-		return
+		return err
 	}
 	if !exists {
-		err = fmt.Errorf("branch '%v' not found in the remote '%v'", branch, remote)
-		return
+		return fmt.Errorf("branch '%v' not found in the remote '%v'", branch, remote)
 	}
 
 	// Create the local branch.
 	return Branch(branch, remote+"/"+branch)
 }
 
-func CreateOrResetBranch(branch, target string) (stderr *bytes.Buffer, err error) {
-	exists, stderr, err := LocalBranchExists(branch)
+func CreateOrResetBranch(branch, target string) error {
+	exists, err := LocalBranchExists(branch)
 	if err != nil {
-		return
+		return err
 	}
-
 	// Reset the branch in case it exists.
 	if exists {
 		return ResetKeep(branch, target)
@@ -172,89 +177,104 @@ func CreateOrResetBranch(branch, target string) (stderr *bytes.Buffer, err error
 	return Branch(branch, target)
 }
 
-func ResetKeep(branch, ref string) (stderr *bytes.Buffer, err error) {
-	stderr, err = Checkout(branch)
+func ResetKeep(branch, ref string) (err error) {
+	// Remember the current branch.
+	currentBranch, err := CurrentBranch()
 	if err != nil {
-		return
+		return err
 	}
 
-	_, stderr, err = Run("reset", "--keep", ref)
-	return
+	// Checkout the branch to be reset.
+	if err := Checkout(branch); err != nil {
+		return err
+	}
+	defer func() {
+		// Checkout the original branch on return.
+		if ex := Checkout(currentBranch); ex != nil {
+			if err == nil {
+				err = ex
+			} else {
+				errs.Log(ex)
+			}
+		}
+	}()
+
+	// Reset the branch.
+	_, err = Run("reset", "--keep", ref)
+	return err
 }
 
-func Hexsha(ref string) (hexsha string, stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := Run("show-ref", "--verify", ref)
+func Hexsha(ref string) (hexsha string, err error) {
+	stdout, err := Run("show-ref", "--verify", ref)
 	if err != nil {
-		return
+		return "", err
 	}
 
-	hexsha = strings.Split(stdout.String(), " ")[0]
-	return
+	return strings.Split(stdout.String(), " ")[0], nil
 }
 
-func EnsureBranchSynchronized(branch, remote string) (stderr *bytes.Buffer, err error) {
-	exists, stderr, err := RemoteBranchExists(branch, remote)
+func EnsureBranchSynchronized(branch, remote string) error {
+	exists, err := RemoteBranchExists(branch, remote)
 	if err != nil {
-		return stderr, err
+		return err
 	}
 	if !exists {
-		return nil, nil
+		return nil
 	}
 
 	var (
 		localRef  = "refs/heads/" + branch
 		remoteRef = "refs/remotes/" + remote + "/" + branch
 	)
-	localHexsha, stderr, err := Hexsha(localRef)
+	localHexsha, err := Hexsha(localRef)
 	if err != nil {
-		return stderr, err
+		return err
 	}
-	remoteHexsha, stderr, err := Hexsha(remoteRef)
+	remoteHexsha, err := Hexsha(remoteRef)
 	if err != nil {
-		return stderr, err
+		return err
 	}
 
 	if localHexsha != remoteHexsha {
-		return stderr, fmt.Errorf("branch '%v' is not up to date", branch)
+		return fmt.Errorf("branch '%v' is not up to date", branch)
+	}
+	return nil
+}
+
+func EnsureCleanWorkingTree() (status *bytes.Buffer, err error) {
+	status, err = Run("status", "--porcelain")
+	if err != nil {
+		return nil, err
+	}
+	if status.Len() != 0 {
+		return status, ErrDirtyRepository
 	}
 	return nil, nil
 }
 
-func EnsureCleanWorkingTree() (status *bytes.Buffer, stderr *bytes.Buffer, err error) {
-	status, stderr, err = Run("status", "--porcelain")
+func EnsureFileClean(relativePath string) error {
+	status, err := Run("status", "--porcelain", relativePath)
 	if err != nil {
-		return nil, stderr, err
+		return err
 	}
 	if status.Len() != 0 {
-		return status, nil, ErrDirtyRepository
+		return &ErrDirtyFile{relativePath}
 	}
-	return nil, nil, nil
+	return nil
 }
 
-func EnsureFileClean(relativePath string) (stderr *bytes.Buffer, err error) {
-	status, stderr, err := Run("status", "--porcelain", relativePath)
+func CurrentBranch() (branch string, err error) {
+	stdout, err := Run("rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
-		return stderr, err
-	}
-	if status.Len() != 0 {
-		return nil, &ErrDirtyFile{relativePath}
-	}
-	return nil, nil
-}
-
-func CurrentBranch() (branch string, stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := Run("rev-parse", "--abbrev-ref", "HEAD")
-	if err != nil {
-		return
+		return "", err
 	}
 
-	branch = string(bytes.TrimSpace(stdout.Bytes()))
-	return
+	return string(bytes.TrimSpace(stdout.Bytes())), nil
 }
 
 func GetConfigString(key string) (value string, err error) {
 	task := fmt.Sprintf("Run 'git config %v'", key)
-	stdout, stderr, err := Run("config", key)
+	stdout, stderr, err := shell.Run("git", "config", key)
 	if err != nil {
 		if stderr.Len() == 0 {
 			// git config returns exit code 1 when the key is not set.
@@ -271,17 +291,17 @@ func GetConfigString(key string) (value string, err error) {
 
 func SetConfigString(key string, value string) error {
 	task := fmt.Sprintf("Run 'git config %v %v'", key, value)
-	_, stderr, err := Run("config", key, value)
+	_, stderr, err := shell.Run("git", "config", key, value)
 	if err != nil {
 		return errs.NewError(task, err, stderr)
 	}
 	return nil
 }
 
-func Run(args ...string) (stdout, stderr *bytes.Buffer, err error) {
+func Run(args ...string) (stdout *bytes.Buffer, err error) {
 	return gitutil.Run(args...)
 }
 
-func RunCommand(command string, args ...string) (stdout, stderr *bytes.Buffer, err error) {
+func RunCommand(command string, args ...string) (stdout *bytes.Buffer, err error) {
 	return gitutil.RunCommand(command, args...)
 }

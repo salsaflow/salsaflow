@@ -43,10 +43,9 @@ func CheckAndUpsert(typ HookType) error {
 	var confirmed bool
 
 	// Ping the git hook with our secret argument.
-	task := "Get the repository root absolute path"
-	repoRoot, _, err := gitutil.RepositoryRootAbsolutePath()
+	repoRoot, err := gitutil.RepositoryRootAbsolutePath()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return err
 	}
 
 	hookPath := filepath.Join(repoRoot, ".git", "hooks", string(typ))
@@ -59,6 +58,7 @@ func CheckAndUpsert(typ HookType) error {
 
 	// Get the hook executable absolute path. It's supposed to be installed
 	// in the same directory as the salsaflow executable itself.
+	task := "Get the executable folder absolute path"
 	binDir, err := osext.ExecutableFolder()
 	if err != nil {
 		return errs.NewError(task, err, nil)

@@ -12,62 +12,67 @@ import (
 	"github.com/salsita/salsaflow/shell"
 )
 
-func Run(args ...string) (stdout, stderr *bytes.Buffer, err error) {
+func Run(args ...string) (stdout *bytes.Buffer, err error) {
 	argsList := make([]string, 1, 1+len(args))
 	argsList[0] = "--no-pager"
 	argsList = append(argsList, args...)
-	return shell.Run("git", argsList...)
+
+	task := fmt.Sprintf("Run git with args = %#v", args)
+	stdout, stderr, err := shell.Run("git", argsList...)
+	if err != nil {
+		return nil, errs.NewError(task, err, stderr)
+	}
+	return stdout, nil
 }
 
-func RunCommand(command string, args ...string) (stdout, stderr *bytes.Buffer, err error) {
+func RunCommand(command string, args ...string) (stdout *bytes.Buffer, err error) {
 	argsList := make([]string, 2, 2+len(args))
 	argsList[0], argsList[1] = "--no-pager", command
 	argsList = append(argsList, args...)
-	return shell.Run("git", argsList...)
+
+	task := fmt.Sprintf("Run git %v with args = %#v", command, args)
+	stdout, stderr, err := shell.Run("git", argsList...)
+	if err != nil {
+		return nil, errs.NewError(task, err, stderr)
+	}
+	return stdout, nil
 }
 
-func RepositoryRootAbsolutePath() (path string, stderr *bytes.Buffer, err error) {
-	stdout, stderr, err := Run("rev-parse", "--show-toplevel")
+func RepositoryRootAbsolutePath() (path string, err error) {
+	task := "Get the repository root absolute path"
+	stdout, err := Run("rev-parse", "--show-toplevel")
 	if err != nil {
-		return
+		return "", errs.NewError(task, err, nil)
 	}
-
-	path = string(bytes.TrimSpace(stdout.Bytes()))
-	return
+	return string(bytes.TrimSpace(stdout.Bytes())), nil
 }
 
 // RelativePath returns the relative path from the current working directory to the file
 // specified by the relative path from the repository root.
 //
 // This is useful for some other Git commands, particularly git status.
-func RelativePath(pathFromRoot string) (relativePath string, stderr *bytes.Buffer, err error) {
-	root, stderr, err := RepositoryRootAbsolutePath()
+func RelativePath(pathFromRoot string) (relativePath string, err error) {
+	task := fmt.Sprintf("Get the relative for '%v'", pathFromRoot)
+
+	root, err := RepositoryRootAbsolutePath()
 	if err != nil {
-		return "", stderr, err
+		return "", errs.NewError(task, err, nil)
 	}
 	absolutePath := filepath.Join(root, pathFromRoot)
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", nil, err
+		return "", errs.NewError(task, err, nil)
 	}
 
 	relativePath, err = filepath.Rel(cwd, absolutePath)
 	if err != nil {
-		return "", nil, err
+		return "", errs.NewError(task, err, nil)
 	}
 
-	return relativePath, nil, nil
+	return relativePath, nil
 }
 
 func ShowFileByBranch(file, branch string) (content *bytes.Buffer, err error) {
-	var (
-		object = fmt.Sprintf("%v:%v", branch, file)
-		task   = fmt.Sprintf("Run 'git show %v'", object)
-	)
-	stdout, stderr, err := RunCommand("show", object)
-	if err != nil {
-		return nil, errs.NewError(task, err, stderr)
-	}
-	return stdout, nil
+	return RunCommand("show", fmt.Sprintf("%v:%v", branch, file))
 }

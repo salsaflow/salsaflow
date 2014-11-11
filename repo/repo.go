@@ -56,9 +56,9 @@ func Init() error {
 	// version of git is installed, it most probably stays.
 	task = "Check the git version being used"
 	log.Run(task)
-	stdout, stderr, err := git.Run("--version")
+	stdout, err := git.Run("--version")
 	if err != nil {
-		return errs.NewError(task, err, stderr)
+		return errs.NewError(task, err, nil)
 	}
 	pattern := regexp.MustCompile("^git version (([0-9]+)[.]([0-9]+).*)")
 	parts := pattern.FindStringSubmatch(stdout.String())
@@ -96,9 +96,9 @@ You need Git version 1.9.0 or newer.
 	task = "Make sure the master branch exists"
 	log.Run(task)
 	var stableBranch = gitConfig.StableBranchName()
-	exists, stderr, err := git.RefExists(stableBranch)
+	exists, err := git.RefExists(stableBranch)
 	if err != nil {
-		return errs.NewError(task, err, stderr)
+		return errs.NewError(task, err, nil)
 	}
 	if !exists {
 		stderr := bytes.NewBufferString(fmt.Sprintf(
@@ -111,9 +111,9 @@ You need Git version 1.9.0 or newer.
 	task = "Make sure the trunk branch exists"
 	log.Run(task)
 	var trunkBranch = gitConfig.TrunkBranchName()
-	exists, stderr, err = git.RefExists(trunkBranch)
+	exists, err = git.RefExists(trunkBranch)
 	if err != nil {
-		return errs.NewError(task, err, stderr)
+		return errs.NewError(task, err, nil)
 	}
 	if !exists {
 		task := "Create the trunk branch"
@@ -121,16 +121,14 @@ You need Git version 1.9.0 or newer.
 			"No branch '%s' found. Will create one for you for free!", trunkBranch))
 		log.NewLine(fmt.Sprintf(
 			"The newly created branch is pointing to '%v'.", stableBranch))
-		stderr, err := git.Branch(trunkBranch, stableBranch)
-		if err != nil {
-			return errs.NewError(task, err, stderr)
+		if err := git.Branch(trunkBranch, stableBranch); err != nil {
+			return errs.NewError(task, err, nil)
 		}
 
 		task = "Push the newly created trunk branch"
 		log.Run(task)
-		stderr, err = git.Push(gitConfig.RemoteName(), trunkBranch+":"+trunkBranch)
-		if err != nil {
-			return errs.NewError(task, err, stderr)
+		if err := git.Push(gitConfig.RemoteName(), trunkBranch+":"+trunkBranch); err != nil {
+			return errs.NewError(task, err, nil)
 		}
 	}
 
