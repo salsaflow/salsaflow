@@ -17,8 +17,6 @@ import (
 	"github.com/salsita/salsaflow/shell"
 )
 
-const Id = "review_board"
-
 func init() {
 	repo.AddInitHook(ensureRbtVersion)
 }
@@ -38,6 +36,12 @@ func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit, opts map[strin
 		panic("story ID not set for the commit being posted")
 	}
 
+	// Load the RB config.
+	config, err := LoadConfig()
+	if err != nil {
+		return err
+	}
+
 	// Parse the options.
 	var (
 		fixes  = formatOptInteger(opts["fixes"])
@@ -49,7 +53,11 @@ func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit, opts map[strin
 	}
 
 	// Post the review request.
-	args := []string{"post", "--guess-fields", "yes", "--bugs-closed", commit.StoryId}
+	args := []string{"post",
+		"--server", config.ServerURL().String(),
+		"--guess-fields", "yes",
+		"--bugs-closed", commit.StoryId}
+
 	if fixes != "" {
 		args = append(args, "--depends-on", fixes)
 	}
@@ -64,7 +72,13 @@ func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit, opts map[strin
 	task := "Post review request for commit " + commit.SHA
 	stdout, stderr, err := shell.Run("rbt", args...)
 	if err != nil {
-		return errs.NewError(task, err, stderr)
+		// rbt is retarded and sometimes prints stderr to stdout.
+		// That is why we return stdout when stderr is empty.
+		if stderr.Len() == 0 {
+			return errs.NewError(task, err, stdout)
+		} else {
+			return errs.NewError(task, err, stderr)
+		}
 	}
 	logger := log.V(log.Info)
 	logger.Lock()

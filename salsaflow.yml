@@ -1,8 +1,10 @@
 issue_tracker: "jira"
-code_review_tool: "review_board"
 jira:
   project_key: "SF"
   base_url: "https://jira.salsitasoft.com"
+code_review_tool: "review_board"
+review_board:
+  server_url: "https://review.salsitasoft.com"
 scripts:
   get_version: "salsaflow_scripts/get_version.sh"
   set_version: "salsaflow_scripts/set_version.sh"
