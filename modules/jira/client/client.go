@@ -30,7 +30,10 @@ const (
 	defaultUserAgent = "salsaflow/" + LibraryVersion
 )
 
-type M map[string]interface{}
+type (
+	L []interface{}
+	M map[string]interface{}
+)
 
 type Client struct {
 	// HTTP client to be used to send all the HTTP requests.
@@ -45,10 +48,13 @@ type Client struct {
 	// Me service.
 	Myself *MyselfService
 
-	// Issues service.
+	// Project service.
+	Projects *ProjectService
+
+	// Issue service.
 	Issues *IssueService
 
-	// Versions service.
+	// Version service.
 	Versions *VersionService
 }
 
@@ -59,6 +65,7 @@ func New(baseURL *url.URL, httpClient *http.Client) *Client {
 		UserAgent:  defaultUserAgent,
 	}
 	client.Myself = newMyselfService(client)
+	client.Projects = newProjectService(client)
 	client.Issues = newIssueService(client)
 	client.Versions = newVersionService(client)
 	return client
