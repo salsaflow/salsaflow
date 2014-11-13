@@ -30,7 +30,7 @@ func RunCommand(command string, args ...string) (stdout *bytes.Buffer, err error
 	argsList[0], argsList[1] = "--no-pager", command
 	argsList = append(argsList, args...)
 
-	task := fmt.Sprintf("Run git %v with args = %#v", command, args)
+	task := fmt.Sprintf("Run 'git %v' with args = %#v", command, args)
 	stdout, stderr, err := shell.Run("git", argsList...)
 	if err != nil {
 		return nil, errs.NewError(task, err, stderr)

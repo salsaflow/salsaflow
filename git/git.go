@@ -2,6 +2,7 @@ package git
 
 import (
 	// Stdlib
+	"bufio"
 	"bytes"
 	"fmt"
 	"strings"
@@ -40,6 +41,11 @@ func Log(args ...string) (stdout *bytes.Buffer, err error) {
 
 func Rebase(args ...string) error {
 	_, err := RunCommand("rebase", args...)
+	return err
+}
+
+func Reset(args ...string) error {
+	_, err := RunCommand("reset", args...)
 	return err
 }
 
@@ -100,7 +106,7 @@ func RefExists(ref string) (exists bool, err error) {
 // e.g. refs/remotes/origin/master.
 func RefExistsStrict(ref string) (exists bool, err error) {
 	task := fmt.Sprintf("Run 'git show-ref --quiet --verify %v'", ref)
-	_, stderr, err := shell.Run("show-ref", "--verify", "--quiet", ref)
+	_, stderr, err := shell.Run("git", "show-ref", "--verify", "--quiet", ref)
 	if err != nil {
 		if stderr.Len() != 0 {
 			// Non-empty error output means that there was an error.
@@ -113,7 +119,7 @@ func RefExistsStrict(ref string) (exists bool, err error) {
 	return true, nil
 }
 
-func EnsureBranchNotExists(branch string, remote string) error {
+func EnsureBranchNotExist(branch string, remote string) error {
 	exists, err := LocalBranchExists(branch)
 	if err != nil {
 		return err
@@ -241,15 +247,31 @@ func EnsureBranchSynchronized(branch, remote string) error {
 	return nil
 }
 
-func EnsureCleanWorkingTree() (status *bytes.Buffer, err error) {
-	status, err = Run("status", "--porcelain")
+func EnsureCleanWorkingTree(includeUntracked bool) error {
+	status, err := Run("status", "--porcelain")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if status.Len() != 0 {
-		return status, ErrDirtyRepository
+
+	// In case the output is not empty and we include all files,
+	// this is enough to say that the repository is dirty.
+	if status.Len() != 0 && includeUntracked {
+		return ErrDirtyRepository
 	}
-	return nil, nil
+
+	scanner := bufio.NewScanner(status)
+	for scanner.Scan() {
+		// Skip the files that are untracked.
+		if strings.HasPrefix(scanner.Text(), "?? ") {
+			continue
+		}
+		// Otherwise the repository is dirty.
+		return ErrDirtyRepository
+	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func EnsureFileClean(relativePath string) error {
