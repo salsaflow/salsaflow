@@ -35,8 +35,12 @@ func (tracker *issueTracker) CurrentUser() (common.User, error) {
 	return &user{data}, nil
 }
 
-func (tracker *issueTracker) NextRelease(ver *version.Version) (common.NextRelease, error) {
-	return newNextRelease(ver)
+func (tracker *issueTracker) NextRelease(
+	trunkVersion *version.Version,
+	nextTrunkVersion *version.Version,
+) (common.NextRelease, error) {
+
+	return newNextRelease(tracker, trunkVersion, nextTrunkVersion)
 }
 
 func (tracker *issueTracker) RunningRelease(ver *version.Version) (common.RunningRelease, error) {
@@ -50,7 +54,7 @@ func (tracker *issueTracker) SelectActiveStoryIds(ids []string) (activeIds []str
 	task := "Fetch the relevant issues"
 	info.Run(task)
 
-	issues, err := listStoriesById(tracker, ids)
+	issues, err := listStoriesById(newClient(tracker), ids)
 	if err != nil {
 		return nil, err
 	}

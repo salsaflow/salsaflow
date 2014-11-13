@@ -7,6 +7,7 @@ import (
 	"os"
 
 	// Internal
+	"github.com/salsita/salsaflow/action"
 	"github.com/salsita/salsaflow/app"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
@@ -128,15 +129,15 @@ StoryLoop:
 	if flagNoBranch {
 		log.Log("Not creating any feature branch")
 	} else {
-		var action common.Action
-		action, err = createBranch()
+		var act action.Action
+		act, err = createBranch()
 		if err != nil {
 			return err
 		}
 		// Roll back on error.
 		defer func() {
 			if err != nil {
-				if err := action.Rollback(); err != nil {
+				if err := act.Rollback(); err != nil {
 					errs.Log(err)
 				}
 			}
@@ -170,7 +171,7 @@ StoryLoop:
 	return nil
 }
 
-func createBranch() (common.Action, error) {
+func createBranch() (action.Action, error) {
 	// Get the current branch name.
 	originalBranch, err := git.CurrentBranch()
 	if err != nil {
@@ -250,7 +251,7 @@ func createBranch() (common.Action, error) {
 		return nil, errs.NewError(checkoutTask, err, nil)
 	}
 
-	return common.ActionFunc(func() error {
+	return action.ActionFunc(func() error {
 		// Checkout the original branch.
 		log.Rollback(checkoutTask)
 		if err := git.Checkout(originalBranch); err != nil {
