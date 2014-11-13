@@ -14,6 +14,17 @@ type LocalConfig struct {
 	} `yaml:"scripts"`
 }
 
+func (local *LocalConfig) validate() error {
+	switch {
+	case local.Scripts.GetVersion == "":
+		return &config.ErrKeyNotSet{"scripts.get_version"}
+	case local.Scripts.SetVersion == "":
+		return &config.ErrKeyNotSet{"scripts.set_version"}
+	default:
+		return nil
+	}
+}
+
 // Configuration proxy ---------------------------------------------------------
 
 type Config interface {
@@ -37,6 +48,9 @@ func LoadConfig() (Config, error) {
 	}
 	if err := config.UnmarshalLocalConfig(proxy.local); err != nil {
 		return nil, errs.NewError(task, err, nil)
+	}
+	if err := proxy.local.validate(); err != nil {
+		return nil, err
 	}
 
 	// Save the new instance into the cache and return.
