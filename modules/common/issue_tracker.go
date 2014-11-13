@@ -1,6 +1,7 @@
 package common
 
 import (
+	"github.com/salsita/salsaflow/action"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/version"
 )
@@ -21,7 +22,11 @@ type IssueTracker interface {
 
 	// NextRelease is a factory method for creating release objects
 	// representing the releases that have not been started yet.
-	NextRelease(*version.Version) (NextRelease, error)
+	//
+	// The current version is the version on the trunk branch,
+	// the next version is the next trunk version, i.e. the version that is bumped
+	// to the trunk branch once the release branch is created.
+	NextRelease(current *version.Version, next *version.Version) (NextRelease, error)
 
 	// RunningRelease is a factory method for creating release objects
 	// representing the releases that have been started.
@@ -53,11 +58,11 @@ type Story interface {
 
 type NextRelease interface {
 	PromptUserToConfirmStart() (bool, error)
-	Start() (Action, error)
+	Start() (action.Action, error)
 }
 
 type RunningRelease interface {
 	Stories() ([]Story, error)
 	EnsureDeliverable() error
-	Deliver() (Action, error)
+	Deliver() (action.Action, error)
 }

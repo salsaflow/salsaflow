@@ -1,4 +1,4 @@
-package common
+package action
 
 type Action interface {
 	Rollback() error

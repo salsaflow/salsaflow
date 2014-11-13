@@ -110,19 +110,15 @@ func PromptStory(msg string, stories []common.Story) (common.Story, error) {
 		return nil, errs.NewError(task, errors.New("no stories to be offered"), nil)
 	}
 
-	// Print the into message.
+	// Print the intro message.
 	fmt.Println(msg)
 	fmt.Println()
 
 	// Present the stories to the user.
-	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 4, '\t', 0)
-	io.WriteString(tw, "  Index\tStory ID\tStory Title\n")
-	io.WriteString(tw, "  =====\t========\t===========\n")
-	for i, story := range stories {
-		fmt.Fprintf(tw, "  %v\t%v\t%v\n", i, story.ReadableId(), formatStoryTitle(story.Title()))
+	if err := ListStories(stories, os.Stdout); err != nil {
+		return nil, err
 	}
-	io.WriteString(tw, "\n")
-	tw.Flush()
+	fmt.Println()
 
 	// Prompt the user to select a story to assign the commit with.
 	index, err := PromptIndex("Choose a story by inserting its index: ", 0, len(stories)-1)
@@ -158,6 +154,37 @@ func ConfirmStories(headerLine string, stories []*pivotal.Story) (bool, error) {
 	}
 
 	return line == "y", nil
+}
+
+func ListStories(stories []common.Story, w io.Writer) (err error) {
+	var panicString = "_WRITE_PANIC_"
+
+	must := func(n int, err error) {
+		if err != nil {
+			panic(panicString)
+		}
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			if str, ok := r.(string); ok && str == panicString {
+				err = errors.New("failed to write to stdout")
+			} else {
+				panic(r)
+			}
+		}
+	}()
+
+	tw := tabwriter.NewWriter(w, 0, 8, 4, '\t', 0)
+	must(io.WriteString(tw, "  Index\tStory ID\tStory Title\n"))
+	must(io.WriteString(tw, "  =====\t========\t===========\n"))
+	for i, story := range stories {
+		must(fmt.Fprintf(
+			tw, "  %v\t%v\t%v\n", i, story.ReadableId(), formatStoryTitle(story.Title())))
+	}
+	must(0, tw.Flush())
+
+	return nil
 }
 
 func printStoriesConfirmationDialog(headerLine string, stories []*pivotal.Story) {

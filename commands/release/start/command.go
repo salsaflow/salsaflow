@@ -2,13 +2,12 @@ package startCmd
 
 import (
 	// Stdlib
-	"bytes"
 	"fmt"
 	"os"
 
 	// Internal
+	"github.com/salsita/salsaflow/action"
 	"github.com/salsita/salsaflow/app"
-	"github.com/salsita/salsaflow/config"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/log"
@@ -16,39 +15,39 @@ import (
 	"github.com/salsita/salsaflow/version"
 
 	// Other
+	"github.com/coreos/go-semver/semver"
 	"gopkg.in/tchap/gocli.v1"
 )
 
 var Command = &gocli.Command{
 	UsageLine: `
-  start [-next_trunk_version=VERSION]`,
+  start [-no_fetch] [-next_trunk_version=VERSION]`,
 	Short: "start a new release",
 	Long: `
-  Start a new release by creating the release branch from the trunk branch
-  and making the relevant modifications in the issue tracker. More specifically,
-  the steps are:
+  Start a new release, i.e. create the release branch,
+  bump the next version number into the trunk branch
+  and make the relevant changes in the issue tracker.
 
-    1) Get the next trunk version string, either from the relevant flag
-       or read it from package.json on the trunk branch and auto-increment.
-    2) Ask the user to confirm the next trunk version string and the new release.
-    3) Create the release branch on top of the trunk branch.
-    4) Commit the new version string into the trunk branch so that it is
-       prepared for the future release (the release after the one being started).
-    5) Start the release in the issue tracker.
-    6) Push everything.
+  The release branch is always created on top of the trunk branch,
+  the issue tracker actions carried out depend on the plugin being used.
 
-  So, the -next_trunk_version flag is actually not affecting the release that is
-  about to be started, but the release after. The release that is about to be
-  started reads its version from the current trunk's package.json. This version
-  string is not modified during the execution of this command.
+  Considering version numbers, the new release branch inherits
+  the version that was on the trunk branch. Then a new version is bumped
+  into the trunk branch. By default the new version is taken from
+  the previous one by auto-incrementing the minor version.
+  However, -next_trunk_version can be used to overwrite this behaviour.
 	`,
 	Action: run,
 }
 
-var flagFuture version.Version
+var (
+	flagNextTrunk version.Version
+	flagNoFetch   bool
+)
 
 func init() {
-	Command.Flags.Var(&flagFuture, "next_trunk_version", "the next trunk version string")
+	Command.Flags.Var(&flagNextTrunk, "next_trunk_version", "the next trunk version string")
+	Command.Flags.BoolVar(&flagNoFetch, "no_fetch", flagNoFetch, "do not fetch the remote")
 }
 
 func run(cmd *gocli.Command, args []string) {
@@ -57,154 +56,158 @@ func run(cmd *gocli.Command, args []string) {
 		os.Exit(2)
 	}
 
-	app.MustInit()
+	app.InitOrDie()
 
 	if err := runMain(); err != nil {
-		log.Fatalln("\nError: " + err.Error())
+		errs.Fatal(err)
 	}
-}
-
-func handleError(task string, err error, stderr *bytes.Buffer) error {
-	errs.NewError(task, stderr, err).Log(log.V(log.Info))
-	return err
 }
 
 func runMain() (err error) {
-	// Fetch the remote repository.
-	task := "Fetch the remote repository"
-	log.Run(task)
-	stderr, err := git.UpdateRemotes(config.OriginName)
+	// Load repo config.
+	gitConfig, err := git.LoadConfig()
 	if err != nil {
-		return handleError(task, err, stderr)
+		return err
+	}
+	var (
+		remote        = gitConfig.RemoteName()
+		trunkBranch   = gitConfig.TrunkBranchName()
+		releaseBranch = gitConfig.ReleaseBranchName()
+	)
+
+	// Fetch the remote repository.
+	if !flagNoFetch {
+		task := "Fetch the remote repository"
+		log.Run(task)
+		if err := git.UpdateRemotes(remote); err != nil {
+			return errs.NewError(task, err, nil)
+		}
 	}
 
 	// Make sure that the trunk branch is up to date.
-	task = "Make sure that the trunk branch is up to date"
-	log.Run(task)
-	stderr, err = git.EnsureBranchSynchronized(config.TrunkBranch, config.OriginName)
-	if err != nil {
-		return handleError(task, err, stderr)
+	task := fmt.Sprintf("Make sure that branch '%v' is up to date", trunkBranch)
+	if err := git.EnsureBranchSynchronized(trunkBranch, remote); err != nil {
+		return errs.NewError(task, err, nil)
 	}
 
 	// Make sure that the release branch does not exist.
-	task = "Make sure that the release branch does not exist"
-	log.Run(task)
-	stderr, err = git.EnsureBranchNotExists(config.ReleaseBranch, config.OriginName)
-	if err != nil {
-		return handleError(task, err, stderr)
+	task = fmt.Sprintf("Make sure that branch '%v' does not exist", releaseBranch)
+	if err := git.EnsureBranchNotExist(releaseBranch, remote); err != nil {
+		return errs.NewError(task, err, nil)
 	}
 
-	// Read the current trunk version string.
-	task = "Read the current trunk version string"
-	trunkVersion, stderr, err := version.ReadFromBranch(config.TrunkBranch)
+	// Get the current trunk version string.
+	task = "Get the current trunk version string"
+	trunkVersion, err := version.GetByBranch(trunkBranch)
 	if err != nil {
-		return handleError(task, err, stderr)
+		return errs.NewError(task, err, nil)
 	}
-
-	// Fetch the stories from the issue tracker.
-	task = "Fetch the stories from the issue tracker"
-	log.Run(task)
-	release, err := modules.GetIssueTracker().NextRelease(trunkVersion)
-	if err != nil {
-		return handleError(task, err, nil)
-	}
-
-	// Prompt the user to confirm the release.
-	ok, err := release.PromptUserToConfirmStart()
-	if err != nil {
-		return errs.Log(err)
-	}
-	if !ok {
-		fmt.Println("\nYour wish is my command, exiting now...")
-		return nil
-	}
-	fmt.Println()
-
-	// Remember the current branch.
-	task = "Remember the current branch"
-	currentBranch, stderr, err := git.CurrentBranch()
-	if err != nil {
-		return handleError(task, err, stderr)
-	}
-	defer func() {
-		// Checkout the original branch on exit.
-		task := "Checkout the original branch"
-		log.Run(task)
-		if stderr, err := git.Checkout(currentBranch); err != nil {
-			handleError(task, err, stderr)
-		}
-	}()
 
 	// Get the next trunk version (the future release version).
 	var nextTrunkVersion *version.Version
-	if !flagFuture.Zero() {
-		nextTrunkVersion = &flagFuture
+	if !flagNextTrunk.Zero() {
+		// Make sure the new version is actually incrementing the current one.
+		current, err := semver.NewVersion(trunkVersion.String())
+		if err != nil {
+			panic(err)
+		}
+
+		next, err := semver.NewVersion(flagNextTrunk.String())
+		if err != nil {
+			panic(err)
+		}
+
+		if !current.LessThan(*next) {
+			return fmt.Errorf("future version string not an increment: %v <= %v", next, current)
+		}
+
+		nextTrunkVersion = &flagNextTrunk
 	} else {
 		nextTrunkVersion = trunkVersion.IncrementMinor()
 	}
 
-	// Create the release branch on top of the trunk branch.
-	task = "Create the release branch on top of the trunk branch"
-	log.Run(task)
-	stderr, err = git.Branch(config.ReleaseBranch, config.TrunkBranch)
+	// Fetch the stories from the issue tracker.
+	tracker, err := modules.GetIssueTracker()
 	if err != nil {
-		return handleError(task, err, stderr)
+		return errs.NewError(task, err, nil)
 	}
-	defer func(taskMsg string) {
-		if err != nil {
-			// On error, delete the newly created release branch.
-			log.Rollback(taskMsg)
-			if stderr, err := git.Branch("-d", config.ReleaseBranch); err != nil {
-				handleError("Delete the release branch", err, stderr)
-			}
+	release, err := tracker.NextRelease(trunkVersion, nextTrunkVersion)
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+
+	// Prompt the user to confirm the release.
+	fmt.Printf(`
+You are about to start a new release branch.
+The relevant version strings are:
+
+  current release (current trunk version): %v
+  future release (next trunk version):     %v
+
+`, trunkVersion, nextTrunkVersion)
+	ok, err := release.PromptUserToConfirmStart()
+	if err != nil {
+		return err
+	}
+	if !ok {
+		fmt.Println("\nYour wish is my command, exiting now!")
+		return nil
+	}
+	fmt.Println()
+
+	// Create the release branch on top of the trunk branch.
+	task = fmt.Sprintf("Create branch '%v' on top of branch '%v'", releaseBranch, trunkBranch)
+	log.Run(task)
+	if err := git.Branch(releaseBranch, trunkBranch); err != nil {
+		return errs.NewError(task, err, nil)
+	}
+	defer func(task string) {
+		if err == nil {
+			return
+		}
+		// On error, delete the newly created release branch.
+		log.Rollback(task)
+		if err := git.Branch("-d", releaseBranch); err != nil {
+			errs.LogError("Delete the release branch", err, nil)
 		}
 	}(task)
 
-	// Update the trunk version string.
-	task = "Update the trunk version string"
-	log.Run(task)
-	origTrunk, stderr, err := git.Hexsha("refs/heads/" + config.TrunkBranch)
+	// Commit the next version string into the trunk branch.
+	task = fmt.Sprintf(
+		"Bump version for the future release (branch '%v' -> %v)", trunkBranch, nextTrunkVersion)
+	act, err := version.SetForBranch(nextTrunkVersion, trunkBranch)
 	if err != nil {
-		return handleError(task, err, stderr)
+		return err
 	}
-	stderr, err = nextTrunkVersion.CommitToBranch(config.TrunkBranch)
-	if err != nil {
-		return handleError(task, err, stderr)
-	}
-	defer func(taskMsg string) {
+	defer func(act action.Action) {
 		if err != nil {
-			// On error, reset the trunk branch to point to the original position.
-			log.Rollback(taskMsg)
-			if stderr, err := git.ResetKeep(config.TrunkBranch, origTrunk); err != nil {
-				handleError("Reset the trunk branch to the original position", err, stderr)
+			if ex := act.Rollback(); ex != nil {
+				errs.Log(ex)
 			}
 		}
-	}(task)
+	}(act)
 
 	// Start the release in the issue tracker.
-	task = ""
-	action, err := release.Start()
+	act, err = release.Start()
 	if err != nil {
-		return errs.Log(err)
+		return err
 	}
-	defer func() {
-		if err != nil {
-			// On error, cancel the release in the issue tracker.
-			if err := action.Rollback(); err != nil {
-				handleError("Cancel the release in the issue tracker", err, nil)
-			}
+	defer func(act action.Action) {
+		if err == nil {
+			return
 		}
-	}()
+		// On error, cancel the release in the issue tracker.
+		if err := act.Rollback(); err != nil {
+			errs.Log(err)
+		}
+	}(act)
 
 	// Push the modified branches.
-	task = "Push the modified branches"
+	task = "Push the affected git branches"
 	log.Run(task)
-	stderr, err = git.Push(
-		config.OriginName,
-		config.ReleaseBranch+":"+config.ReleaseBranch,
-		config.TrunkBranch+":"+config.TrunkBranch)
+	err = git.Push(remote, trunkBranch+":"+trunkBranch, releaseBranch+":"+releaseBranch)
 	if err != nil {
-		return handleError(task, err, stderr)
+		return errs.NewError(task, err, nil)
 	}
 
 	return nil

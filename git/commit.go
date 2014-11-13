@@ -76,6 +76,22 @@ func (commit *Commit) Dump(wr io.Writer) error {
 	return tpl.Execute(wr, commit)
 }
 
+// StoryIds returns the list of unique story IDs that can be found in the commits.
+func StoryIds(commits []*Commit) []string {
+	idMap := make(map[string]struct{}, len(commits))
+	for _, commit := range commits {
+		if commit.StoryId != "" && commit.StoryId != "unassigned" {
+			idMap[commit.StoryId] = struct{}{}
+		}
+	}
+
+	idList := make([]string, 0, len(idMap))
+	for id := range idMap {
+		idList = append(idList, id)
+	}
+	return idList
+}
+
 // ListStoryCommits returns the list of all commits that are associated with the given story.
 func ListStoryCommits(storyId string) ([]*Commit, error) {
 	return GrepCommits("Story-Id: " + storyId)

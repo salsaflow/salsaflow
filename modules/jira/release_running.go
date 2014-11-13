@@ -1,7 +1,7 @@
 package jira
 
 import (
-	// Internal
+	"github.com/salsita/salsaflow/action"
 	"github.com/salsita/salsaflow/modules/common"
 	"github.com/salsita/salsaflow/version"
 )
@@ -21,6 +21,6 @@ func (release *runningRelease) EnsureDeliverable() error {
 	panic("Not implemented")
 }
 
-func (release *runningRelease) Deliver() (common.Action, error) {
+func (release *runningRelease) Deliver() (action.Action, error) {
 	panic("Not implemented")
 }
