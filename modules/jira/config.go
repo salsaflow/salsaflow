@@ -2,7 +2,9 @@ package jira
 
 import (
 	// Stdlib
+	"fmt"
 	"net/url"
+	"path"
 	"strings"
 
 	// Internal
@@ -42,25 +44,16 @@ func (local *LocalConfig) validate() error {
 
 // Global configuration --------------------------------------------------------
 
-type GlobalConfig struct {
-	JIRA struct {
-		Username string `yaml:"username"`
-		Password string `yaml:"password"`
-	} `yaml:"jira"`
+type Credentials struct {
+	Base     string `yaml:"base_prefix"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
-func (global *GlobalConfig) validate() error {
-	var (
-		task = "Validate the global JIRA configuration"
-		jr   = &global.JIRA
-	)
-	switch {
-	case jr.Username == "":
-		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".username"}, nil)
-	case jr.Password == "":
-		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".password"}, nil)
-	}
-	return nil
+type GlobalConfig struct {
+	JIRA struct {
+		Credentials []*Credentials `yaml:"credentials"`
+	} `yaml:"jira"`
 }
 
 // Proxy struct ----------------------------------------------------------------
@@ -80,62 +73,96 @@ func LoadConfig() (Config, error) {
 		return configCache, nil
 	}
 
-	// Create a new configProxy instance.
-	proxy := &configProxy{
-		local:  &LocalConfig{},
-		global: &GlobalConfig{},
-	}
+	var proxy configProxy
 
 	// Load local config.
-	local := proxy.local
-	if err := config.UnmarshalLocalConfig(local); err != nil {
+	var local LocalConfig
+	if err := config.UnmarshalLocalConfig(&local); err != nil {
 		return nil, err
 	}
 	if err := local.validate(); err != nil {
 		return nil, err
 	}
 
+	// Process the project key.
+	proxy.projectKey = local.JIRA.ProjectKey
+
+	// Process the base URL.
 	base := local.JIRA.BaseURL
 	if !strings.HasSuffix(base, "/") {
 		base += "/"
 	}
-	// This cannot really fail since we check this in the validation function.
-	baseURL, _ := url.Parse(base)
+	baseURL, err := url.Parse(base)
+	if err != nil {
+		// Already checked during validation,
+		// so let's just explode on error.
+		panic(err)
+	}
 	proxy.baseURL = baseURL
 
 	// Load global config.
-	global := proxy.global
-	if err := config.UnmarshalGlobalConfig(global); err != nil {
-		return nil, err
-	}
-	if err := global.validate(); err != nil {
+	var global GlobalConfig
+	if err := config.UnmarshalGlobalConfig(&global); err != nil {
 		return nil, err
 	}
 
+	// Process the credentials.
+	creds := credentialsForBaseURL(global.JIRA.Credentials, baseURL)
+	if creds == nil {
+		return nil, fmt.Errorf("no JIRA credentials found for base URL '%v'", baseURL)
+	}
+	proxy.creds = creds
+
 	// Save the new instance into the cache and return.
-	configCache = proxy
-	return proxy, nil
+	configCache = &proxy
+	return configCache, nil
 }
 
 type configProxy struct {
-	local  *LocalConfig
-	global *GlobalConfig
-
-	baseURL *url.URL
-}
-
-func (proxy *configProxy) Username() string {
-	return proxy.global.JIRA.Username
-}
-
-func (proxy *configProxy) Password() string {
-	return proxy.global.JIRA.Password
+	baseURL    *url.URL
+	creds      *Credentials
+	projectKey string
 }
 
 func (proxy *configProxy) BaseURL() *url.URL {
 	return proxy.baseURL
 }
 
+func (proxy *configProxy) Username() string {
+	return proxy.creds.Username
+}
+
+func (proxy *configProxy) Password() string {
+	return proxy.creds.Password
+}
+
 func (proxy *configProxy) ProjectKey() string {
-	return proxy.local.JIRA.ProjectKey
+	return proxy.projectKey
+}
+
+// credentialsForBaseURL finds the credentials matching the given base URL the best,
+// i.e. the associated base prefix is the longest available.
+func credentialsForBaseURL(credList []*Credentials, base *url.URL) *Credentials {
+	var (
+		longestMatch *Credentials
+		prefix       = path.Join(base.Host, base.Path)
+	)
+	for _, cred := range credList {
+		// Drop the scheme.
+		credBaseURL, err := url.Parse(cred.Base)
+		if err != nil {
+			continue
+		}
+		credPrefix := path.Join(credBaseURL.Host, credBaseURL.Path)
+
+		// Continue if the prefixes do not match at all.
+		if !strings.HasPrefix(credPrefix, prefix) {
+			continue
+		}
+		// Replace only if the current base prefix is longer.
+		if longestMatch == nil || len(longestMatch.Base) < len(cred.Base) {
+			longestMatch = cred
+		}
+	}
+	return longestMatch
 }
