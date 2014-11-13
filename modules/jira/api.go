@@ -3,12 +3,14 @@ package jira
 import (
 	// Stdlib
 	"bytes"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 
 	// Internal
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/modules/jira/client"
 )
 
@@ -36,26 +38,97 @@ func newClient(tracker *issueTracker) *client.Client {
 	})
 }
 
+// Issue operations in parallel ------------------------------------------------
+
+// issueUpdateFunc represents a function that takes an existing story and
+// changes it somehow using an API call. It then returns any error encountered.
+type issueUpdateFunc func(*client.Client, *client.Issue) error
+
+// issueUpdateResult represents what was returned by an issueUpdateFunc.
+// It contains the original issue object and the error returned by the update function.
+type issueUpdateResult struct {
+	issue *client.Issue
+	err   error
+}
+
+// updateIssues calls updateFunc on every issue in the list, concurrently.
+// It then collects all the results and returns the cumulative result.
+func updateIssues(api *client.Client, issues []*client.Issue, updateFunc issueUpdateFunc) error {
+	// Send all the request at once.
+	retCh := make(chan *issueUpdateResult, len(issues))
+	for _, issue := range issues {
+		go func(is *client.Issue) {
+			// Call the update function.
+			err := updateFunc(api, is)
+			retCh <- &issueUpdateResult{is, err}
+		}(issue)
+	}
+
+	// Wait for the requests to complete.
+	var (
+		stderr = new(bytes.Buffer)
+		err    error
+	)
+	for i := 0; i < cap(retCh); i++ {
+		ret := <-retCh
+		if ret.err != nil {
+			fmt.Fprintln(stderr, ret.err)
+			err = errors.New("failed to update JIRA issues")
+		}
+	}
+
+	if err != nil {
+		return errs.NewError("Update JIRA issues", err, stderr)
+	}
+	return nil
+}
+
+// Versions --------------------------------------------------------------------
+
+func assignIssuesToVersion(api *client.Client, issues []*client.Issue, versionId string) error {
+	// The payload is the same for all the issue updates.
+	updateRequest := client.M{
+		"update": client.M{
+			"fixVersions": client.L{
+				client.M{
+					"add": &client.Version{
+						Id: versionId,
+					},
+				},
+			},
+		},
+	}
+
+	// Update all the issues concurrently and return the result.
+	return updateIssues(api, issues, func(api *client.Client, issue *client.Issue) error {
+		_, err := api.Issues.Update(issue.Id, updateRequest)
+		return err
+	})
+}
+
 // Various userful helper functions --------------------------------------------
 
-func listStoriesById(tracker *issueTracker, ids []string) ([]*client.Issue, error) {
-	var jql bytes.Buffer
+func listStoriesById(api *client.Client, ids []string) ([]*client.Issue, error) {
+	var query bytes.Buffer
 	for _, id := range ids {
-		if jql.Len() != 0 {
-			if _, err := jql.WriteString("OR "); err != nil {
+		if id == "" {
+			panic("bug(id is an empty string)")
+		}
+		if query.Len() != 0 {
+			if _, err := query.WriteString(" OR "); err != nil {
 				return nil, err
 			}
 		}
-		if _, err := jql.WriteString("id="); err != nil {
+		if _, err := query.WriteString("id="); err != nil {
 			return nil, err
 		}
-		if _, err := jql.WriteString(id); err != nil {
+		if _, err := query.WriteString(id); err != nil {
 			return nil, err
 		}
 	}
 
-	stories, _, err := newClient(tracker).Issues.Search(&client.SearchOptions{
-		JQL: jql.String(),
+	stories, _, err := api.Issues.Search(&client.SearchOptions{
+		JQL: query.String(),
 	})
 	return stories, err
 }
