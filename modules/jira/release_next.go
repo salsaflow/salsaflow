@@ -84,6 +84,11 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	filteredIssues := make([]*client.Issue, 0, len(issues))
 IssueLoop:
 	for _, issue := range issues {
+		// Add only the parent tasks, i.e. skip sub-tasks.
+		if issue.Fields.Parent != nil {
+			continue
+		}
+		// Add only the issues that have not been assigned to the release yet.
 		for _, v := range issue.Fields.FixVersions {
 			if v.Id == release.trunkVersionResource.Id {
 				continue IssueLoop

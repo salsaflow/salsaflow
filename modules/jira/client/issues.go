@@ -52,6 +52,7 @@ type Issue struct {
 			Subtask     bool   `json:"subtask,omitempty"`
 			IconURL     string `json:"iconUrl,omitempty"`
 		} `json:"issuetype,omitempty"`
+		Parent      *Issue       `json:"parent,omitempty"`
 		Assignee    *User        `json:"assignee,omitempty"`
 		FixVersions []*Version   `json:"fixVersions,omitempty"`
 		Status      *IssueStatus `json:"status,omitempty"`
