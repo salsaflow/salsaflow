@@ -28,7 +28,7 @@ func Factory() (common.IssueTracker, error) {
 }
 
 func (tracker *issueTracker) CurrentUser() (common.User, error) {
-	data, _, err := newClient(tracker).Myself.Get()
+	data, _, err := newClient(tracker.config).Myself.Get()
 	if err != nil {
 		return nil, err
 	}
@@ -43,8 +43,11 @@ func (tracker *issueTracker) NextRelease(
 	return newNextRelease(tracker, trunkVersion, nextTrunkVersion)
 }
 
-func (tracker *issueTracker) RunningRelease(ver *version.Version) (common.RunningRelease, error) {
-	return newRunningRelease(ver)
+func (tracker *issueTracker) RunningRelease(
+	releaseVersion *version.Version,
+) (common.RunningRelease, error) {
+
+	return newRunningRelease(tracker, releaseVersion)
 }
 
 func (tracker *issueTracker) SelectActiveStoryIds(ids []string) (activeIds []string, err error) {
@@ -54,7 +57,7 @@ func (tracker *issueTracker) SelectActiveStoryIds(ids []string) (activeIds []str
 	task := "Fetch the relevant issues"
 	info.Run(task)
 
-	issues, err := listStoriesById(newClient(tracker), ids)
+	issues, err := listStoriesById(newClient(tracker.config), ids)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +95,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		formatInRange("type", codingIssueTypeIds...),
 		formatInRange("status", startableStateIds...))
 
-	issues, _, err := newClient(tracker).Issues.Search(&client.SearchOptions{
+	issues, _, err := newClient(tracker.config).Issues.Search(&client.SearchOptions{
 		JQL:        query,
 		MaxResults: 200,
 	})
@@ -100,7 +103,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		return nil, err
 	}
 
-	return toCommonStories(tracker, issues), nil
+	return toCommonStories(issues, tracker.config), nil
 }
 
 func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
@@ -108,7 +111,7 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 		formatInRange("type", codingIssueTypeIds...),
 		formatInRange("status", inDevelopmentStateIds...))
 
-	issues, _, err := newClient(tracker).Issues.Search(&client.SearchOptions{
+	issues, _, err := newClient(tracker.config).Issues.Search(&client.SearchOptions{
 		JQL:        query,
 		MaxResults: 200,
 	})
@@ -116,13 +119,13 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 		return nil, err
 	}
 
-	return toCommonStories(tracker, issues), nil
+	return toCommonStories(issues, tracker.config), nil
 }
 
-func toCommonStories(tracker *issueTracker, issues []*client.Issue) []common.Story {
+func toCommonStories(issues []*client.Issue, config Config) []common.Story {
 	stories := make([]common.Story, len(issues))
 	for i := range issues {
-		stories[i] = &story{issues[i], tracker}
+		stories[i] = &story{issues[i], config}
 	}
 	return stories
 }

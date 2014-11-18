@@ -33,7 +33,8 @@ func newNextRelease(
 
 	task := "Fetch data from JIRA"
 	log.Run(task)
-	versions, _, err := newClient(tracker).Projects.ListVersions(tracker.config.ProjectKey())
+	projectKey := tracker.config.ProjectKey()
+	versions, _, err := newClient(tracker.config).Projects.ListVersions(projectKey)
 	if err != nil {
 		return nil, errs.NewError(task, err, nil)
 	}
@@ -75,7 +76,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 
 	// Fetch the additional issues from JIRA.
 	ids := git.StoryIds(commits)
-	issues, err := listStoriesById(newClient(release.tracker), ids)
+	issues, err := listStoriesById(newClient(release.tracker.config), ids)
 	if err != nil {
 		return false, errs.NewError(task, err, nil)
 	}
@@ -101,7 +102,7 @@ IssueLoop:
 	// Present the issues to the user.
 	if len(issues) != 0 {
 		fmt.Println("\nThe following issues are going to be added to the release:\n")
-		err := prompt.ListStories(toCommonStories(release.tracker, issues), os.Stdout)
+		err := prompt.ListStories(toCommonStories(issues, release.tracker.config), os.Stdout)
 		if err != nil {
 			return false, err
 		}
@@ -125,7 +126,7 @@ func (release *nextRelease) Start() (action.Action, error) {
 
 	// Create the JIRA version for the future release.
 	var (
-		api = newClient(release.tracker)
+		api = newClient(release.tracker.config)
 		tag = release.nextTrunkVersion.ReleaseTagString()
 	)
 	createTask := fmt.Sprintf("Create JIRA version for the future release (%v)", tag)
