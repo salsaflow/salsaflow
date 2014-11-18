@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	// Internal
+	"github.com/salsita/salsaflow/action"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/shell"
 
@@ -170,17 +171,47 @@ func CreateTrackingBranchUnlessExists(branch string, remote string) error {
 	return Branch(branch, remote+"/"+branch)
 }
 
-func CreateOrResetBranch(branch, target string) error {
+func CreateOrResetBranch(branch, target string) (action.Action, error) {
 	exists, err := LocalBranchExists(branch)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Reset the branch in case it exists.
 	if exists {
-		return ResetKeep(branch, target)
+		return resetBranch(branch, target)
 	}
 	// Otherwise create a new branch.
-	return Branch(branch, target)
+	return createBranch(branch, target)
+}
+
+func resetBranch(branch, target string) (action.Action, error) {
+	// Remember the current position.
+	current, err := Hexsha("refs/heads/" + branch)
+	if err != nil {
+		return nil, err
+	}
+
+	// Reset the branch.
+	if err := ResetKeep(branch, target); err != nil {
+		return nil, err
+	}
+
+	return action.ActionFunc(func() error {
+		// On rollback, reset the branch to the original position.
+		return ResetKeep(branch, current)
+	}), nil
+}
+
+func createBranch(branch, target string) (action.Action, error) {
+	// Create the branch.
+	if err := Branch(branch, target); err != nil {
+		return nil, err
+	}
+
+	return action.ActionFunc(func() error {
+		// On rollback, delete the branch.
+		return Branch("-D", branch)
+	}), nil
 }
 
 func ResetKeep(branch, ref string) (err error) {
