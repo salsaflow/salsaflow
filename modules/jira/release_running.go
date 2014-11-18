@@ -17,10 +17,10 @@ func (release *runningRelease) Stories() ([]common.Story, error) {
 	panic("Not implemented")
 }
 
-func (release *runningRelease) EnsureDeliverable() error {
+func (release *runningRelease) EnsureStageable() error {
 	panic("Not implemented")
 }
 
-func (release *runningRelease) Deliver() (action.Action, error) {
+func (release *runningRelease) Stage() (action.Action, error) {
 	panic("Not implemented")
 }
