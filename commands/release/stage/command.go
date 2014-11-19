@@ -225,39 +225,12 @@ func checkCommits(release common.RunningRelease, releaseBranch string) error {
 		return errs.NewError(task, err, nil)
 	}
 
-	var (
-		// Exclude filter including the release branch.
-		exclude = []*regexp.Regexp{regexp.MustCompile(fmt.Sprintf("^%v$", releaseBranch))}
-		groups  []*changes.StoryChangeGroup
-	)
+	// Exclude filter including the release branch.
+	var exclude = []*regexp.Regexp{regexp.MustCompile(fmt.Sprintf("^%v$", releaseBranch))}
 
-	for _, story := range stories {
-		id := story.ReadableId()
-
-		// Get the relevant commits.
-		commits, err := git.ListStoryCommits(id)
-		if err != nil {
-			return errs.NewError(task, err, nil)
-		}
-		if len(commits) == 0 {
-			continue
-		}
-
-		// Split by Change-Id.
-		chs := changes.GroupCommitsByChangeId(commits)
-
-		// Drop the changes being on the release branch already.
-		chs = changes.FilterChangesBySource(chs, nil, exclude)
-
-		// In case there are no changes left, we are done.
-		if len(chs) == 0 {
-			continue
-		}
-
-		groups = append(groups, &changes.StoryChangeGroup{
-			StoryId: id,
-			Changes: chs,
-		})
+	groups, err := changes.StoryChanges(stories, nil, exclude)
+	if err != nil {
+		return errs.NewError(task, err, nil)
 	}
 
 	// In case there are some changes being left behind,
