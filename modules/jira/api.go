@@ -72,7 +72,7 @@ func updateIssues(
 
 	// Wait for the requests to complete.
 	var (
-		stderr         = bytes.NewBufferString("\nUpdate Errors\n-----------\n")
+		stderr         = bytes.NewBufferString("\nUpdate Errors\n-------------\n")
 		rollbackStderr = bytes.NewBufferString("\nRollback Errors\n---------------\n")
 		rollbackRetCh  = make(chan *issueUpdateResult)
 		numThreads     int
