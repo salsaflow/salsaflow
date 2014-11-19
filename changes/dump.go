@@ -6,8 +6,10 @@ import (
 	"text/tabwriter"
 )
 
+// DumpStoryChanges writes a nicely formatted output to the io.Writer passed in.
+//
+// In case the porcelain argument is true, the output is printed in a more machine-friendly way.
 func DumpStoryChanges(groups []*StoryChangeGroup, w io.Writer, porcelain bool) error {
-	// Dump the change details into the console.
 	tw := tabwriter.NewWriter(w, 0, 8, 2, '\t', 0)
 
 	if !porcelain {
