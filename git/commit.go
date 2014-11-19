@@ -94,7 +94,7 @@ func StoryIds(commits []*Commit) []string {
 
 // ListStoryCommits returns the list of all commits that are associated with the given story.
 func ListStoryCommits(storyId string) ([]*Commit, error) {
-	return GrepCommits("Story-Id: " + storyId)
+	return GrepCommits(fmt.Sprintf("[sS][tT][oO][rR][yY]-[iI][dD]: %v$", storyId))
 }
 
 func GrepCommits(filter string) ([]*Commit, error) {
