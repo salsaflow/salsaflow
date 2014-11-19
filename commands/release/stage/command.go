@@ -226,8 +226,9 @@ func checkCommits(release common.RunningRelease, releaseBranch string) error {
 	}
 
 	var (
-		groups []*changes.StoryChangeGroup
-		re     = regexp.MustCompile(fmt.Sprintf("^%v$", releaseBranch))
+		// Exclude filter including the release branch.
+		exclude = []*regexp.Regexp{regexp.MustCompile(fmt.Sprintf("^%v$", releaseBranch))}
+		groups  []*changes.StoryChangeGroup
 	)
 
 	for _, story := range stories {
@@ -246,7 +247,7 @@ func checkCommits(release common.RunningRelease, releaseBranch string) error {
 		chs := changes.GroupCommitsByChangeId(commits)
 
 		// Drop the changes being on the release branch already.
-		chs = changes.FilterChangesBySource(chs, nil, []*regexp.Regexp{re})
+		chs = changes.FilterChangesBySource(chs, nil, exclude)
 
 		// In case there are no changes left, we are done.
 		if len(chs) == 0 {
