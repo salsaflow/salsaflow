@@ -2,16 +2,14 @@ package changesCmd
 
 import (
 	// Stdlib
-	"bytes"
+	"errors"
 	"fmt"
-	"io"
 	"os"
-	"text/tabwriter"
 
 	// Internal
 	"github.com/salsita/salsaflow/app"
 	"github.com/salsita/salsaflow/changes"
-	"github.com/salsita/salsaflow/config"
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/flag"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/log"
@@ -63,129 +61,85 @@ func run(cmd *gocli.Command, args []string) {
 		os.Exit(2)
 	}
 
-	app.MustInit()
+	app.InitOrDie()
 
-	if err := runMain(); err != nil {
+	log.Disable()
+	err := runMain()
+	log.Replace(os.Stderr)
+	if err != nil {
 		if porcelain {
 			os.Exit(1)
 		}
-		log.Fatalln("\nError: " + err.Error())
+		errs.Fatal(err)
 	}
 }
 
-func runMain() (err error) {
+func runMain() error {
+	// Load repo config.
+	gitConfig, err := git.LoadConfig()
+	if err != nil {
+		return err
+	}
+
 	var (
-		task   string
-		stderr *bytes.Buffer
+		remoteName    = gitConfig.RemoteName()
+		releaseBranch = gitConfig.ReleaseBranchName()
 	)
-	defer func() {
-		// Print error details.
-		if err != nil && !porcelain {
-			log.FailWithDetails(task, stderr)
-		}
-	}()
 
 	// Make sure that the local release branch exists.
-	task = "Make sure that the local release branch exists"
-	stderr, err = git.CreateTrackingBranchUnlessExists(config.ReleaseBranch, config.OriginName)
+	task := "Make sure that the local release branch exists"
+	err = git.CreateTrackingBranchUnlessExists(releaseBranch, remoteName)
 	if err != nil {
-		return
+		return errs.NewError(task, err, nil)
 	}
 
 	// Get the current release version string.
 	task = "Get the current release version string"
-	releaseVersion, stderr, err := version.ReadFromBranch(config.ReleaseBranch)
+	releaseVersion, err := version.GetByBranch(releaseBranch)
 	if err != nil {
-		return
+		return errs.NewError(task, err, nil)
 	}
 
 	// Get the stories associated with the current release.
-	task = "Fetch stories from the issue tracker"
-	if !porcelain {
-		log.Run(task)
-	}
-	release, err := modules.GetIssueTracker().RunningRelease(releaseVersion)
+	task = "Get the stories associated with the current release"
+	tracker, err := modules.GetIssueTracker()
 	if err != nil {
-		return
+		return errs.NewError(task, err, nil)
+	}
+	release, err := tracker.RunningRelease(releaseVersion)
+	if err != nil {
+		return errs.NewError(task, err, nil)
 	}
 	stories, err := release.Stories()
 	if err != nil {
-		return
+		return errs.NewError(task, err, nil)
 	}
 
-	// Just return in case there are no relevant stories found.
 	if len(stories) == 0 {
-		task = ""
-		fmt.Println("\nNo relevant stories found, exiting...")
-		return
+		return errs.NewError(task, errors.New("no relevant stories found"), nil)
 	}
 
-	// Get the list of all relevant story commits.
-	task = "Collect the relevant commits"
-	if !porcelain {
-		log.Run(task)
-	}
-	var (
-		commits     []*git.Commit
-		storyGroups []*changes.StoryChangeGroup
-	)
-	for _, story := range stories {
-		id := story.Id()
-		commits, stderr, err = git.ListStoryCommits(id)
-		if err != nil {
-			return
-		}
-		if len(commits) == 0 {
-			continue
-		}
-		storyGroups = append(storyGroups, &changes.StoryChangeGroup{
-			StoryId: id,
-			Changes: changes.GroupCommitsByChangeId(commits),
-		})
+	// Get the story changes.
+	task = "Collect the story changes"
+	log.Run(task)
+	storyGroups, err := changes.StoryChanges(stories, include.Values, exclude.Values)
+	if err != nil {
+		return errs.NewError(task, err, nil)
 	}
 
 	// Just return in case there are no relevant commits found.
 	if len(storyGroups) == 0 {
-		fmt.Println("\nNo relevant commits found, exiting...")
-		return
+		return errs.NewError(task, errors.New("no relevant commits found"), nil)
 	}
 
 	// Dump the change details into the console.
-	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
-
 	if !porcelain {
-		io.WriteString(tw, "\n")
-		io.WriteString(tw, "Story\tChange\tCommit SHA\tCommit Source\tCommit Title\n")
-		io.WriteString(tw, "=====\t======\t==========\t=============\t============\n")
+		fmt.Println()
 	}
-	for _, group := range storyGroups {
-		storyId := group.StoryId
-
-		for _, change := range group.Changes {
-			changeId := change.ChangeId
-
-			// Print the first line.
-			commit := change.Commits[0]
-			fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
-				storyId, changeId, commit.SHA, commit.Source, commit.MessageTitle)
-
-			// Make some of the columns empty in case we are not porcelain.
-			if !porcelain {
-				storyId = ""
-				changeId = ""
-			}
-
-			// Print the rest with the chosen columns being empty.
-			for _, commit := range change.Commits[1:] {
-				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
-					storyId, changeId, commit.SHA, commit.Source, commit.MessageTitle)
-			}
-		}
-	}
+	changes.DumpStoryChanges(storyGroups, os.Stdout, porcelain)
 	if !porcelain {
-		io.WriteString(tw, "\n")
+		fmt.Println()
 	}
 
-	tw.Flush()
 	return nil
 }
