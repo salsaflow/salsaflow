@@ -226,7 +226,7 @@ func checkCommits(release common.RunningRelease, releaseBranch string) error {
 	}
 
 	// Exclude filter including the release branch.
-	var exclude = []*regexp.Regexp{regexp.MustCompile(fmt.Sprintf("^%v$", releaseBranch))}
+	exclude := []*regexp.Regexp{regexp.MustCompile(fmt.Sprintf("^refs/heads/%v$", releaseBranch))}
 
 	groups, err := changes.StoryChanges(stories, nil, exclude)
 	if err != nil {
