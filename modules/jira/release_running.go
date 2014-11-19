@@ -64,15 +64,11 @@ func (release *runningRelease) EnsureStageable() error {
 		err             error
 		errNotStageable = errors.New("release not stageable")
 	)
-IssueLoop:
 	for _, issue := range release.issues {
-		for _, id := range stageableStateIds {
-			if issue.Fields.Status.Id == id {
-				continue IssueLoop
-			}
+		if ex := ensureStageableIssue(issue); ex != nil {
+			fmt.Fprintf(tw, "%v\t%v\n", issue.Key, ex)
+			err = errNotStageable
 		}
-		fmt.Fprintf(tw, "%v\tNot a stageable state: %v\n", issue.Key, issue.Fields.Status.Name)
-		err = errNotStageable
 	}
 
 	if err != nil {
@@ -84,11 +80,23 @@ IssueLoop:
 }
 
 func (release *runningRelease) Stage() (action.Action, error) {
-	tag := release.releaseVersion.ReleaseTagString()
-	stageTask := fmt.Sprintf("Stage JIRA version '%v'", tag)
+	var (
+		api       = newClient(release.config)
+		tag       = release.releaseVersion.ReleaseTagString()
+		stageTask = fmt.Sprintf("Stage JIRA version '%v'", tag)
+	)
 	log.Run(stageTask)
-	api := newClient(release.config)
-	err := performBulkTransition(api, release.issues, transitionIdStage, transitionIdUnstage)
+
+	// Make sure we only try to stage the issues that are in Tested.
+	var issuesToStage []*client.Issue
+	for _, issue := range release.issues {
+		if issue.Fields.Status.Id == stateIdTested {
+			issuesToStage = append(issuesToStage, issue)
+		}
+	}
+
+	// Perform the transition.
+	err := performBulkTransition(api, issuesToStage, transitionIdStage, transitionIdUnstage)
 	if err != nil {
 		return nil, errs.NewError(stageTask, err, nil)
 	}
@@ -96,9 +104,26 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	return action.ActionFunc(func() error {
 		log.Rollback(stageTask)
 		unstageTask := fmt.Sprintf("Unstage JIRA version %v", tag)
-		if err := performBulkTransition(api, release.issues, transitionIdUnstage, ""); err != nil {
+		if err := performBulkTransition(api, issuesToStage, transitionIdUnstage, ""); err != nil {
 			return errs.NewError(unstageTask, err, nil)
 		}
 		return nil
 	}), nil
+}
+
+func ensureStageableIssue(issue *client.Issue) error {
+	// Check subtasks recursively.
+	for _, subtask := range issue.Fields.Subtasks {
+		if err := ensureStageableIssue(subtask); err != nil {
+			return err
+		}
+	}
+
+	// Check the issue itself.
+	for _, id := range stageableStateIds {
+		if issue.Fields.Status.Id == id {
+			return nil
+		}
+	}
+	return fmt.Errorf("issue %v: invalid state: %v", issue.Key, issue.Fields.Status.Name)
 }
