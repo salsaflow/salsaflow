@@ -23,8 +23,6 @@ import (
 // The story title is truncated to this width in case it is too long.
 const maxStoryTitleColumnWidth = 80
 
-var ErrCanceled = errors.New("operation canceled")
-
 type InvalidInputError struct {
 	input string
 }

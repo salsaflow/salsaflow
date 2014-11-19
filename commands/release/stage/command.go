@@ -2,16 +2,21 @@ package stageCmd
 
 import (
 	// Stdlib
-	"bytes"
 	"errors"
+	"fmt"
 	"os"
+	"regexp"
 
 	// Internal
+	"github.com/salsita/salsaflow/action"
 	"github.com/salsita/salsaflow/app"
-	"github.com/salsita/salsaflow/config"
+	"github.com/salsita/salsaflow/changes"
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/modules"
+	"github.com/salsita/salsaflow/modules/common"
+	"github.com/salsita/salsaflow/prompt"
 	"github.com/salsita/salsaflow/version"
 
 	// Other
@@ -23,12 +28,12 @@ var Command = &gocli.Command{
   stage`,
 	Short: "stage and close the current release",
 	Long: `
-  Stage and close the release that is currently running. This means that:
+  Stage and close the release that is currently running, i.e.
 
-    1) The release branch is tagged with its version string.
-    2) The release branch is deleted.
-    3) The client branch is moved to point to the newly created tag.
-    4) Everything is pushed.
+    1) Make sure the release can be staged (the stories are reviewed and tested)
+    2) Tag the release branch and delete it.
+    3) Move the staging branch to point to the tag.
+    4) Push the changes.
 	`,
 	Action: run,
 }
@@ -39,175 +44,247 @@ func run(cmd *gocli.Command, args []string) {
 		os.Exit(2)
 	}
 
-	app.MustInit()
+	app.InitOrDie()
+
+	defer prompt.RecoverCancel()
 
 	if err := runMain(); err != nil {
-		log.Fatalln("\nError: " + err.Error())
+		errs.Fatal(err)
 	}
 }
 
 func runMain() (err error) {
-	var (
-		task          string
-		stderr        *bytes.Buffer
-		currentBranch string
-	)
-	defer func() {
-		// Print error details.
-		if err != nil {
-			log.FailWithDetails(task, stderr)
-		}
-
-		// Checkout the original branch.
-		if currentBranch == "" {
-			return
-		}
-		task = "Checkout the original branch"
-		log.Run(task)
-		out, ex := git.Checkout(currentBranch)
-		if ex != nil {
-			log.FailWithDetails(task, out)
-			return
-		}
-	}()
-
 	// Remember the current branch.
-	task = "Remember the current branch"
-	log.Run(task)
-	currentBranch, stderr, err = git.CurrentBranch()
+	task := "Remember the current branch"
+	currentBranch, err := git.CurrentBranch()
 	if err != nil {
-		return
+		return err
+	}
+	defer func(branch string) {
+		// Checkout the original branch on return.
+		log.Run(fmt.Sprintf("Checkout the original branch (%v)", branch))
+		if ex := git.Checkout(branch); ex != nil {
+			if err == nil {
+				err = ex
+			} else {
+				errs.Log(ex)
+			}
+		}
+	}(currentBranch)
+
+	// Load git config.
+	config, err := git.LoadConfig()
+	if err != nil {
+		return err
+	}
+	var (
+		remoteName    = config.RemoteName()
+		releaseBranch = config.ReleaseBranchName()
+		stagingBranch = config.StagingBranchName()
+	)
+
+	// Instantiate the issue tracker.
+	tracker, err := modules.GetIssueTracker()
+	if err != nil {
+		return err
 	}
 
 	// Cannot be on the release branch, it will be deleted.
 	task = "Make sure that the release branch is not checked out"
-	if currentBranch == config.ReleaseBranch {
-		err = errors.New("cannot stage the release while on the release branch")
-		return
+	if currentBranch == releaseBranch {
+		return errs.NewError(
+			task, errors.New("cannot stage the release while on the release branch"), nil)
 	}
 
 	// Fetch the remote repository.
 	task = "Fetch the remote repository"
 	log.Run(task)
-	stderr, err = git.UpdateRemotes(config.OriginName)
-	if err != nil {
-		return
+	if err := git.UpdateRemotes(remoteName); err != nil {
+		return errs.NewError(task, err, nil)
 	}
 
 	// Make sure that the local release branch exists.
 	task = "Make sure that the local release branch exists"
-	stderr, err = git.CreateTrackingBranchUnlessExists(config.ReleaseBranch, config.OriginName)
-	if err != nil {
-		return
+	if err := git.CreateTrackingBranchUnlessExists(releaseBranch, remoteName); err != nil {
+		return errs.NewError(task, err, nil)
 	}
 
 	// Make sure that the release branch is up to date.
-	task = "Make sure that the release branch is up to date"
+	task = fmt.Sprintf("Make sure branch '%v' is up to date", releaseBranch)
 	log.Run(task)
-	stderr, err = git.EnsureBranchSynchronized(config.ReleaseBranch, config.OriginName)
-	if err != nil {
-		return
+	if err := git.EnsureBranchSynchronized(releaseBranch, remoteName); err != nil {
+		return errs.NewError(task, err, nil)
 	}
 
 	// Read the current release version.
 	task = "Read the current release version"
-	releaseVersion, stderr, err := version.ReadFromBranch(config.ReleaseBranch)
+	releaseVersion, err := version.GetByBranch(releaseBranch)
 	if err != nil {
-		return
+		return errs.NewError(task, err, nil)
 	}
 
-	// Instantiate an issue tracker release and ensure it is deliverable.
-	task = "Fetch stories from the issue tracker"
-	log.Run(task)
-	release, err := modules.GetIssueTracker().RunningRelease(releaseVersion)
+	// Make sure the release is stageable.
+	release, err := tracker.RunningRelease(releaseVersion)
 	if err != nil {
-		return
+		return err
 	}
-	err = release.EnsureDeliverable()
-	if err != nil {
-		return
+	if err := release.EnsureStageable(); err != nil {
+		return err
+	}
+
+	// Make sure there are no commits being left behind,
+	// e.g. make sure no commits are forgotten on the trunk branch,
+	// i.e. make sure that everything necessary was cherry-picked.
+	if err := checkCommits(release, releaseBranch); err != nil {
+		return err
 	}
 
 	// Tag the release branch with the associated version string.
-	task = "Tag the release branch with the associated version string"
-	log.Run(task)
 	tag := releaseVersion.ReleaseTagString()
-	stderr, err = git.Tag(tag, config.ReleaseBranch)
-	if err != nil {
-		return
+	task = fmt.Sprintf("Tag branch '%v' (tag = %v)", releaseBranch, tag)
+	log.Run(task)
+	tag = releaseVersion.ReleaseTagString()
+	if err := git.Tag(tag, releaseBranch); err != nil {
+		return errs.NewError(task, err, nil)
 	}
-	defer func(taskMsg string) {
+	defer func(task string) {
 		// On error, delete the release tag.
 		if err != nil {
-			log.Rollback(taskMsg)
-			out, ex := git.DeleteTag(tag)
-			if ex != nil {
-				log.FailWithDetails(taskMsg, out)
+			log.Rollback(task)
+			if ex := git.DeleteTag(tag); ex != nil {
+				errs.LogError("Delete the release tag", ex, nil)
 			}
 		}
 	}(task)
 
-	// Reset the client branch to point to the newly created tag.
-	task = "Reset the client branch to point to the release tag"
+	// Reset the staging branch to point to the newly created tag.
+	task = fmt.Sprintf("Reset branch '%v' to point to tag '%v'", stagingBranch, tag)
 	log.Run(task)
-	origClient, stderr, err := git.Hexsha("refs/heads/" + config.ClientBranch)
+	act, err := git.CreateOrResetBranch(stagingBranch, tag)
 	if err != nil {
-		return
+		return errs.NewError(task, err, nil)
 	}
-
-	stderr, err = git.CreateOrResetBranch(config.ClientBranch, tag)
-	if err != nil {
-		return
-	}
-	defer func(taskMsg string) {
-		// On error, reset the client branch back to the original position.
-		if err != nil {
-			log.Rollback(taskMsg)
-			out, ex := git.ResetKeep(config.ClientBranch, origClient)
-			if ex != nil {
-				log.FailWithDetails(taskMsg, out)
-			}
+	defer func(task string, act action.Action) {
+		if err == nil {
+			return
 		}
-	}(task)
+		// Rollback on error.
+		log.Rollback(task)
+		if ex := act.Rollback(); ex != nil {
+			errs.Log(ex)
+		}
+	}(task, act)
 
 	// Delete the local release branch.
-	task = "Delete the local release branch"
+	task = fmt.Sprintf("Delete branch '%v'", releaseBranch)
 	log.Run(task)
-	stderr, err = git.Branch("-d", config.ReleaseBranch)
-	if err != nil {
-		return
+	if err := git.Branch("-d", releaseBranch); err != nil {
+		return errs.NewError(task, err, nil)
 	}
-	defer func(taskMsg string) {
+	defer func(task string) {
+		if err == nil {
+			return
+		}
 		// On error, re-create the local release branch.
-		if err != nil {
-			log.Rollback(taskMsg)
-			out, ex := git.Branch(
-				config.ReleaseBranch, config.OriginName+"/"+config.ReleaseBranch)
-			if ex != nil {
-				log.FailWithDetails(taskMsg, out)
-			}
+		log.Rollback(task)
+		if ex := git.Branch(releaseBranch, remoteName+"/"+releaseBranch); ex != nil {
+			errs.Log(ex)
 		}
 	}(task)
 
-	// Deliver the release in the issue tracker.
-	task = ""
-	action, err := release.Deliver()
+	// Stage the release in the issue tracker.
+	act, err = release.Stage()
 	if err != nil {
-		return
+		return err
 	}
-	defer func() {
-		if err != nil {
-			action.Rollback()
+	defer func(act action.Action) {
+		if err == nil {
+			return
 		}
-	}()
+		// On error, unstage the release.
+		if ex := act.Rollback(); ex != nil {
+			errs.Log(ex)
+		}
+	}(act)
 
 	// Push to create the tag, reset client and delete release in the remote repository.
-	task = "Push to create the tag, reset client and delete release"
+	task = "Push changes to the remote repository"
 	log.Run(task)
-	stderr, err = git.Push(
-		config.OriginName,
-		"-f", "--tags",
-		":"+config.ReleaseBranch,
-		config.ClientBranch+":"+config.ClientBranch)
-	return
+	return git.Push(remoteName,
+		"-f", "--tags", // Force push, push the release tag.
+		":"+releaseBranch,               // Delete the release branch.
+		stagingBranch+":"+stagingBranch) // Push the staging branch.
+}
+
+func checkCommits(release common.RunningRelease, releaseBranch string) error {
+	var task = "Make sure no changes are being left behind"
+	log.Run(task)
+
+	stories, err := release.Stories()
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+
+	var (
+		// Exclude filter including the release branch.
+		exclude = []*regexp.Regexp{regexp.MustCompile(fmt.Sprintf("^%v$", releaseBranch))}
+		groups  []*changes.StoryChangeGroup
+	)
+
+	for _, story := range stories {
+		id := story.ReadableId()
+
+		// Get the relevant commits.
+		commits, err := git.ListStoryCommits(id)
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
+		if len(commits) == 0 {
+			continue
+		}
+
+		// Split by Change-Id.
+		chs := changes.GroupCommitsByChangeId(commits)
+
+		// Drop the changes being on the release branch already.
+		chs = changes.FilterChangesBySource(chs, nil, exclude)
+
+		// In case there are no changes left, we are done.
+		if len(chs) == 0 {
+			continue
+		}
+
+		groups = append(groups, &changes.StoryChangeGroup{
+			StoryId: id,
+			Changes: chs,
+		})
+	}
+
+	// In case there are some changes being left behind,
+	// ask the user to confirm whether to proceed or not.
+	if len(groups) == 0 {
+		return nil
+	}
+
+	fmt.Println(`
+Some changes are being left behind!
+
+In other words, some changes that are assigned to the current release
+have not been cherry-picked onto the release branch yet.
+	`)
+	if err := changes.DumpStoryChanges(groups, os.Stdout, false); err != nil {
+		panic(err)
+	}
+	fmt.Println()
+
+	confirmed, err := prompt.Confirm("Are you sure you really want to stage the release?")
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+	if !confirmed {
+		prompt.PanicCancel()
+	}
+	fmt.Println()
+
+	return nil
 }

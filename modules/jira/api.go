@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -27,13 +28,13 @@ func (rt *BasicAuthRoundTripper) RoundTrip(req *http.Request) (*http.Response, e
 	return rt.next.RoundTrip(req)
 }
 
-func newClient(tracker *issueTracker) *client.Client {
+func newClient(config Config) *client.Client {
 	relativeURL, _ := url.Parse("rest/api/2/")
-	baseURL := tracker.config.BaseURL().ResolveReference(relativeURL)
+	baseURL := config.BaseURL().ResolveReference(relativeURL)
 	return client.New(baseURL, &http.Client{
 		Transport: &BasicAuthRoundTripper{
-			username: tracker.config.Username(),
-			password: tracker.config.Password(),
+			username: config.Username(),
+			password: config.Password(),
 			next:     http.DefaultTransport},
 	})
 }
@@ -53,12 +54,16 @@ type issueUpdateResult struct {
 
 // updateIssues calls updateFunc on every issue in the list, concurrently.
 // It then collects all the results and returns the cumulative result.
-func updateIssues(api *client.Client, issues []*client.Issue, updateFunc issueUpdateFunc) error {
-	// Send all the request at once.
+func updateIssues(
+	api *client.Client,
+	issues []*client.Issue,
+	updateFunc issueUpdateFunc,
+	rollbackFunc issueUpdateFunc,
+) error {
+	// Send all the requests at once.
 	retCh := make(chan *issueUpdateResult, len(issues))
 	for _, issue := range issues {
 		go func(is *client.Issue) {
-			// Call the update function.
 			err := updateFunc(api, is)
 			retCh <- &issueUpdateResult{is, err}
 		}(issue)
@@ -66,18 +71,43 @@ func updateIssues(api *client.Client, issues []*client.Issue, updateFunc issueUp
 
 	// Wait for the requests to complete.
 	var (
-		stderr = new(bytes.Buffer)
-		err    error
+		stderr        = bytes.NewBufferString("\nUpdate Errors\n-------------\n")
+		updatedIssues = make([]*client.Issue, 0, len(issues))
+		err           error
 	)
 	for i := 0; i < cap(retCh); i++ {
-		ret := <-retCh
-		if ret.err != nil {
+		if ret := <-retCh; ret.err != nil {
 			fmt.Fprintln(stderr, ret.err)
 			err = errors.New("failed to update JIRA issues")
+		} else {
+			updatedIssues = append(updatedIssues, ret.issue)
 		}
 	}
 
 	if err != nil {
+		if rollbackFunc != nil {
+			// Spawn the rollback goroutines.
+			retCh := make(chan *issueUpdateResult)
+			for _, issue := range updatedIssues {
+				go func(is *client.Issue) {
+					err := rollbackFunc(api, is)
+					retCh <- &issueUpdateResult{is, err}
+				}(issue)
+			}
+
+			// Collect the rollback results.
+			rollbackStderr := bytes.NewBufferString("\nRollback Errors\n---------------\n")
+			for _ = range updatedIssues {
+				if ret := <-retCh; ret.err != nil {
+					fmt.Fprintln(rollbackStderr, ret.err)
+				}
+			}
+			// Append the rollback error output to the update error output.
+			if _, err := io.Copy(stderr, rollbackStderr); err != nil {
+				panic(err)
+			}
+		}
+		// Return the aggregate error.
 		return errs.NewError("Update JIRA issues", err, stderr)
 	}
 	return nil
@@ -87,7 +117,7 @@ func updateIssues(api *client.Client, issues []*client.Issue, updateFunc issueUp
 
 func assignIssuesToVersion(api *client.Client, issues []*client.Issue, versionId string) error {
 	// The payload is the same for all the issue updates.
-	updateRequest := client.M{
+	addRequest := client.M{
 		"update": client.M{
 			"fixVersions": client.L{
 				client.M{
@@ -99,14 +129,63 @@ func assignIssuesToVersion(api *client.Client, issues []*client.Issue, versionId
 		},
 	}
 
+	// Rollback request is used when we want to delete the version again.
+	removeRequest := client.M{
+		"update": client.M{
+			"fixVersions": client.L{
+				client.M{
+					"remove": &client.Version{
+						Id: versionId,
+					},
+				},
+			},
+		},
+	}
+
 	// Update all the issues concurrently and return the result.
-	return updateIssues(api, issues, func(api *client.Client, issue *client.Issue) error {
-		_, err := api.Issues.Update(issue.Id, updateRequest)
-		return err
-	})
+	return updateIssues(api, issues,
+		func(api *client.Client, issue *client.Issue) error {
+			_, err := api.Issues.Update(issue.Id, addRequest)
+			return err
+		},
+		func(api *client.Client, issue *client.Issue) error {
+			_, err := api.Issues.Update(issue.Id, removeRequest)
+			return err
+		})
+}
+
+// Transitions -----------------------------------------------------------------
+
+func performBulkTransition(
+	api *client.Client,
+	issues []*client.Issue,
+	transitionId string,
+	rollbackTransitionId string,
+) error {
+	var rollbackFunc issueUpdateFunc
+	if rollbackTransitionId != "" {
+		rollbackFunc = func(api *client.Client, issue *client.Issue) error {
+			_, err := api.Issues.PerformTransition(issue.Id, rollbackTransitionId)
+			return err
+		}
+	}
+
+	return updateIssues(api, issues,
+		func(api *client.Client, issue *client.Issue) error {
+			_, err := api.Issues.PerformTransition(issue.Id, transitionId)
+			return err
+		},
+		rollbackFunc)
 }
 
 // Various userful helper functions --------------------------------------------
+
+func search(api *client.Client, query string) ([]*client.Issue, error) {
+	issues, _, err := api.Issues.Search(&client.SearchOptions{
+		JQL: query,
+	})
+	return issues, err
+}
 
 func listStoriesById(api *client.Client, ids []string) ([]*client.Issue, error) {
 	var query bytes.Buffer
@@ -127,10 +206,7 @@ func listStoriesById(api *client.Client, ids []string) ([]*client.Issue, error) 
 		}
 	}
 
-	stories, _, err := api.Issues.Search(&client.SearchOptions{
-		JQL: query.String(),
-	})
-	return stories, err
+	return search(api, query.String())
 }
 
 // formatInRange takes the arguments and creates a JQL IN query for them, i.e.

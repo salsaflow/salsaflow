@@ -63,6 +63,6 @@ type NextRelease interface {
 
 type RunningRelease interface {
 	Stories() ([]Story, error)
-	EnsureDeliverable() error
-	Deliver() (action.Action, error)
+	EnsureStageable() error
+	Stage() (action.Action, error)
 }

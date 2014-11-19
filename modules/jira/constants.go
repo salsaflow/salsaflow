@@ -22,6 +22,9 @@ const (
 	stateIdApproved         = "10000"
 	stateIdBeingImplemented = "10400"
 	stateIdImplemented      = "10401"
+	stateIdTested           = "10103"
+	stateIdStaged           = "10105"
+	stateIdAccepted         = "10005"
 )
 
 var startableStateIds = []string{
@@ -33,8 +36,16 @@ var inDevelopmentStateIds = []string{
 	stateIdImplemented,
 }
 
+var stageableStateIds = []string{
+	stateIdTested,
+	stateIdStaged,
+	stateIdAccepted,
+}
+
 // Transitions -----------------------------------------------------------------
 
 const (
 	transitionIdStartImplementing = "321"
+	transitionIdStage             = "371"
+	transitionIdUnstage           = "461"
 )
