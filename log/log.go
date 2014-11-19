@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -24,6 +26,22 @@ const (
 
 var lock sync.Mutex
 
+var logWriter io.Writer = os.Stderr
+
+func Replace(newWriter io.Writer) (formerWriter io.Writer) {
+	lock.Lock()
+	formerWriter = logWriter
+	logWriter = newWriter
+	lock.Unlock()
+	return
+}
+
+func Disable() {
+	lock.Lock()
+	logWriter = ioutil.Discard
+	lock.Unlock()
+}
+
 var v Level = Info
 
 func SetV(level Level) {
@@ -41,13 +59,13 @@ func (l Logger) log(v ...interface{}) {
 	if l {
 		lock.Lock()
 		defer lock.Unlock()
-		fmt.Fprint(os.Stderr, v...)
+		fmt.Fprint(logWriter, v...)
 	}
 }
 
 func (l Logger) unsafeLog(v ...interface{}) {
 	if l {
-		fmt.Fprint(os.Stderr, v...)
+		fmt.Fprint(logWriter, v...)
 	}
 }
 
@@ -55,13 +73,13 @@ func (l Logger) logf(format string, v ...interface{}) {
 	if l {
 		lock.Lock()
 		defer lock.Unlock()
-		fmt.Fprintf(os.Stderr, format, v...)
+		fmt.Fprintf(logWriter, format, v...)
 	}
 }
 
 func (l Logger) unsafeLogf(format string, v ...interface{}) {
 	if l {
-		fmt.Fprintf(os.Stderr, format, v...)
+		fmt.Fprintf(logWriter, format, v...)
 	}
 }
 
@@ -69,13 +87,13 @@ func (l Logger) logln(v ...interface{}) {
 	if l {
 		lock.Lock()
 		defer lock.Unlock()
-		fmt.Fprintln(os.Stderr, v...)
+		fmt.Fprintln(logWriter, v...)
 	}
 }
 
 func (l Logger) unsafeLogln(v ...interface{}) {
 	if l {
-		fmt.Fprintln(os.Stderr, v...)
+		fmt.Fprintln(logWriter, v...)
 	}
 }
 
