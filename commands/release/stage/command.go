@@ -5,14 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 
 	// Internal
 	"github.com/salsita/salsaflow/action"
 	"github.com/salsita/salsaflow/app"
+	"github.com/salsita/salsaflow/changes"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/modules"
+	"github.com/salsita/salsaflow/modules/common"
+	"github.com/salsita/salsaflow/prompt"
 	"github.com/salsita/salsaflow/version"
 
 	// Other
@@ -41,6 +45,8 @@ func run(cmd *gocli.Command, args []string) {
 	}
 
 	app.InitOrDie()
+
+	defer prompt.RecoverCancel()
 
 	if err := runMain(); err != nil {
 		errs.Fatal(err)
@@ -126,6 +132,13 @@ func runMain() (err error) {
 		return err
 	}
 
+	// Make sure there are no commits being left behind,
+	// e.g. make sure no commits are forgotten on the trunk branch,
+	// i.e. make sure that everything necessary was cherry-picked.
+	if err := checkCommits(release, releaseBranch); err != nil {
+		return err
+	}
+
 	// Tag the release branch with the associated version string.
 	tag := releaseVersion.ReleaseTagString()
 	task = fmt.Sprintf("Tag branch '%v' (tag = %v)", releaseBranch, tag)
@@ -201,4 +214,76 @@ func runMain() (err error) {
 		"-f", "--tags", // Force push, push the release tag.
 		":"+releaseBranch,               // Delete the release branch.
 		stagingBranch+":"+stagingBranch) // Push the staging branch.
+}
+
+func checkCommits(release common.RunningRelease, releaseBranch string) error {
+	var task = "Make sure no changes are being left behind"
+	log.Run(task)
+
+	stories, err := release.Stories()
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+
+	var (
+		groups []*changes.StoryChangeGroup
+		re     = regexp.MustCompile(fmt.Sprintf("^%v$", releaseBranch))
+	)
+
+	for _, story := range stories {
+		id := story.ReadableId()
+
+		// Get the relevant commits.
+		commits, err := git.ListStoryCommits(id)
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
+		if len(commits) == 0 {
+			continue
+		}
+
+		// Split by Change-Id.
+		chs := changes.GroupCommitsByChangeId(commits)
+
+		// Drop the changes being on the release branch already.
+		chs = changes.FilterChangesBySource(chs, nil, []*regexp.Regexp{re})
+
+		// In case there are no changes left, we are done.
+		if len(chs) == 0 {
+			continue
+		}
+
+		groups = append(groups, &changes.StoryChangeGroup{
+			StoryId: id,
+			Changes: chs,
+		})
+	}
+
+	// In case there are some changes being left behind,
+	// ask the user to confirm whether to proceed or not.
+	if len(groups) == 0 {
+		return nil
+	}
+
+	fmt.Println(`
+Some changes are being left behind!
+
+In other words, some changes that are assigned to the current release
+have not been cherry-picked onto the release branch yet.
+	`)
+	if err := changes.DumpStoryChanges(groups, os.Stdout, false); err != nil {
+		panic(err)
+	}
+	fmt.Println()
+
+	confirmed, err := prompt.Confirm("Are you sure you really want to stage the release?")
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+	if !confirmed {
+		prompt.PanicCancel()
+	}
+	fmt.Println()
+
+	return nil
 }
