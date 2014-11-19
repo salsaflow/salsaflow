@@ -60,11 +60,10 @@ func updateIssues(
 	updateFunc issueUpdateFunc,
 	rollbackFunc issueUpdateFunc,
 ) error {
-	// Send all the request at once.
+	// Send all the requests at once.
 	retCh := make(chan *issueUpdateResult, len(issues))
 	for _, issue := range issues {
 		go func(is *client.Issue) {
-			// Call the update function.
 			err := updateFunc(api, is)
 			retCh <- &issueUpdateResult{is, err}
 		}(issue)
@@ -72,32 +71,34 @@ func updateIssues(
 
 	// Wait for the requests to complete.
 	var (
-		stderr         = bytes.NewBufferString("\nUpdate Errors\n-------------\n")
-		rollbackStderr = bytes.NewBufferString("\nRollback Errors\n---------------\n")
-		rollbackRetCh  = make(chan *issueUpdateResult)
-		numThreads     int
-		err            error
+		stderr        = bytes.NewBufferString("\nUpdate Errors\n-------------\n")
+		updatedIssues = make([]*client.Issue, 0, len(issues))
+		err           error
 	)
 	for i := 0; i < cap(retCh); i++ {
 		if ret := <-retCh; ret.err != nil {
 			fmt.Fprintln(stderr, ret.err)
 			err = errors.New("failed to update JIRA issues")
-			// If the rollback function is available, spawn it now.
-			if rollbackFunc != nil {
-				numThreads++
-				go func(is *client.Issue) {
-					err := rollbackFunc(api, is)
-					rollbackRetCh <- &issueUpdateResult{is, err}
-				}(ret.issue)
-			}
+		} else {
+			updatedIssues = append(updatedIssues, ret.issue)
 		}
 	}
 
 	if err != nil {
-		// Collect the rollback results.
 		if rollbackFunc != nil {
-			for i := 0; i < numThreads; i++ {
-				if ret := <-rollbackRetCh; ret.err != nil {
+			// Spawn the rollback goroutines.
+			retCh := make(chan *issueUpdateResult)
+			for _, issue := range updatedIssues {
+				go func(is *client.Issue) {
+					err := rollbackFunc(api, is)
+					retCh <- &issueUpdateResult{is, err}
+				}(issue)
+			}
+
+			// Collect the rollback results.
+			rollbackStderr := bytes.NewBufferString("\nRollback Errors\n---------------\n")
+			for _ = range updatedIssues {
+				if ret := <-retCh; ret.err != nil {
 					fmt.Fprintln(rollbackStderr, ret.err)
 				}
 			}
