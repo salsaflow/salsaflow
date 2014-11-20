@@ -41,6 +41,11 @@ func main() {
 	}
 }
 
+type revisionRange struct {
+	From string
+	To   string
+}
+
 func run(remoteName, pushURL string) error {
 	// Load the git-related SalsaFlow config.
 	gitConfig, err := git.LoadConfig()
@@ -68,7 +73,7 @@ func run(remoteName, pushURL string) error {
 	}
 
 	task := "Parse the hook input"
-	var revRanges []string
+	var revRanges []*revisionRange
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		var (
@@ -79,7 +84,7 @@ func run(remoteName, pushURL string) error {
 			return errs.NewError(task, errors.New("invalid input line: "+line), nil)
 		}
 
-		localSha, remoteRef, remoteSha := parts[1], parts[2], parts[3]
+		localRef, localSha, remoteRef, remoteSha := parts[0], parts[1], parts[2], parts[3]
 
 		// Skip the refs that are being deleted.
 		if localSha == zeroHash {
@@ -98,17 +103,17 @@ func run(remoteName, pushURL string) error {
 			continue
 		}
 
-		log.Log(fmt.Sprintf("Checking commits updating remote reference '%s'", remoteRef))
+		log.Log(fmt.Sprintf("Checking commits updating reference '%s'", remoteRef))
 
 		// Append the revision range for this input line.
-		var revRange string
+		var revRange *revisionRange
 		if remoteSha == zeroHash {
 			// In case we are pushing a new branch, check commits up to trunk.
 			// There is probably no better guess that we can do in general.
-			revRange = fmt.Sprintf("%s..%s", gitConfig.TrunkBranchName(), localSha)
+			revRange = &revisionRange{gitConfig.TrunkBranchName(), localRef}
 		} else {
 			// Otherwise check the commits that are new compared to the remote ref.
-			revRange = fmt.Sprintf("%s..%s", remoteSha, localSha)
+			revRange = &revisionRange{remoteSha, localRef}
 		}
 		revRanges = append(revRanges, revRange)
 	}
@@ -116,46 +121,97 @@ func run(remoteName, pushURL string) error {
 		return errs.NewError(task, err, nil)
 	}
 
-	// Get the relevant commit objects.
-	task = "Get the commit objects to be pushed"
-	var commits []*git.Commit
+	// Validate the commit messages.
+	var (
+		invalid bool
+		output  bytes.Buffer
+		tw      = tabwriter.NewWriter(&output, 0, 8, 4, '\t', 0)
+	)
+
+	io.WriteString(tw, "\n")
+	io.WriteString(tw, "Commit SHA\tCommit Title\tCommit Source\tError\n")
+	io.WriteString(tw, "==========\t============\t=============\t=====\n")
+
 	for _, revRange := range revRanges {
-		cs, err := git.ShowCommitRange(revRange)
+		// Get the commit objects for the relevant range.
+		task := "Get the commit objects to be pushed"
+		commits, err := git.ShowCommitRange(fmt.Sprintf("%v..%v", revRange.From, revRange.To))
 		if err != nil {
 			return errs.NewError(task, err, nil)
 		}
-		commits = append(commits, cs...)
-	}
 
-	// Validate the commit messages.
-	task = "Validate the commit messages"
-	var invalid bool
+		// Check every commit in the range.
+		task = "Validate commit messages"
+		var (
+			checkTags        bool
+			ancestorsChecked bool
+		)
+	CommitLoop:
+		for _, commit := range commits {
+			// Do not check merge commits.
+			if commit.Merge != "" {
+				continue
+			}
 
-	stderr := new(bytes.Buffer)
-	tw := tabwriter.NewWriter(stderr, 0, 8, 4, '\t', 0)
-	io.WriteString(tw, "\n")
-	io.WriteString(tw, "Commit SHA\tError\n")
-	io.WriteString(tw, "==========\t=====\n")
+			// Check whether we should start checking commit messages.
+			if !checkTags {
+				switch {
+				// Once we encounter a tag inside of the revision range,
+				// we automatically start checking for tags.
+				case commit.ChangeId != "" || commit.StoryId != "":
+					checkTags = true
 
-	for _, commit := range commits {
-		if commit.Merge == "" {
-			// Require the Change-Id tag in all non-merge commits.
-			if commit.ChangeId == "" {
-				fmt.Fprintf(tw, "%v\t%v\n", commit.SHA, "commit message: Change-Id tag missing")
+				// In case the tags are empty, check all ancestors for the relevant tags as well.
+				// In case a tag is encountered in an ancestral commit, we start checking for tags.
+				case !ancestorsChecked:
+					var err error
+					checkTags, err = checkAncestors(revRange.From)
+					if err != nil {
+						return errs.NewError(task, err, nil)
+					}
+					ancestorsChecked = true
+
+				default:
+					// checkTags false => continue looping.
+					continue CommitLoop
+				}
+			}
+
+			// Check the Change-Id tag.
+			if commit.ChangeId == "" /* && checkTags */ {
+				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", commit.SHA, commit.MessageTitle,
+					revRange.To, "commit message: Change-Id tag missing")
 				invalid = true
 			}
-			// Require the Story-Id tag in all non-merge commits.
-			if commit.StoryId == "" {
-				fmt.Fprintf(tw, "%v\t%v\n", commit.SHA, "commit message: Story-Id tag missing")
+
+			// Check the Story-Id tag.
+			if commit.StoryId == "" /* && checkTags */ {
+				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", commit.SHA, commit.MessageTitle,
+					revRange.To, "commit message: Story-Id tag missing")
 				invalid = true
 			}
 		}
 	}
 
 	if invalid {
+		io.WriteString(tw, "\n")
 		tw.Flush()
-		stderr.WriteString("\n")
-		return errs.NewError(task, errors.New("invalid commit message"), stderr)
+		return errs.NewError(task, errors.New("invalid commit messages found"), &output)
 	}
 	return nil
+}
+
+func checkAncestors(ref string) (checkTags bool, err error) {
+	commits, err := git.ShowCommitRange(ref)
+	if err != nil {
+		return false, err
+	}
+
+	for _, commit := range commits {
+		if commit.ChangeId != "" || commit.StoryId != "" {
+			checkTags = true
+		}
+	}
+
+	return
 }
