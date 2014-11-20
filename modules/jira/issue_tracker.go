@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	// Internal
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/modules/common"
 	"github.com/salsita/salsaflow/modules/jira/client"
@@ -84,15 +85,18 @@ func (tracker *issueTracker) RunningRelease(
 }
 
 func (tracker *issueTracker) ReleaseStoriesNotAccepted(ver *version.Version) ([]common.Story, error) {
+	var task = fmt.Sprintf("Fetch issues from JIRA for version '%v'", ver.ReleaseTagString())
+	log.Run(task)
+
 	// Make sure the relevant JIRA version exists.
 	// This is necessary to do since JIRA returns 400 Bad Request when
 	// JQL with 'fixVersion = "non-existing version"' is sent.
 	res, err := tracker.getVersionResource(ver)
 	if err != nil {
-		return nil, err
+		return nil, errs.NewError(task, err, nil)
 	}
 	if res == nil {
-		return nil, common.ErrReleaseNotFound
+		return nil, errs.NewError(task, common.ErrReleaseNotFound, nil)
 	}
 
 	// Get the issues.
@@ -102,7 +106,7 @@ func (tracker *issueTracker) ReleaseStoriesNotAccepted(ver *version.Version) ([]
 	)
 	issues, err := issuesByVersion(newClient(tracker.config), key, tag)
 	if err != nil {
-		return nil, err
+		return nil, errs.NewError(task, err, nil)
 	}
 
 	// Drop the accepted issues.

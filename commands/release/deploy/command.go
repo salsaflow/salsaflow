@@ -2,6 +2,7 @@ package deployCmd
 
 import (
 	// Stdlib
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -103,14 +104,13 @@ func runMain() (err error) {
 	}
 
 	// Get the list of release tags since the last deployment.
-	task = "Get the list of releases since the last deployment"
+	task = "Get the list of deployable releases"
 	tags, err := newReleaseTags(stableBranch)
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
 	// Limit the list to the releases that are fully accepted.
-	task = "Drop releases not yet accepted"
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
 		return errs.NewError(task, err, nil)
@@ -125,7 +125,7 @@ func runMain() (err error) {
 
 		stories, err := tracker.ReleaseStoriesNotAccepted(ver)
 		if err != nil {
-			if err != common.ErrReleaseNotFound {
+			if errs.RootCause(err) != common.ErrReleaseNotFound {
 				return errs.NewError(task, err, nil)
 			}
 			continue
@@ -137,6 +137,9 @@ func runMain() (err error) {
 		offset++
 	}
 	tags = tags[:offset]
+	if len(tags) == 0 {
+		return errs.NewError(task, errors.New("no deployable releases found"), nil)
+	}
 
 	// Prompt the user to choose the release tag.
 	task = "Prompt the user to choose the tag to be deployed"
