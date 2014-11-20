@@ -154,19 +154,21 @@ func ConfirmStories(headerLine string, stories []*pivotal.Story) (bool, error) {
 	return line == "y", nil
 }
 
-func ListStories(stories []common.Story, w io.Writer) (err error) {
-	var panicString = "_WRITE_PANIC_"
+type writeError struct {
+	err error
+}
 
+func ListStories(stories []common.Story, w io.Writer) (err error) {
 	must := func(n int, err error) {
 		if err != nil {
-			panic(panicString)
+			panic(&writeError{err})
 		}
 	}
 
 	defer func() {
 		if r := recover(); r != nil {
-			if str, ok := r.(string); ok && str == panicString {
-				err = errors.New("failed to write to stdout")
+			if we, ok := r.(*writeError); ok {
+				err = we.err
 			} else {
 				panic(r)
 			}
