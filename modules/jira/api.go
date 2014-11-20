@@ -154,6 +154,11 @@ func assignIssuesToVersion(api *client.Client, issues []*client.Issue, versionId
 		})
 }
 
+func issuesByVersion(api *client.Client, projectKey, versionName string) ([]*client.Issue, error) {
+	query := fmt.Sprintf("project = %v AND fixVersion = \"%v\"", projectKey, versionName)
+	return search(api, query)
+}
+
 // Transitions -----------------------------------------------------------------
 
 func performBulkTransition(

@@ -1,10 +1,16 @@
 package common
 
 import (
+	// Stdlib
+	"errors"
+
+	// Internal
 	"github.com/salsita/salsaflow/action"
 	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/version"
 )
+
+var ErrReleaseNotFound = errors.New("release not found")
 
 // IssueTracker interface ------------------------------------------------------
 
@@ -31,6 +37,13 @@ type IssueTracker interface {
 	// RunningRelease is a factory method for creating release objects
 	// representing the releases that have been started.
 	RunningRelease(*version.Version) (RunningRelease, error)
+
+	// ReleaseStoriesNotAccepted returns the list of stories
+	// that are assigned to the given release and that are not accepted yet.
+	//
+	// In case the release does not exist, this method is expected to
+	// return ErrReleaseNotFound.
+	ReleaseStoriesNotAccepted(*version.Version) ([]Story, error)
 
 	// SelectActiveStoryIds returns the IDs associated with the stories
 	// that are being actively worked on, i.e. they are not closed yet.
