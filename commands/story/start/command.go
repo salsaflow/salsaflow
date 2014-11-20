@@ -204,7 +204,9 @@ func createBranch() (action.Action, error) {
 
 	// Prompt the user for the branch name.
 	task = "Prompt the user for the branch name"
-	line, err := prompt.Prompt("\nPlease insert branch slug: ")
+	line, err := prompt.Prompt(`
+Please insert the branch slug now.
+Insert an empty string to skip the branch creation step: `)
 	if err != nil {
 		return nil, errs.NewError(task, err, nil)
 	}
