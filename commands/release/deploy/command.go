@@ -65,7 +65,7 @@ func run(cmd *gocli.Command, args []string) {
 	}
 }
 
-func runMain() (err error) {
+func runMain() error {
 	// Load repo config.
 	gitConfig, err := git.LoadConfig()
 	if err != nil {
@@ -116,45 +116,51 @@ func runMain() (err error) {
 		return errs.NewError(task, err, nil)
 	}
 
-	var offset int
+	var releasable []common.RunningRelease
 	for _, tag := range tags {
 		ver, err := version.FromTag(tag)
 		if err != nil {
 			return err
 		}
 
-		stories, err := tracker.ReleaseStoriesNotAccepted(ver)
+		release, err := tracker.RunningRelease(ver)
 		if err != nil {
-			if errs.RootCause(err) != common.ErrReleaseNotFound {
-				return errs.NewError(task, err, nil)
+			if errs.RootCause(err) == common.ErrReleaseNotFound {
+				log.Warn(fmt.Sprintf("Release '%v' not found in the issue tracker", tag))
+				continue
 			}
-			continue
-		}
-		if len(stories) != 0 {
-			break
+			return errs.NewError(task, err, nil)
 		}
 
-		offset++
+		stories, err := release.CheckReleasable()
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
+		if len(stories) != 0 {
+			log.Log(fmt.Sprintf("Release '%v' is not releasable", tag))
+			continue
+		}
+
+		releasable = append(releasable, release)
 	}
-	tags = tags[:offset]
-	if len(tags) == 0 {
+	if len(releasable) == 0 {
 		return errs.NewError(task, errors.New("no deployable releases found"), nil)
 	}
 
 	// Prompt the user to choose the release tag.
-	task = "Prompt the user to choose the tag to be deployed"
-	fmt.Printf("\nThe following tags can be deployed:\n\n")
+	task = "Prompt the user to choose the release to be deployed"
+	fmt.Printf("\nThe following releases can be deployed:\n\n")
 	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 4, '\t', 0)
-	io.WriteString(tw, "Index\tTag\n")
-	io.WriteString(tw, "=====\t===\n")
-	for i, tag := range tags {
-		fmt.Fprintf(tw, "%v\t%v\n", i, tag)
+	io.WriteString(tw, "Index\tRelease\n")
+	io.WriteString(tw, "=====\t=======\n")
+	for i, release := range releasable {
+		fmt.Fprintf(tw, "%v\t%v\n", i, release.Version())
 	}
 	tw.Flush()
 	fmt.Println()
 
 	index, err := prompt.PromptIndex(
-		"Choose the tag to be deployed by inserting its index: ", 0, len(tags)-1)
+		"Choose the release to be deployed by entering its index: ", 0, len(tags)-1)
 	if err != nil {
 		if err == prompt.ErrCanceled {
 			prompt.PanicCancel()
@@ -162,10 +168,38 @@ func runMain() (err error) {
 		return errs.NewError(task, err, nil)
 	}
 	fmt.Println()
-	targetTag := tags[index]
 
 	// Reset and push the stable branch.
-	return resetAndDeploy(stableBranch, targetTag, remoteName)
+	targetTag := releasable[index].Version().ReleaseTagString()
+	if err := resetAndDeploy(stableBranch, targetTag, remoteName); err != nil {
+		return err
+	}
+
+	// Release all the affected releases, one by one.
+	//
+	// There usually won't be that many releases, so let's skip concurrency.
+	//
+	// In case there is an error, tell the details to the user and let them
+	// handle the cleanup since it's not possible to easily rollback the push.
+	for _, release := range releasable[:index+1] {
+		releaseName := release.Version().ReleaseTagString()
+		task := fmt.Sprintf("Mark release '%v' as released", releaseName)
+		log.Run(task)
+		err = release.Release()
+		if err != nil {
+			err = errs.Log(errs.NewError(task, err, nil))
+			continue
+		}
+	}
+	if err != nil {
+		logger := log.V(log.Info)
+		logger.Lock()
+		log.UnsafeWarn("Errors encountered while releasing stories in the issue tracker")
+		log.UnsafeNewLine("Please perform the release in the issue tracker manually")
+		log.UnsafeNewLine("to make sure the issue tracker is consistent.")
+		logger.Unlock()
+	}
+	return err
 }
 
 func ensureRefExists(ref string) error {

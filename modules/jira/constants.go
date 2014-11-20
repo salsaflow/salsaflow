@@ -58,4 +58,5 @@ const (
 	transitionIdStartImplementing = "321"
 	transitionIdStage             = "371"
 	transitionIdUnstage           = "461"
+	transitionIdRelease           = "91"
 )

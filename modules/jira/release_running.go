@@ -18,9 +18,9 @@ import (
 )
 
 type runningRelease struct {
+	tracker        *issueTracker
 	releaseVersion *version.Version
 	issues         []*client.Issue
-	config         Config
 }
 
 func newRunningRelease(
@@ -29,23 +29,40 @@ func newRunningRelease(
 ) (*runningRelease, error) {
 
 	// Fetch relevant issues from JIRA.
-	task := "Fetch data from JIRA"
-	log.Run(task)
 	var (
 		key = tracker.config.ProjectKey()
 		tag = releaseVersion.ReleaseTagString()
 	)
+
+	task := fmt.Sprintf("Fetch issues from JIRA for version '%v'", tag)
+
+	// Make sure the relevant JIRA version exists.
+	// This is necessary to do since JIRA returns 400 Bad Request when
+	// JQL with 'fixVersion = "non-existing version"' is sent.
+	res, err := tracker.getVersionResource(releaseVersion)
+	if err != nil {
+		return nil, errs.NewError(task, err, nil)
+	}
+	if res == nil {
+		return nil, errs.NewError(task, common.ErrReleaseNotFound, nil)
+	}
+
+	// Now we can fetch the issues since we know the version exists.
 	issues, err := issuesByVersion(newClient(tracker.config), key, tag)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return a new release instance.
-	return &runningRelease{releaseVersion, issues, tracker.config}, nil
+	return &runningRelease{tracker, releaseVersion, issues}, nil
+}
+
+func (release *runningRelease) Version() *version.Version {
+	return release.releaseVersion
 }
 
 func (release *runningRelease) Stories() ([]common.Story, error) {
-	return toCommonStories(release.issues, release.config), nil
+	return toCommonStories(release.issues, release.tracker.config), nil
 }
 
 func (release *runningRelease) EnsureStageable() error {
@@ -80,7 +97,7 @@ func (release *runningRelease) EnsureStageable() error {
 
 func (release *runningRelease) Stage() (action.Action, error) {
 	var (
-		api       = newClient(release.config)
+		api       = newClient(release.tracker.config)
 		tag       = release.releaseVersion.ReleaseTagString()
 		stageTask = fmt.Sprintf("Stage JIRA version '%v'", tag)
 	)
@@ -108,6 +125,31 @@ func (release *runningRelease) Stage() (action.Action, error) {
 		}
 		return nil
 	}), nil
+}
+
+func (release *runningRelease) CheckReleasable() ([]common.Story, error) {
+	// Drop accepted issues.
+	var notAccepted []*client.Issue
+IssueLoop:
+	for _, issue := range release.issues {
+		for _, id := range acceptedStateIds {
+			if id == issue.Fields.Status.Id {
+				continue IssueLoop
+			}
+		}
+		notAccepted = append(notAccepted, issue)
+	}
+
+	// Return what is left.
+	return toCommonStories(notAccepted, release.tracker.config), nil
+}
+
+func (release *runningRelease) Release() error {
+	if release.issues == nil {
+		panic("bug(release.issues == nil)")
+	}
+	return performBulkTransition(
+		newClient(release.tracker.config), release.issues, transitionIdRelease, "")
 }
 
 func ensureStageableIssue(issue *client.Issue) error {

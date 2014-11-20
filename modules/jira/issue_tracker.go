@@ -6,7 +6,6 @@ import (
 	"net/url"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/modules/common"
 	"github.com/salsita/salsaflow/modules/jira/client"
@@ -82,47 +81,6 @@ func (tracker *issueTracker) RunningRelease(
 ) (common.RunningRelease, error) {
 
 	return newRunningRelease(tracker, releaseVersion)
-}
-
-func (tracker *issueTracker) ReleaseStoriesNotAccepted(ver *version.Version) ([]common.Story, error) {
-	var task = fmt.Sprintf("Fetch issues from JIRA for version '%v'", ver.ReleaseTagString())
-	log.Run(task)
-
-	// Make sure the relevant JIRA version exists.
-	// This is necessary to do since JIRA returns 400 Bad Request when
-	// JQL with 'fixVersion = "non-existing version"' is sent.
-	res, err := tracker.getVersionResource(ver)
-	if err != nil {
-		return nil, errs.NewError(task, err, nil)
-	}
-	if res == nil {
-		return nil, errs.NewError(task, common.ErrReleaseNotFound, nil)
-	}
-
-	// Get the issues.
-	var (
-		key = tracker.config.ProjectKey()
-		tag = ver.ReleaseTagString()
-	)
-	issues, err := issuesByVersion(newClient(tracker.config), key, tag)
-	if err != nil {
-		return nil, errs.NewError(task, err, nil)
-	}
-
-	// Drop the accepted issues.
-	var notAccepted []*client.Issue
-IssueLoop:
-	for _, issue := range issues {
-		for _, id := range acceptedStateIds {
-			if id == issue.Fields.Status.Id {
-				continue IssueLoop
-			}
-		}
-		notAccepted = append(notAccepted, issue)
-	}
-
-	// Return what is left.
-	return toCommonStories(notAccepted, tracker.config), nil
 }
 
 func (tracker *issueTracker) SelectActiveStoryIds(ids []string) (activeIds []string, err error) {
