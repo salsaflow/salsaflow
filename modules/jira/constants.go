@@ -26,6 +26,8 @@ const (
 	stateIdStaged           = "10105"
 	stateIdAccepted         = "10005"
 	stateIdDone             = "10108"
+	stateIdReleased         = "10106"
+	stateIdClosed           = "6"
 )
 
 var startableStateIds = []string{
@@ -42,6 +44,12 @@ var stageableStateIds = []string{
 	stateIdStaged,
 	stateIdAccepted,
 	stateIdDone,
+}
+
+var acceptedStateIds = []string{
+	stateIdAccepted,
+	stateIdReleased,
+	stateIdClosed,
 }
 
 // Transitions -----------------------------------------------------------------

@@ -53,7 +53,7 @@ func (ver *Version) ReleaseTagString() string {
 	return "v" + ver.String()
 }
 
-func Parse(versionString string) (ver *Version, err error) {
+func Parse(versionString string) (*Version, error) {
 	task := "Parse version string: " + versionString
 	pattern := regexp.MustCompile("^" + GroupMatcherString + "$")
 	parts := pattern.FindStringSubmatch(versionString)
@@ -67,4 +67,8 @@ func Parse(versionString string) (ver *Version, err error) {
 	patch, _ := strconv.ParseUint(parts[3], 10, 32)
 
 	return &Version{uint(major), uint(minor), uint(patch)}, nil
+}
+
+func FromTag(tag string) (*Version, error) {
+	return Parse(tag[1:])
 }

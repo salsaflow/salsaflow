@@ -94,3 +94,11 @@ func Fatal(err error) {
 	}
 	log.Fatalln("\nFatal error: " + err.Error())
 }
+
+func RootCause(err error) error {
+	ex, ok := err.(*Error)
+	if ok {
+		return ex.RootCause()
+	}
+	return err
+}

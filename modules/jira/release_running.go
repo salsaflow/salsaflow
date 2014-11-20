@@ -35,8 +35,7 @@ func newRunningRelease(
 		key = tracker.config.ProjectKey()
 		tag = releaseVersion.ReleaseTagString()
 	)
-	query := fmt.Sprintf("project = %v AND fixVersion = \"%v\"", key, tag)
-	issues, err := search(newClient(tracker.config), query)
+	issues, err := issuesByVersion(newClient(tracker.config), key, tag)
 	if err != nil {
 		return nil, err
 	}

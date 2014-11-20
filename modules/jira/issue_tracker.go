@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	// Internal
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/modules/common"
 	"github.com/salsita/salsaflow/modules/jira/client"
@@ -16,7 +17,8 @@ import (
 )
 
 type issueTracker struct {
-	config Config
+	config       Config
+	versionCache map[string]*client.Version
 }
 
 func Factory() (common.IssueTracker, error) {
@@ -24,7 +26,7 @@ func Factory() (common.IssueTracker, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &issueTracker{config}, nil
+	return &issueTracker{config, nil}, nil
 }
 
 func (tracker *issueTracker) CurrentUser() (common.User, error) {
@@ -33,6 +35,38 @@ func (tracker *issueTracker) CurrentUser() (common.User, error) {
 		return nil, err
 	}
 	return &user{data}, nil
+}
+
+func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
+	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", tracker.config.ProjectKey(),
+		formatInRange("type", codingIssueTypeIds...),
+		formatInRange("status", startableStateIds...))
+
+	issues, _, err := newClient(tracker.config).Issues.Search(&client.SearchOptions{
+		JQL:        query,
+		MaxResults: 200,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return toCommonStories(issues, tracker.config), nil
+}
+
+func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
+	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", tracker.config.ProjectKey(),
+		formatInRange("type", codingIssueTypeIds...),
+		formatInRange("status", inDevelopmentStateIds...))
+
+	issues, _, err := newClient(tracker.config).Issues.Search(&client.SearchOptions{
+		JQL:        query,
+		MaxResults: 200,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return toCommonStories(issues, tracker.config), nil
 }
 
 func (tracker *issueTracker) NextRelease(
@@ -48,6 +82,47 @@ func (tracker *issueTracker) RunningRelease(
 ) (common.RunningRelease, error) {
 
 	return newRunningRelease(tracker, releaseVersion)
+}
+
+func (tracker *issueTracker) ReleaseStoriesNotAccepted(ver *version.Version) ([]common.Story, error) {
+	var task = fmt.Sprintf("Fetch issues from JIRA for version '%v'", ver.ReleaseTagString())
+	log.Run(task)
+
+	// Make sure the relevant JIRA version exists.
+	// This is necessary to do since JIRA returns 400 Bad Request when
+	// JQL with 'fixVersion = "non-existing version"' is sent.
+	res, err := tracker.getVersionResource(ver)
+	if err != nil {
+		return nil, errs.NewError(task, err, nil)
+	}
+	if res == nil {
+		return nil, errs.NewError(task, common.ErrReleaseNotFound, nil)
+	}
+
+	// Get the issues.
+	var (
+		key = tracker.config.ProjectKey()
+		tag = ver.ReleaseTagString()
+	)
+	issues, err := issuesByVersion(newClient(tracker.config), key, tag)
+	if err != nil {
+		return nil, errs.NewError(task, err, nil)
+	}
+
+	// Drop the accepted issues.
+	var notAccepted []*client.Issue
+IssueLoop:
+	for _, issue := range issues {
+		for _, id := range acceptedStateIds {
+			if id == issue.Fields.Status.Id {
+				continue IssueLoop
+			}
+		}
+		notAccepted = append(notAccepted, issue)
+	}
+
+	// Return what is left.
+	return toCommonStories(notAccepted, tracker.config), nil
 }
 
 func (tracker *issueTracker) SelectActiveStoryIds(ids []string) (activeIds []string, err error) {
@@ -90,42 +165,39 @@ func (tracker *issueTracker) OpenStory(storyId string) error {
 	return webbrowser.Open(tracker.config.BaseURL().ResolveReference(relativeURL).String())
 }
 
-func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
-	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", tracker.config.ProjectKey(),
-		formatInRange("type", codingIssueTypeIds...),
-		formatInRange("status", startableStateIds...))
+func (tracker *issueTracker) getVersionResource(ver *version.Version) (*client.Version, error) {
+	var (
+		projectKey  = tracker.config.ProjectKey()
+		versionName = ver.ReleaseTagString()
+		api         = newClient(tracker.config)
+	)
 
-	issues, _, err := newClient(tracker.config).Issues.Search(&client.SearchOptions{
-		JQL:        query,
-		MaxResults: 200,
-	})
-	if err != nil {
-		return nil, err
+	// In case the resource cache is empty, fill it.
+	if tracker.versionCache == nil {
+		vs, _, err := api.Projects.ListVersions(projectKey)
+		if err != nil {
+			return nil, err
+		}
+
+		m := make(map[string]*client.Version, len(vs))
+		for _, v := range vs {
+			m[v.Name] = v
+		}
+		tracker.versionCache = m
 	}
 
-	return toCommonStories(issues, tracker.config), nil
-}
-
-func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
-	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", tracker.config.ProjectKey(),
-		formatInRange("type", codingIssueTypeIds...),
-		formatInRange("status", inDevelopmentStateIds...))
-
-	issues, _, err := newClient(tracker.config).Issues.Search(&client.SearchOptions{
-		JQL:        query,
-		MaxResults: 200,
-	})
-	if err != nil {
-		return nil, err
+	// Return the resource we are looking for.
+	if res, ok := tracker.versionCache[versionName]; ok {
+		return res, nil
 	}
-
-	return toCommonStories(issues, tracker.config), nil
+	return nil, nil
 }
 
 func toCommonStories(issues []*client.Issue, config Config) []common.Story {
+	api := newClient(config)
 	stories := make([]common.Story, len(issues))
 	for i := range issues {
-		stories[i] = &story{issues[i], config}
+		stories[i] = &story{issues[i], api}
 	}
 	return stories
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	// Internal
+	"github.com/salsita/salsaflow/errs"
 	"github.com/salsita/salsaflow/git"
 
 	// Other
@@ -21,13 +22,33 @@ func ListNewTrunkCommits() ([]*git.Commit, error) {
 	}
 	trunkBranch := config.TrunkBranchName()
 
-	// Get the list of all git tags.
-	stdout, err := git.RunCommand("tag", "--list", "v*.*.*")
+	// Get sorted release tags.
+	tags, err := ListTags()
 	if err != nil {
 		return nil, err
 	}
 
-	// Parse the output to get the list of all the version tags.
+	// In case there are no tags, take the whole trunk branch.
+	if len(tags) == 0 {
+		return git.ShowCommitRange(trunkBranch)
+	}
+
+	// Return the list of relevant commits.
+	lastTag := tags[len(tags)-1]
+	return git.ShowCommitRange(fmt.Sprintf("%v..%v", lastTag, trunkBranch))
+}
+
+// ListTags returns the list of all release tags, sorted by the versions they represent.
+func ListTags() (tags []string, err error) {
+	var task = "Get release tags"
+
+	// Get all release tags.
+	stdout, err := git.RunCommand("tag", "--list", "v*.*.*")
+	if err != nil {
+		return nil, errs.NewError(task, err, nil)
+	}
+
+	// Parse the output to get sortable versions.
 	var vers []*semver.Version
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
@@ -40,18 +61,16 @@ func ListNewTrunkCommits() ([]*git.Commit, error) {
 		vers = append(vers, ver)
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return nil, errs.NewError(task, err, nil)
 	}
 
-	// In case there are no tags, take the whole trunk branch.
-	if len(vers) == 0 {
-		return git.ShowCommitRange(trunkBranch)
-	}
-
-	// Sort the versions and pick up the highest.
+	// Sort the versions.
 	semver.Sort(vers)
-	lastRelease := vers[len(vers)-1]
 
-	// Return the list of relevant commits.
-	return git.ShowCommitRange(fmt.Sprintf("v%v..%v", lastRelease.String(), trunkBranch))
+	// Convert versions back to tag names and return.
+	tgs := make([]string, 0, len(vers))
+	for _, ver := range vers {
+		tgs = append(tgs, "v"+ver.String())
+	}
+	return tgs, nil
 }
