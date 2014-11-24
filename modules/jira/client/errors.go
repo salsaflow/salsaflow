@@ -23,7 +23,7 @@ import (
 )
 
 type Error struct {
-	ErrorMessages []string          `json:"error_messages"`
+	ErrorMessages []string          `json:"errorMessages"`
 	Errors        map[string]string `json:"errors"`
 }
 
