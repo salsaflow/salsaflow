@@ -6,7 +6,6 @@ import (
 	"net/url"
 
 	// Internal
-	"github.com/salsita/salsaflow/log"
 	"github.com/salsita/salsaflow/modules/common"
 	"github.com/salsita/salsaflow/modules/jira/client"
 	"github.com/salsita/salsaflow/version"
@@ -84,38 +83,7 @@ func (tracker *issueTracker) RunningRelease(
 }
 
 func (tracker *issueTracker) SelectActiveStoryIds(ids []string) (activeIds []string, err error) {
-	info := log.V(log.Info)
-
-	// Fetch the relevant issues
-	task := "Fetch the relevant issues"
-	info.Run(task)
-
-	issues, err := listStoriesById(newClient(tracker.config), ids)
-	if err != nil {
-		return nil, err
-	}
-
-	issueMap := make(map[string]*client.Issue)
-	for _, issue := range issues {
-		issueMap[issue.Id] = issue
-	}
-
-	// Filter the issues according to the issue state.
-	task = "Filter the issues according to the issue state"
-	var active []string
-	for _, id := range ids {
-		_, ok := issueMap[id]
-		if !ok {
-			info.Fail(task)
-			err = fmt.Errorf("issue with id %v not found", id)
-			return nil, err
-		}
-
-		// XXX: Implement this!
-		panic("Not implemented")
-	}
-
-	return active, nil
+	panic("Not implemented")
 }
 
 func (tracker *issueTracker) OpenStory(storyId string) error {
