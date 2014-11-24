@@ -84,7 +84,7 @@ func SetForBranch(ver *Version, branch string) (act action.Action, err error) {
 	// Commit changes.
 	_, err = git.RunCommand("commit", "-a",
 		"-m", fmt.Sprintf("Bump version to %v", ver),
-		"-m", "Story-Id: unassigned")
+		"-m", fmt.Sprintf("Story-Id: %v", git.StoryIdUnassignedTagValue))
 	if err != nil {
 		task := "Reset the working tree to the original state"
 		if err := git.Reset("--keep"); err != nil {

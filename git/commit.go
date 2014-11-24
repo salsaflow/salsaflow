@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const StoryIdUnassignedTagValue = "unassigned"
+
 const (
 	logScanHead = iota + 1
 	logScanMerge
@@ -80,7 +82,7 @@ func (commit *Commit) Dump(wr io.Writer) error {
 func StoryIds(commits []*Commit) []string {
 	idMap := make(map[string]struct{}, len(commits))
 	for _, commit := range commits {
-		if commit.StoryId != "" && commit.StoryId != "unassigned" {
+		if commit.StoryId != "" && commit.StoryId != StoryIdUnassignedTagValue {
 			idMap[commit.StoryId] = struct{}{}
 		}
 	}
