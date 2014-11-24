@@ -31,7 +31,7 @@ func newNextRelease(
 	nextTrunkVersion *version.Version,
 ) (*nextRelease, error) {
 
-	task := "Fetch data from JIRA"
+	task := fmt.Sprintf("Make sure JIRA version exists for release %v", trunkVersion)
 	log.Run(task)
 	projectKey := tracker.config.ProjectKey()
 	versions, _, err := newClient(tracker.config).Projects.ListVersions(projectKey)
@@ -40,7 +40,6 @@ func newNextRelease(
 	}
 
 	tag := trunkVersion.ReleaseTagString()
-	task = fmt.Sprintf("Make sure JIRA version exists for release (%v)", tag)
 	for _, v := range versions {
 		if v.Name == tag {
 			// The associated JIRA version exists, we can return a new tracker instance.
@@ -67,7 +66,7 @@ all subsequent JIRA versions for you.
 
 func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// Collect the issues to be added to the current release.
-	task := "Collect stories from the trunk branch and fetch them from JIRA"
+	task := "Collect the issues that modified trunk since the last release"
 	log.Run(task)
 	commits, err := releases.ListNewTrunkCommits()
 	if err != nil {
@@ -75,10 +74,15 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	}
 
 	// Fetch the additional issues from JIRA.
+	task = "Fetch the collected issues from JIRA"
+	log.Run(task)
 	ids := git.StoryIds(commits)
 	issues, err := listStoriesById(newClient(release.tracker.config), ids)
-	if err != nil {
+	if len(issues) == 0 && err != nil {
 		return false, errs.NewError(task, err, nil)
+	}
+	if len(issues) != len(ids) {
+		log.Warn("Some issues were dropped since they were not found in JIRA")
 	}
 
 	// Drop the issues that were already assigned to the right version.

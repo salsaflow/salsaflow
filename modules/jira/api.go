@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 
 	// Internal
@@ -193,6 +194,61 @@ func search(api *client.Client, query string) ([]*client.Issue, error) {
 }
 
 func listStoriesById(api *client.Client, ids []string) ([]*client.Issue, error) {
+	// Make sure there are some IDs being passed in.
+	if len(ids) == 0 {
+		panic("assert len(ids) != 0")
+	}
+
+	// Fetch the issues from JIRA, return immediately on success.
+	issues, err := search(api, issuesQuery(ids))
+	if err == nil {
+		return issues, err
+	}
+
+	// JIRA returns 400 Bad Request when some of the issues are not found.
+	// To handle this error, we parse the error messages (not too robust)
+	// and we try to send the request again without the IDs that were not found.
+	if err, ok := err.(*client.ErrAPI); ok {
+		invalidIdRegexp := regexp.MustCompile(
+			"A value with ID '([^']+)' does not exist for the field 'id'.")
+
+		var retry bool
+		for _, msg := range err.Err.ErrorMessages {
+			groups := invalidIdRegexp.FindStringSubmatch(msg)
+			if len(groups) == 2 {
+				for i, id := range ids {
+					if id == groups[1] {
+						ids = append(ids[:i], ids[i+1:]...)
+						retry = true
+						break
+					}
+				}
+			}
+		}
+
+		// Just take a shortcut in case there are no issues left.
+		if len(ids) == 0 {
+			return nil, err
+		}
+
+		if retry {
+			issues, ex := search(api, issuesQuery(ids))
+			if ex != nil {
+				// In case there is an error on retry, return that error.
+				return nil, ex
+			} else {
+				// In case there is no error, return the original error together with
+				// the issues that were successfully fetched on retry.
+				return issues, err
+			}
+		}
+		return nil, err
+	}
+
+	return nil, err
+}
+
+func issuesQuery(ids []string) (queryString string) {
 	var query bytes.Buffer
 	for _, id := range ids {
 		if id == "" {
@@ -200,18 +256,17 @@ func listStoriesById(api *client.Client, ids []string) ([]*client.Issue, error) 
 		}
 		if query.Len() != 0 {
 			if _, err := query.WriteString(" OR "); err != nil {
-				return nil, err
+				panic(err)
 			}
 		}
 		if _, err := query.WriteString("id="); err != nil {
-			return nil, err
+			panic(err)
 		}
 		if _, err := query.WriteString(id); err != nil {
-			return nil, err
+			panic(err)
 		}
 	}
-
-	return search(api, query.String())
+	return query.String()
 }
 
 // formatInRange takes the arguments and creates a JQL IN query for them, i.e.
