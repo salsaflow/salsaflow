@@ -146,7 +146,6 @@ func run(remoteName, pushURL string) error {
 			checkTags        bool
 			ancestorsChecked bool
 		)
-	CommitLoop:
 		for _, commit := range commits {
 			// Do not check merge commits.
 			if commit.Merge != "" {
@@ -170,11 +169,11 @@ func run(remoteName, pushURL string) error {
 						return errs.NewError(task, err, nil)
 					}
 					ancestorsChecked = true
-
-				default:
-					// checkTags false => continue looping.
-					continue CommitLoop
 				}
+			}
+
+			if !checkTags {
+				continue
 			}
 
 			// Check the Change-Id tag.
