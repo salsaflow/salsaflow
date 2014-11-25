@@ -1,0 +1,62 @@
+{
+	"ImportPath": "github.com/salsita/salsaflow",
+	"GoVersion": "go1.3.3",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "bitbucket.org/kardianos/osext",
+			"Comment": "null-15",
+			"Rev": "44140c5fc69ecf1102c5ef451d73cd98ef59b178"
+		},
+		{
+			"ImportPath": "code.google.com/p/go.text/unicode/norm",
+			"Comment": "null-112",
+			"Rev": "2f707e0ad64637ca1318279be7201f5ed19c4050"
+		},
+		{
+			"ImportPath": "code.google.com/p/goauth2/oauth",
+			"Comment": "weekly-56",
+			"Rev": "afe77d958c701557ec5dc56f6936fcc194d15520"
+		},
+		{
+			"ImportPath": "github.com/coreos/go-semver/semver",
+			"Rev": "6fe83ccda8fb9b7549c9ab4ba47f47858bc950aa"
+		},
+		{
+			"ImportPath": "github.com/extemporalgenome/slug",
+			"Rev": "de70af6e24d0e6bdd6eaef276d2e9910e68a1397"
+		},
+		{
+			"ImportPath": "github.com/google/go-github/github",
+			"Rev": "62a50bb14ba982864a5f54e344d0e05764fb41b1"
+		},
+		{
+			"ImportPath": "github.com/google/go-querystring/query",
+			"Rev": "d8840cbb2baa915f4836edda4750050a2c0b7aea"
+		},
+		{
+			"ImportPath": "github.com/toqueteos/webbrowser",
+			"Rev": "4a77f4aa7da542c319bced7a5065b5d2b4f7041b"
+		},
+		{
+			"ImportPath": "golang.org/x/text/transform",
+			"Comment": "null-112",
+			"Rev": "2f707e0ad64637ca1318279be7201f5ed19c4050"
+		},
+		{
+			"ImportPath": "gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal",
+			"Rev": "c2767a7b6c17b1e705407655fe77de5d05477ac6"
+		},
+		{
+			"ImportPath": "gopkg.in/tchap/gocli.v1",
+			"Comment": "v1.0.0",
+			"Rev": "a3534c325b9899298b7a7b2c1cf2989ad60b06b0"
+		},
+		{
+			"ImportPath": "gopkg.in/yaml.v2",
+			"Rev": "eca94c41d994ae2215d455ce578ae6e2dc6ee516"
+		}
+	]
+}
