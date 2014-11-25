@@ -522,23 +522,24 @@ func printFollowup() {
 	log.Println(`
 ----------
 
-Now, take some time to go through all the review requests, please,
+Now, please, take some time to go through all the review requests
 to check and annotate them for the reviewers to make their part easier.
 
-If you find any issues you want to fix (even before publishing), do so now,
-and if you haven't merged or pushed yet, amend the relevant commit and use
+If you find any issues you want to fix (even before publishing),
+do so now, and if you haven't pushed into any shared branch yet,
+amend the relevant commit and use
 
   $ salsaflow review post -update REVIEW_REQUEST_ID [REVISION]
 
 to update (replace) the associated review request. Do this for every review
 request you want to overwrite.
 
-In case you cannot amend the relevant commits any more, make sure the affected
-review request is published and use the usual process for fixing review issues
+In case you cannot amend the relevant commit any more, make sure the affected
+review request is published, and use the process for fixing review issues:
 
   $ salsaflow review post -fixes REVIEW_REQUEST_ID [REVISION]
 
-to create a new review request that is linked to the one being fixed.
+This will create a new review request that is linked to the one being fixed.
 
   ###########################################################
   # IMPORTANT: Your code has not been merged and/or pushed. #
