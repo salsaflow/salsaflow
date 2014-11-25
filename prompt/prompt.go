@@ -119,7 +119,8 @@ func PromptStory(msg string, stories []common.Story) (common.Story, error) {
 	fmt.Println()
 
 	// Prompt the user to select a story to assign the commit with.
-	index, err := PromptIndex("Choose a story by inserting its index: ", 0, len(stories)-1)
+	index, err := PromptIndex(
+		"Choose a story by inserting its index. Just press Enter to abort: ", 0, len(stories)-1)
 	if err != nil {
 		if err == ErrCanceled {
 			return nil, ErrCanceled
