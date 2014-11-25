@@ -3,6 +3,7 @@ package prompt
 import (
 	// Stdlib
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -104,8 +105,12 @@ func PromptStory(msg string, stories []common.Story) (common.Story, error) {
 
 	// Make sure there are actually some stories to be printed.
 	if len(stories) == 0 {
-		fmt.Println("There are no stories to choose from!")
-		return nil, errs.NewError(task, errors.New("no stories to be offered"), nil)
+		return nil, errs.NewError(task, errors.New("no stories to choose from"),
+			bytes.NewBufferString(`
+There are no stories that the unassigned commits can be assigned to.
+In other words, there are no stories in the right state for that.
+
+`))
 	}
 
 	// Print the intro message.
