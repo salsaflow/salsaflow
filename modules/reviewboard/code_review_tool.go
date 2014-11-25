@@ -114,6 +114,14 @@ func formatOptInteger(value interface{}) string {
 }
 
 func ensureRbtVersion() error {
+	hint := bytes.NewBufferString(`
+You need to install RBTools version 0.6. Please run
+
+  $ pip install rbtools~=0.6 --allow-external rbtools --allow-unverified rbtools
+
+to install the correct version.
+
+`)
 	// Load configuration and check the RBTools version only if Review Board is being used.
 	config, err := common.LoadConfig()
 	if err != nil {
@@ -130,7 +138,9 @@ func ensureRbtVersion() error {
 	// rbt prints the version string to stderr. WHY? Who knows...
 	_, stderr, err := shell.Run("rbt", "--version")
 	if err != nil {
-		return errs.NewError(task, err, stderr)
+		// Return the hint instead of stderr.
+		// Failing to run rbt --version probably means that it's not installed.
+		return errs.NewError(task, err, hint)
 	}
 
 	pattern := regexp.MustCompile("^RBTools (([0-9]+)[.]([0-9]+).*)")
@@ -145,18 +155,8 @@ func ensureRbtVersion() error {
 	minor, _ := strconv.Atoi(parts[3])
 
 	if !(major == 0 && minor == 6) {
-		hint := `
-You need RBTools version 0.6. Please run
-
-  $ pip install rbtools~=0.6 --allow-external rbtools --allow-unverified rbtools
-
-to install the correct version.
-
-`
 		return errs.NewError(
-			task,
-			errors.New("unsupported rbt version detected: "+rbtVersion),
-			bytes.NewBufferString(hint))
+			task, errors.New("unsupported rbt version detected: "+rbtVersion), hint)
 	}
 
 	return nil
