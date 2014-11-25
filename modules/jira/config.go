@@ -18,7 +18,7 @@ const Id = "jira"
 
 type LocalConfig struct {
 	JIRA struct {
-		BaseURL    string `yaml:"base_url"`
+		BaseURL    string `yaml:"server_url"`
 		ProjectKey string `yaml:"project_key"`
 	} `yaml:"jira"`
 }
@@ -30,13 +30,13 @@ func (local *LocalConfig) validate() error {
 	)
 	switch {
 	case jr.BaseURL == "":
-		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".base_url"}, nil)
+		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".server_url"}, nil)
 	case jr.ProjectKey == "":
 		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".project_key"}, nil)
 	}
 
 	if _, err := url.Parse(jr.BaseURL); err != nil {
-		return errs.NewError(task, &config.ErrKeyInvalid{Id + ".base_url", jr.BaseURL}, nil)
+		return errs.NewError(task, &config.ErrKeyInvalid{Id + ".server_url", jr.BaseURL}, nil)
 	}
 
 	return nil
@@ -45,7 +45,7 @@ func (local *LocalConfig) validate() error {
 // Global configuration --------------------------------------------------------
 
 type Credentials struct {
-	Base     string `yaml:"base_prefix"`
+	Base     string `yaml:"server_prefix"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
 }
