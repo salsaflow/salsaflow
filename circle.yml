@@ -10,7 +10,8 @@ dependencies:
   cache_directories:
     - "~/cache/gonative"
   pre:
-    - "make -C \"$WORKSPACE/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME\" update-deps":
+    - "go get github.com/tools/godep"
+    - "make -C \"$WORKSPACE/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME\" deps.restore":
         environment:
           GOPATH: "$HOME/workspace:$GOPATH"
     - "cd \"$WORKSPACE/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME\" && ./circle_build_gonative.bash"
@@ -31,7 +32,6 @@ dependencies:
           GOPATH: "$HOME/workspace:$GOPATH"
           GOROOT: "$HOME/cache/gonative/go"
           PATH:   "$HOME/cache/gonative/go/bin:$PATH"
-
 test:
   override:
     - "echo \"NO TESTS\""
