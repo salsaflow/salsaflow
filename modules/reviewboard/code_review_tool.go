@@ -9,12 +9,12 @@ import (
 	"strconv"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/git"
-	"github.com/salsita/salsaflow/log"
-	"github.com/salsita/salsaflow/modules/common"
-	"github.com/salsita/salsaflow/repo"
-	"github.com/salsita/salsaflow/shell"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/modules/common"
+	"github.com/salsaflow/salsaflow/repo"
+	"github.com/salsaflow/salsaflow/shell"
 )
 
 func init() {

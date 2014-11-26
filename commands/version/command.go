@@ -6,9 +6,9 @@ import (
 	"os"
 
 	// Internal
-	"github.com/salsita/salsaflow/commands/version/bump"
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/version"
+	"github.com/salsaflow/salsaflow/commands/version/bump"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/version"
 
 	// Other
 	"gopkg.in/tchap/gocli.v1"

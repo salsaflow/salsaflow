@@ -1,8 +1,8 @@
 package scripts
 
 import (
-	"github.com/salsita/salsaflow/config"
-	"github.com/salsita/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/config"
+	"github.com/salsaflow/salsaflow/errs"
 )
 
 // Local configuration -------------------------------------------------------

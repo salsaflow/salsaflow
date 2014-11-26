@@ -6,7 +6,7 @@ import (
 	"sort"
 
 	// Internal
-	"github.com/salsita/salsaflow/git"
+	"github.com/salsaflow/salsaflow/git"
 )
 
 type Change struct {

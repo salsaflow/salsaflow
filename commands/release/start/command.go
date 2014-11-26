@@ -6,13 +6,13 @@ import (
 	"os"
 
 	// Internal
-	"github.com/salsita/salsaflow/action"
-	"github.com/salsita/salsaflow/app"
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/git"
-	"github.com/salsita/salsaflow/log"
-	"github.com/salsita/salsaflow/modules"
-	"github.com/salsita/salsaflow/version"
+	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/modules"
+	"github.com/salsaflow/salsaflow/version"
 
 	// Other
 	"github.com/coreos/go-semver/semver"

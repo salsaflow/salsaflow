@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/modules/common"
-	"github.com/salsita/salsaflow/modules/jira/client"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/modules/common"
+	"github.com/salsaflow/salsaflow/modules/jira/client"
 )
 
 type story struct {

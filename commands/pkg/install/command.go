@@ -6,11 +6,11 @@ import (
 	"os"
 
 	// Internal
-	"github.com/salsita/salsaflow/app"
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/log"
-	"github.com/salsita/salsaflow/pkg"
-	"github.com/salsita/salsaflow/version"
+	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/pkg"
+	"github.com/salsaflow/salsaflow/version"
 
 	// Other
 	"gopkg.in/tchap/gocli.v1"

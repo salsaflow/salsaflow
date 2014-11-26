@@ -3,7 +3,7 @@
 set -e
 set -x
 
-SOURCES="$WORKSPACE/src/github.com/salsita/salsaflow"
+SOURCES="$WORKSPACE/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
 DST="$WORKSPACE/bin/dist"
 
 SALSAFLOW_VERSION="$(echo -n `"$SOURCES/salsaflow_linux_amd64" version`)"

@@ -9,12 +9,12 @@ import (
 	"strings"
 
 	// Internal
-	"github.com/salsita/salsaflow/app"
-	"github.com/salsita/salsaflow/config"
-	"github.com/salsita/salsaflow/git"
-	"github.com/salsita/salsaflow/log"
-	"github.com/salsita/salsaflow/modules"
-	"github.com/salsita/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/config"
+	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/modules"
+	"github.com/salsaflow/salsaflow/prompt"
 
 	// Other
 	"gopkg.in/tchap/gocli.v1"

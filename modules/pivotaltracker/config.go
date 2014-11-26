@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	// Internal
-	cfg "github.com/salsita/salsaflow/config"
-	"github.com/salsita/salsaflow/log"
+	cfg "github.com/salsaflow/salsaflow/config"
+	"github.com/salsaflow/salsaflow/log"
 )
 
 const (

@@ -6,10 +6,10 @@ import (
 	"flag"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	flags "github.com/salsita/salsaflow/flag"
-	"github.com/salsita/salsaflow/log"
-	"github.com/salsita/salsaflow/repo"
+	"github.com/salsaflow/salsaflow/errs"
+	flags "github.com/salsaflow/salsaflow/flag"
+	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/repo"
 )
 
 var ErrRepositoryNotInitialised = errors.New("repository not initialised")

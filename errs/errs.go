@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	// Internal
-	"github.com/salsita/salsaflow/log"
+	"github.com/salsaflow/salsaflow/log"
 )
 
 type Error struct {

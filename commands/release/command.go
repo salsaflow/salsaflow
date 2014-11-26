@@ -1,10 +1,10 @@
 package releaseCmd
 
 import (
-	"github.com/salsita/salsaflow/commands/release/changes"
-	"github.com/salsita/salsaflow/commands/release/deploy"
-	"github.com/salsita/salsaflow/commands/release/stage"
-	"github.com/salsita/salsaflow/commands/release/start"
+	"github.com/salsaflow/salsaflow/commands/release/changes"
+	"github.com/salsaflow/salsaflow/commands/release/deploy"
+	"github.com/salsaflow/salsaflow/commands/release/stage"
+	"github.com/salsaflow/salsaflow/commands/release/start"
 
 	"gopkg.in/tchap/gocli.v1"
 )

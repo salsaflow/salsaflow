@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	// Internal
-	"github.com/salsita/salsaflow/asciiart"
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/git"
-	"github.com/salsita/salsaflow/hooks"
-	"github.com/salsita/salsaflow/uuid"
+	"github.com/salsaflow/salsaflow/asciiart"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/hooks"
+	"github.com/salsaflow/salsaflow/uuid"
 )
 
 const diffSeparator = "# ------------------------ >8 ------------------------"

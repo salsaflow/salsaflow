@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	// Internal
-	"github.com/salsita/salsaflow/action"
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/git"
-	"github.com/salsita/salsaflow/log"
+	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/log"
 )
 
 func GetByBranch(branch string) (ver *Version, err error) {

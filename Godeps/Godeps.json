@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/salsita/salsaflow",
+	"ImportPath": "github.com/salsaflow/salsaflow",
 	"GoVersion": "go1.3.3",
 	"Packages": [
 		"./..."

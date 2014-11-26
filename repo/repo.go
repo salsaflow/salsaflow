@@ -9,12 +9,12 @@ import (
 	"strconv"
 
 	// Internal
-	"github.com/salsita/salsaflow/app/metadata"
-	"github.com/salsita/salsaflow/asciiart"
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/git"
-	"github.com/salsita/salsaflow/hooks"
-	"github.com/salsita/salsaflow/log"
+	"github.com/salsaflow/salsaflow/app/metadata"
+	"github.com/salsaflow/salsaflow/asciiart"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/hooks"
+	"github.com/salsaflow/salsaflow/log"
 )
 
 var initHooks []InitHook

@@ -13,8 +13,8 @@ import (
 	"text/tabwriter"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/modules/common"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/modules/common"
 )
 
 // maxStoryTitleColumnWidth specifies the width of the story title column for story listing.

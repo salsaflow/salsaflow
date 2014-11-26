@@ -12,8 +12,8 @@ import (
 	"runtime"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/log"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/log"
 
 	// Other
 	"bitbucket.org/kardianos/osext"

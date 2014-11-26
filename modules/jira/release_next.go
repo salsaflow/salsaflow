@@ -7,14 +7,14 @@ import (
 	"os"
 
 	// Internal
-	"github.com/salsita/salsaflow/action"
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/git"
-	"github.com/salsita/salsaflow/log"
-	"github.com/salsita/salsaflow/modules/jira/client"
-	"github.com/salsita/salsaflow/prompt"
-	"github.com/salsita/salsaflow/releases"
-	"github.com/salsita/salsaflow/version"
+	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/modules/jira/client"
+	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/releases"
+	"github.com/salsaflow/salsaflow/version"
 )
 
 type nextRelease struct {
