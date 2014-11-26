@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	// Internal
-	"github.com/salsita/salsaflow/log"
+	"github.com/salsaflow/salsaflow/log"
 )
 
 var ErrCanceled = errors.New("operation canceled")

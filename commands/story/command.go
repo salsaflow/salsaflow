@@ -1,9 +1,9 @@
 package storyCmd
 
 import (
-	"github.com/salsita/salsaflow/commands/story/changes"
-	"github.com/salsita/salsaflow/commands/story/open"
-	"github.com/salsita/salsaflow/commands/story/start"
+	"github.com/salsaflow/salsaflow/commands/story/changes"
+	"github.com/salsaflow/salsaflow/commands/story/open"
+	"github.com/salsaflow/salsaflow/commands/story/start"
 
 	"gopkg.in/tchap/gocli.v1"
 )

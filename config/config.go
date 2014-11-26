@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/git/gitutil"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git/gitutil"
 
 	// Other
 	"gopkg.in/yaml.v2"

@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/git"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git"
 
 	// Other
 	"github.com/coreos/go-semver/semver"

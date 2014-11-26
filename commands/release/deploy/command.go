@@ -10,15 +10,15 @@ import (
 	"text/tabwriter"
 
 	// Internal
-	"github.com/salsita/salsaflow/app"
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/git"
-	"github.com/salsita/salsaflow/log"
-	"github.com/salsita/salsaflow/modules"
-	"github.com/salsita/salsaflow/modules/common"
-	"github.com/salsita/salsaflow/prompt"
-	"github.com/salsita/salsaflow/releases"
-	"github.com/salsita/salsaflow/version"
+	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/modules"
+	"github.com/salsaflow/salsaflow/modules/common"
+	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/releases"
+	"github.com/salsaflow/salsaflow/version"
 
 	// Other
 	"gopkg.in/tchap/gocli.v1"

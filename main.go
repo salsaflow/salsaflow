@@ -7,14 +7,14 @@ import (
 	"os/signal"
 
 	// Internal
-	"github.com/salsita/salsaflow/app"
-	"github.com/salsita/salsaflow/app/metadata"
-	"github.com/salsita/salsaflow/commands/pkg"
-	"github.com/salsita/salsaflow/commands/release"
-	"github.com/salsita/salsaflow/commands/repo"
-	"github.com/salsita/salsaflow/commands/review"
-	"github.com/salsita/salsaflow/commands/story"
-	"github.com/salsita/salsaflow/commands/version"
+	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/app/metadata"
+	"github.com/salsaflow/salsaflow/commands/pkg"
+	"github.com/salsaflow/salsaflow/commands/release"
+	"github.com/salsaflow/salsaflow/commands/repo"
+	"github.com/salsaflow/salsaflow/commands/review"
+	"github.com/salsaflow/salsaflow/commands/story"
+	"github.com/salsaflow/salsaflow/commands/version"
 
 	// Other
 	"gopkg.in/tchap/gocli.v1"

@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/modules/jira/client"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/modules/jira/client"
 )
 
 // API client instantiation ----------------------------------------------------

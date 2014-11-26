@@ -1,7 +1,7 @@
 package asciiart
 
 import (
-	"github.com/salsita/salsaflow/log"
+	"github.com/salsaflow/salsaflow/log"
 )
 
 func PrintThumbsUp() {

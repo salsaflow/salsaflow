@@ -6,9 +6,9 @@ import (
 	"net/url"
 
 	// Internal
-	"github.com/salsita/salsaflow/modules/common"
-	"github.com/salsita/salsaflow/modules/jira/client"
-	"github.com/salsita/salsaflow/version"
+	"github.com/salsaflow/salsaflow/modules/common"
+	"github.com/salsaflow/salsaflow/modules/jira/client"
+	"github.com/salsaflow/salsaflow/version"
 
 	// Other
 	"github.com/toqueteos/webbrowser"

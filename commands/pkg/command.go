@@ -1,8 +1,8 @@
 package pkgCmd
 
 import (
-	"github.com/salsita/salsaflow/commands/pkg/install"
-	"github.com/salsita/salsaflow/commands/pkg/upgrade"
+	"github.com/salsaflow/salsaflow/commands/pkg/install"
+	"github.com/salsaflow/salsaflow/commands/pkg/upgrade"
 
 	"gopkg.in/tchap/gocli.v1"
 )

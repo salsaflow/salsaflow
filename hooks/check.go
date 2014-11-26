@@ -9,12 +9,12 @@ import (
 	"strings"
 
 	// Internal
-	"github.com/salsita/salsaflow/app/metadata"
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/git/gitutil"
-	"github.com/salsita/salsaflow/log"
-	"github.com/salsita/salsaflow/prompt"
-	"github.com/salsita/salsaflow/shell"
+	"github.com/salsaflow/salsaflow/app/metadata"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git/gitutil"
+	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/shell"
 
 	// Other
 	"bitbucket.org/kardianos/osext"

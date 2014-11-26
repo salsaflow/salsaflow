@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/modules/common"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/modules/common"
 
 	// Other
 	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"

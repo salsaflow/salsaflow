@@ -1,7 +1,7 @@
 package repoCmd
 
 import (
-	"github.com/salsita/salsaflow/commands/repo/init"
+	"github.com/salsaflow/salsaflow/commands/repo/init"
 
 	"gopkg.in/tchap/gocli.v1"
 )

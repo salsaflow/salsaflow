@@ -9,7 +9,7 @@ import (
 	"text/tabwriter"
 
 	// Internal
-	"github.com/salsita/salsaflow/version"
+	"github.com/salsaflow/salsaflow/version"
 
 	// Other
 	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"

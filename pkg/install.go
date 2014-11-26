@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/log"
-	"github.com/salsita/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/prompt"
 
 	// Other
 	"github.com/google/go-github/github"

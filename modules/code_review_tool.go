@@ -6,11 +6,11 @@ import (
 	"fmt"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/modules/common"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/modules/common"
 
 	// Internal: modules
-	"github.com/salsita/salsaflow/modules/reviewboard"
+	"github.com/salsaflow/salsaflow/modules/reviewboard"
 )
 
 // CodeReviewTool instantiation ------------------------------------------------

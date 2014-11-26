@@ -1,7 +1,7 @@
 package reviewCmd
 
 import (
-	"github.com/salsita/salsaflow/commands/review/post"
+	"github.com/salsaflow/salsaflow/commands/review/post"
 
 	"gopkg.in/tchap/gocli.v1"
 )

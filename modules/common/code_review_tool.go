@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/salsita/salsaflow/git"
+	"github.com/salsaflow/salsaflow/git"
 )
 
 // CodeReviewTool interface ----------------------------------------------------

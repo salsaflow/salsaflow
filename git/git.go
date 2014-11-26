@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	// Internal
-	"github.com/salsita/salsaflow/action"
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/shell"
+	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/shell"
 
 	// Internal
-	"github.com/salsita/salsaflow/git/gitutil"
+	"github.com/salsaflow/salsaflow/git/gitutil"
 )
 
 func Add(args ...string) error {

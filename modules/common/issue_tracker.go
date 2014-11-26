@@ -5,9 +5,9 @@ import (
 	"errors"
 
 	// Internal
-	"github.com/salsita/salsaflow/action"
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/version"
+	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/version"
 )
 
 var ErrReleaseNotFound = errors.New("release not found")

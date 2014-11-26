@@ -7,7 +7,7 @@ import (
 	"os"
 
 	// Internal
-	"github.com/salsita/salsaflow/app/metadata"
+	"github.com/salsaflow/salsaflow/app/metadata"
 )
 
 const versionFlag = "salsaflow.version"

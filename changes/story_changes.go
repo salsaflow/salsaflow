@@ -5,8 +5,8 @@ import (
 	"regexp"
 
 	// Internal
-	"github.com/salsita/salsaflow/git"
-	"github.com/salsita/salsaflow/modules/common"
+	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/modules/common"
 )
 
 type StoryChangeGroup struct {

@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/errs"
 )
 
 const (

@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/shell"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/shell"
 )
 
 func Run(args ...string) (stdout *bytes.Buffer, err error) {

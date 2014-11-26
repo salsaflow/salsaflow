@@ -2,10 +2,10 @@ package pivotaltracker
 
 import (
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/log"
-	"github.com/salsita/salsaflow/modules/common"
-	"github.com/salsita/salsaflow/version"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/modules/common"
+	"github.com/salsaflow/salsaflow/version"
 
 	// Other
 	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"

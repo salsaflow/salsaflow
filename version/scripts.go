@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	// Internal
-	"github.com/salsita/salsaflow/errs"
-	"github.com/salsita/salsaflow/scripts"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/scripts"
 )
 
 // Get runs the get_version script.
