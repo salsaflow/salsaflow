@@ -96,10 +96,10 @@ func StoryIds(commits []*Commit) []string {
 
 // ListStoryCommits returns the list of all commits that are associated with the given story.
 func ListStoryCommits(storyId string) ([]*Commit, error) {
-	return GrepCommits(fmt.Sprintf("[sS][tT][oO][rR][yY]-[iI][dD]: %v$", storyId))
+	return GrepCommitsCaseInsensitive(fmt.Sprintf("Story-Id: %v$", storyId))
 }
 
-func GrepCommits(filter string) ([]*Commit, error) {
+func GrepCommitsCaseInsensitive(filter string) ([]*Commit, error) {
 	args := []string{
 		"log",
 		"--all",
@@ -107,6 +107,7 @@ func GrepCommits(filter string) ([]*Commit, error) {
 		"--abbrev-commit",
 		"--pretty=fuller",
 		"--grep=" + filter,
+		"--regexp-ignore-case",
 	}
 	stdout, err := Run(args...)
 	if err != nil {
