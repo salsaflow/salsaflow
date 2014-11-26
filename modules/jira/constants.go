@@ -39,6 +39,9 @@ var inDevelopmentStateIds = []string{
 	stateIdImplemented,
 }
 
+// To pass the staging check, all the issues associated with the given release
+// must be in one of the following states. However, only the issues what are
+// Tested are in the end moved to the Staged state, the rest if left as it is.
 var stageableStateIds = []string{
 	stateIdTested,
 	stateIdStaged,
