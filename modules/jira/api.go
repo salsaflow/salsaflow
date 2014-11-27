@@ -31,8 +31,8 @@ func (rt *BasicAuthRoundTripper) RoundTrip(req *http.Request) (*http.Response, e
 
 func newClient(config Config) *client.Client {
 	relativeURL, _ := url.Parse("rest/api/2/")
-	baseURL := config.BaseURL().ResolveReference(relativeURL)
-	return client.New(baseURL, &http.Client{
+	serverURL := config.ServerURL().ResolveReference(relativeURL)
+	return client.New(serverURL, &http.Client{
 		Transport: &BasicAuthRoundTripper{
 			username: config.Username(),
 			password: config.Password(),
