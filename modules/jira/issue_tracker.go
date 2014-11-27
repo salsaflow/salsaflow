@@ -88,7 +88,7 @@ func (tracker *issueTracker) SelectActiveStoryIds(ids []string) (activeIds []str
 
 func (tracker *issueTracker) OpenStory(storyId string) error {
 	relativeURL, _ := url.Parse("browse/" + storyId)
-	return webbrowser.Open(tracker.config.BaseURL().ResolveReference(relativeURL).String())
+	return webbrowser.Open(tracker.config.ServerURL().ResolveReference(relativeURL).String())
 }
 
 func (tracker *issueTracker) getVersionResource(ver *version.Version) (*client.Version, error) {

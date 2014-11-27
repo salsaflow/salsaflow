@@ -18,7 +18,7 @@ const Id = "jira"
 
 type LocalConfig struct {
 	JIRA struct {
-		BaseURL    string `yaml:"server_url"`
+		ServerURL  string `yaml:"server_url"`
 		ProjectKey string `yaml:"project_key"`
 	} `yaml:"jira"`
 }
@@ -29,14 +29,14 @@ func (local *LocalConfig) validate() error {
 		jr   = &local.JIRA
 	)
 	switch {
-	case jr.BaseURL == "":
+	case jr.ServerURL == "":
 		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".server_url"}, nil)
 	case jr.ProjectKey == "":
 		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".project_key"}, nil)
 	}
 
-	if _, err := url.Parse(jr.BaseURL); err != nil {
-		return errs.NewError(task, &config.ErrKeyInvalid{Id + ".server_url", jr.BaseURL}, nil)
+	if _, err := url.Parse(jr.ServerURL); err != nil {
+		return errs.NewError(task, &config.ErrKeyInvalid{Id + ".server_url", jr.ServerURL}, nil)
 	}
 
 	return nil
@@ -45,9 +45,27 @@ func (local *LocalConfig) validate() error {
 // Global configuration --------------------------------------------------------
 
 type Credentials struct {
-	Base     string `yaml:"server_prefix"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
+	index int
+
+	ServerPrefix string `yaml:"server_prefix"`
+	Username     string `yaml:"username"`
+	Password     string `yaml:"password"`
+}
+
+func (cred *Credentials) validate() error {
+	task := "Validate selected JIRA credentials"
+	switch {
+	case cred.ServerPrefix == "":
+		key := fmt.Sprintf("%v.credentials[%v].server_prefix", Id, cred.index)
+		return errs.NewError(task, &config.ErrKeyNotSet{key}, nil)
+	case cred.Username == "":
+		key := fmt.Sprintf("%v.credentials[%v].username", Id, cred.index)
+		return errs.NewError(task, &config.ErrKeyNotSet{key}, nil)
+	case cred.Password == "":
+		key := fmt.Sprintf("%v.credentials[%v].password", Id, cred.index)
+		return errs.NewError(task, &config.ErrKeyNotSet{key}, nil)
+	}
+	return nil
 }
 
 type GlobalConfig struct {
@@ -59,7 +77,7 @@ type GlobalConfig struct {
 // Proxy struct ----------------------------------------------------------------
 
 type Config interface {
-	BaseURL() *url.URL
+	ServerURL() *url.URL
 	Username() string
 	Password() string
 	ProjectKey() string
@@ -87,18 +105,18 @@ func LoadConfig() (Config, error) {
 	// Process the project key.
 	proxy.projectKey = local.JIRA.ProjectKey
 
-	// Process the base URL.
-	base := local.JIRA.BaseURL
-	if !strings.HasSuffix(base, "/") {
-		base += "/"
+	// Process the server URL.
+	server := local.JIRA.ServerURL
+	if !strings.HasSuffix(server, "/") {
+		server += "/"
 	}
-	baseURL, err := url.Parse(base)
+	serverURL, err := url.Parse(server)
 	if err != nil {
 		// Already checked during validation,
 		// so let's just explode on error.
 		panic(err)
 	}
-	proxy.baseURL = baseURL
+	proxy.serverURL = serverURL
 
 	// Load global config.
 	var global GlobalConfig
@@ -107,9 +125,12 @@ func LoadConfig() (Config, error) {
 	}
 
 	// Process the credentials.
-	creds := credentialsForBaseURL(global.JIRA.Credentials, baseURL)
+	creds := credentialsForServerURL(global.JIRA.Credentials, serverURL)
 	if creds == nil {
-		return nil, fmt.Errorf("no JIRA credentials found for base URL '%v'", baseURL)
+		return nil, fmt.Errorf("no JIRA credentials found for server URL '%v'", serverURL)
+	}
+	if err := creds.validate(); err != nil {
+		return nil, err
 	}
 	proxy.creds = creds
 
@@ -119,13 +140,13 @@ func LoadConfig() (Config, error) {
 }
 
 type configProxy struct {
-	baseURL    *url.URL
+	serverURL  *url.URL
 	creds      *Credentials
 	projectKey string
 }
 
-func (proxy *configProxy) BaseURL() *url.URL {
-	return proxy.baseURL
+func (proxy *configProxy) ServerURL() *url.URL {
+	return proxy.serverURL
 }
 
 func (proxy *configProxy) Username() string {
@@ -140,27 +161,29 @@ func (proxy *configProxy) ProjectKey() string {
 	return proxy.projectKey
 }
 
-// credentialsForBaseURL finds the credentials matching the given base URL the best,
-// i.e. the associated base prefix is the longest available.
-func credentialsForBaseURL(credList []*Credentials, base *url.URL) *Credentials {
+// credentialsForServerURL finds the credentials matching the given server URL the best,
+// i.e. the associated server prefix is the longest available.
+func credentialsForServerURL(credList []*Credentials, serverURL *url.URL) *Credentials {
 	var (
 		longestMatch *Credentials
-		prefix       = path.Join(base.Host, base.Path)
+		prefix       = path.Join(serverURL.Host, serverURL.Path)
 	)
-	for _, cred := range credList {
+	for i, cred := range credList {
+		cred.index = i
+
 		// Drop the scheme.
-		credBaseURL, err := url.Parse(cred.Base)
+		credServerURL, err := url.Parse(cred.ServerPrefix)
 		if err != nil {
 			continue
 		}
-		credPrefix := path.Join(credBaseURL.Host, credBaseURL.Path)
+		credPrefix := path.Join(credServerURL.Host, credServerURL.Path)
 
 		// Continue if the prefixes do not match at all.
 		if !strings.HasPrefix(credPrefix, prefix) {
 			continue
 		}
-		// Replace only if the current base prefix is longer.
-		if longestMatch == nil || len(longestMatch.Base) < len(cred.Base) {
+		// Replace only if the current server prefix is longer.
+		if longestMatch == nil || len(longestMatch.ServerPrefix) < len(cred.ServerPrefix) {
 			longestMatch = cred
 		}
 	}
