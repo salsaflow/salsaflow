@@ -132,11 +132,11 @@ func runMain() error {
 			return errs.NewError(task, err, nil)
 		}
 
-		stories, err := release.CheckReleasable()
+		ok, err := release.Releasable()
 		if err != nil {
 			return errs.NewError(task, err, nil)
 		}
-		if len(stories) != 0 {
+		if !ok {
 			log.Log(fmt.Sprintf("Release '%v' is not releasable", tag))
 			continue
 		}
