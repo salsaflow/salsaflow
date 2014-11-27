@@ -72,6 +72,6 @@ type RunningRelease interface {
 	Stories() ([]Story, error)
 	EnsureStageable() error
 	Stage() (action.Action, error)
-	CheckReleasable() (unreleasable []Story, err error)
+	Releasable() (bool, error)
 	Release() error
 }

@@ -127,7 +127,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	}), nil
 }
 
-func (release *runningRelease) CheckReleasable() ([]common.Story, error) {
+func (release *runningRelease) Releasable() (bool, error) {
 	// Drop accepted issues.
 	var notAccepted []*client.Issue
 IssueLoop:
@@ -140,8 +140,8 @@ IssueLoop:
 		notAccepted = append(notAccepted, issue)
 	}
 
-	// Return what is left.
-	return toCommonStories(notAccepted, release.tracker.config), nil
+	// Return the result.
+	return len(notAccepted) == 0, nil
 }
 
 func (release *runningRelease) Release() error {
