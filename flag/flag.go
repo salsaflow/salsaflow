@@ -52,7 +52,7 @@ func (enum *StringEnumFlag) Set(value string) error {
 			return nil
 		}
 	}
-	return errors.New("not one of the possible enum values: " + value)
+	return errors.New("not one of the possible enum values")
 }
 
 func (enum *StringEnumFlag) Value() string {
