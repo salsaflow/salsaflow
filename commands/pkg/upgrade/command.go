@@ -12,7 +12,7 @@ import (
 	"github.com/salsaflow/salsaflow/pkg"
 
 	// Other
-	"gopkg.in/tchap/gocli.v1"
+	"gopkg.in/tchap/gocli.v2"
 )
 
 var Command = &gocli.Command{

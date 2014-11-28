@@ -16,7 +16,7 @@ import (
 
 	// Other
 	"github.com/coreos/go-semver/semver"
-	"gopkg.in/tchap/gocli.v1"
+	"gopkg.in/tchap/gocli.v2"
 )
 
 var Command = &gocli.Command{

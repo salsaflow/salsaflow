@@ -50,9 +50,9 @@
 			"Rev": "c2767a7b6c17b1e705407655fe77de5d05477ac6"
 		},
 		{
-			"ImportPath": "gopkg.in/tchap/gocli.v1",
-			"Comment": "v1.0.0",
-			"Rev": "a3534c325b9899298b7a7b2c1cf2989ad60b06b0"
+			"ImportPath": "gopkg.in/tchap/gocli.v2",
+			"Comment": "v2.0.0-1-gcef534f",
+			"Rev": "cef534fa45fb0c03312a58d09093db6e0e0753f5"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",

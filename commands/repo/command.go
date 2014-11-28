@@ -3,7 +3,7 @@ package repoCmd
 import (
 	"github.com/salsaflow/salsaflow/commands/repo/init"
 
-	"gopkg.in/tchap/gocli.v1"
+	"gopkg.in/tchap/gocli.v2"
 )
 
 var Command = &gocli.Command{
