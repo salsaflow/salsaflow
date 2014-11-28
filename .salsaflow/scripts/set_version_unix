@@ -10,6 +10,9 @@ if [ -z "$version" ]; then
 	exit 1
 fi
 
+# Create the metadata package directory.
+mkdir -p app/metadata
+
 # Write the version string into version.go so that it gets
 # compiled into the resulting executable.
 cat > app/metadata/version.go <<-EOF
@@ -22,3 +25,6 @@ package metadata
 
 const Version = "$version"
 EOF
+
+# Stage the version file to be sure it is committed.
+git add app/metadata/version.go
