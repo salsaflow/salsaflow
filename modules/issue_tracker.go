@@ -21,6 +21,14 @@ var issueTrackerFactories = map[string]IssueTrackerFactory{
 	jira.Id: jira.Factory,
 }
 
+func AvailableIssueTrackerKeys() []string {
+	keys := make([]string, 0, len(issueTrackerFactories))
+	for key := range issueTrackerFactories {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
 func GetIssueTracker() (common.IssueTracker, error) {
 	// Load configuration.
 	config, err := common.LoadConfig()
