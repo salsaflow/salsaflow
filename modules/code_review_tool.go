@@ -21,6 +21,14 @@ var codeReviewToolFactories = map[string]CodeReviewToolFactory{
 	reviewboard.Id: reviewboard.Factory,
 }
 
+func AvailableCodeReviewToolKeys() []string {
+	keys := make([]string, 0, len(codeReviewToolFactories))
+	for key := range codeReviewToolFactories {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
 func GetCodeReviewTool() (common.CodeReviewTool, error) {
 	// Load configuration.
 	config, err := common.LoadConfig()
