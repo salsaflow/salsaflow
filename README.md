@@ -116,26 +116,6 @@ review_board:
 
 The configuration for all available modules is described in more details later.
 
-#### Scripts ####
-
-SalsaFlow occasionally needs to perform an action that depends on the project type,
-e.g. to increment the version number when handling releases. These custom actions
-are configures in the `scripts` section of the local configuration file.
-
-Every values in this section must be a path to the relevant script relative from
-the repository root.
-
-##### Get Project Version #####
-
-The script located at `scripts.get_version` is expected to print the current
-version string to stdout.
-
-##### Set Project Version #####
-
-The script located at `scripts.set_version` script is expected to bump
-the version string to the values that is passed to it as the first and only argument.
-SalsaFlow will handle the committing, just make sure the modified files are staged.
-
 ## Modules ##
 
 SalsaFlow interacts with various services to carry out requested actions.

@@ -4,13 +4,18 @@ import (
 	// Stdlib
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/config"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git/gitutil"
 )
+
+const ScriptDirname = "scripts"
 
 const (
 	ScriptNameGetVersion = "get_version"
@@ -18,37 +23,46 @@ const (
 )
 
 func Run(name string, args ...string) (stdout *bytes.Buffer, err error) {
-	// Get the scripts config section.
-	config, err := LoadConfig()
-	if err != nil {
-		return nil, err
-	}
-
 	// Get the repository root.
 	root, err := gitutil.RepositoryRootAbsolutePath()
 	if err != nil {
 		return nil, err
 	}
 
-	// Get the script relative path.
-	var relativePath string
-	switch name {
-	case ScriptNameGetVersion:
-		relativePath = config.GetVersionScriptRelativePath()
-	case ScriptNameSetVersion:
-		relativePath = config.SetVersionScriptRelativePath()
-	default:
-		panic("unknown script name: " + name)
+	// Get the local config directory path.
+	scripts := filepath.Join(root, config.LocalConfigDirname, ScriptDirname)
+
+	// Get the script absolute path based on the platform.
+	scriptPath := filepath.Join(scripts, name)
+
+	// Try just the script name as it is.
+	if _, err := os.Stat(scriptPath); err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+
+	// Didn't find the file, try to add platform suffix,
+	// which can be either "windows" or "unix".
+	if runtime.GOARCH == "windows" {
+		scriptPath += "_windows"
+	} else {
+		scriptPath += "_unix"
+	}
+	if _, err := os.Stat(scriptPath); err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("custom script file not found for '%v'", name)
 	}
 
 	// Run the given script in the repository root.
 	task := fmt.Sprintf("Run the %v script", name)
-	scriptAbsPath := filepath.Join(root, relativePath)
 	var (
 		sout bytes.Buffer
 		serr bytes.Buffer
 	)
-	cmd := exec.Command(scriptAbsPath, args...)
+	cmd := exec.Command(scriptPath, args...)
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
 	cmd.Dir = root
