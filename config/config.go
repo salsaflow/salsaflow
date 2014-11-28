@@ -16,11 +16,15 @@ import (
 )
 
 const (
+	// LocalConfigDirname is the directory relative to the repository root
+	// that is being used to store all SalsaFlow-related files.
+	LocalConfigDirname = ".salsaflow"
+
 	// LocalConfigFilename is the filename of the configuration file
 	// that represents local project-specific SalsaFlow configuration.
 	//
 	// This file is expected to be placed in the repository root.
-	LocalConfigFilename = "salsaflow.yml"
+	LocalConfigFilename = "config.yml"
 
 	// GlobalConfigFilename is the filename of the configuration file
 	// that represents global user-specific SalsaFlow configuration.
@@ -52,13 +56,21 @@ func UnmarshalLocalConfig(v interface{}) error {
 	return nil
 }
 
+func LocalConfigDirectoryAbsolutePath() (string, error) {
+	root, err := gitutil.RepositoryRootAbsolutePath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, LocalConfigDirname), nil
+}
+
 func readLocalConfig() (content *bytes.Buffer, err error) {
 	// Get the config file absolute path.
-	root, err := gitutil.RepositoryRootAbsolutePath()
+	path, err := LocalConfigDirectoryAbsolutePath()
 	if err != nil {
 		return nil, err
 	}
-	path := filepath.Join(root, LocalConfigFilename)
+	path = filepath.Join(path, LocalConfigFilename)
 
 	// Read the content and return it.
 	task := "Read the local config file"
@@ -92,17 +104,24 @@ func UnmarshalGlobalConfig(v interface{}) error {
 	return nil
 }
 
-func readGlobalConfig() (content *bytes.Buffer, err error) {
-	// Get the global config file path.
-	task := "Get the current user's home directory"
+func GlobalConfigFileAbsolutePath() (string, error) {
+	task := "Get the global configuration file absolute path"
 	me, err := user.Current()
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return "", errs.NewError(task, err, nil)
 	}
-	path := filepath.Join(me.HomeDir, GlobalConfigFilename)
+	return filepath.Join(me.HomeDir, GlobalConfigFilename), nil
+}
+
+func readGlobalConfig() (content *bytes.Buffer, err error) {
+	// Get the global config file path.
+	path, err := GlobalConfigFileAbsolutePath()
+	if err != nil {
+		return nil, err
+	}
 
 	// Read the global config file.
-	task = "Read the global config file"
+	task := "Read the global config file"
 	contentBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, errs.NewError(task, err, nil)
