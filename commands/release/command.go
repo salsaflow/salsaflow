@@ -6,7 +6,7 @@ import (
 	"github.com/salsaflow/salsaflow/commands/release/stage"
 	"github.com/salsaflow/salsaflow/commands/release/start"
 
-	"gopkg.in/tchap/gocli.v1"
+	"gopkg.in/tchap/gocli.v2"
 )
 
 var Command = &gocli.Command{

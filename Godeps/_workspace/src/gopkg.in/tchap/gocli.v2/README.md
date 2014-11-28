@@ -1,4 +1,4 @@
-# About gocli
+# About gocli #
 
 [![Build
 Status](https://drone.io/github.com/tchap/gocli/status.png)](https://drone.io/github.com/tchap/gocli/latest)
@@ -11,20 +11,24 @@ recursively. Simple yet powerful enough for many scenarios.
 
 The help output format is inspired among others by codegangsta's cli library.
 
-# Status
+# Status #
 
-This is very much still in development, although already quite usable.
+The API has been tagged with `v1.0.0`, please use `gopkg.in` to lock your dependencies.
 
-# Documentation
+# Usage #
+
+```go
+import "gopkg.in/tchap/gocli.v2"
+```
+
+# Documentation #
 
 [GoDoc](http://godoc.org/github.com/tchap/gocli)
 
-# Example
+# Example #
 
 See `app_test.go`.
 
-# License
+# License #
 
-MIT
-
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/tchap/gocli/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+`MIT`, see the `LICENSE` file.

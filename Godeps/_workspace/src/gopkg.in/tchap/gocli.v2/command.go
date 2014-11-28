@@ -26,6 +26,7 @@ package gocli
 import (
 	"bytes"
 	"flag"
+	"io/ioutil"
 	"fmt"
 	"os"
 	"strings"
@@ -102,10 +103,13 @@ func (cmd *Command) DefaultFlagsString() string {
 // Run the command with supplied arguments. This is called recursively if a
 // subcommand is detected, just a prefix is cut off from the arguments.
 func (cmd *Command) Run(args []string) {
+	cmd.Flags.SetOutput(ioutil.Discard)
+
 	err := cmd.Flags.Parse(args)
 	if err != nil {
 		cmd.Usage()
-		os.Exit(1)
+		fmt.Fprintf(os.Stderr, "\nError: %v\n", err)
+		os.Exit(2)
 	}
 	subArgs := cmd.Flags.Args()
 
