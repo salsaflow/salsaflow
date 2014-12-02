@@ -143,8 +143,8 @@ func run(remoteName, pushURL string) error {
 		// Check every commit in the range.
 		task = "Validate commit messages"
 		var (
-			checkTags        bool
-			ancestorsChecked bool
+			salsaflowCommitsDetected bool
+			ancestorsChecked         bool
 		)
 		for _, commit := range commits {
 			// Do not check merge commits.
@@ -153,18 +153,18 @@ func run(remoteName, pushURL string) error {
 			}
 
 			// Check whether we should start checking commit messages.
-			if !checkTags {
+			if !salsaflowCommitsDetected {
 				switch {
 				// Once we encounter a tag inside of the revision range,
 				// we automatically start checking for tags.
 				case commit.ChangeId != "" || commit.StoryId != "":
-					checkTags = true
+					salsaflowCommitsDetected = true
 
 				// In case the tags are empty, check all ancestors for the relevant tags as well.
 				// In case a tag is encountered in an ancestral commit, we start checking for tags.
 				case !ancestorsChecked:
 					var err error
-					checkTags, err = checkAncestors(revRange.From)
+					salsaflowCommitsDetected, err = checkAncestors(revRange.From)
 					if err != nil {
 						return errs.NewError(task, err, nil)
 					}
@@ -172,19 +172,19 @@ func run(remoteName, pushURL string) error {
 				}
 			}
 
-			if !checkTags {
+			if !salsaflowCommitsDetected {
 				continue
 			}
 
 			// Check the Change-Id tag.
-			if commit.ChangeId == "" /* && checkTags */ {
+			if commit.ChangeId == "" /* && salsaflowCommitsDetected */ {
 				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", commit.SHA, commit.MessageTitle,
 					revRange.To, "commit message: Change-Id tag missing")
 				invalid = true
 			}
 
 			// Check the Story-Id tag.
-			if commit.StoryId == "" /* && checkTags */ {
+			if commit.StoryId == "" /* && salsaflowCommitsDetected */ {
 				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", commit.SHA, commit.MessageTitle,
 					revRange.To, "commit message: Story-Id tag missing")
 				invalid = true
@@ -200,7 +200,7 @@ func run(remoteName, pushURL string) error {
 	return nil
 }
 
-func checkAncestors(ref string) (checkTags bool, err error) {
+func checkAncestors(ref string) (salsaflowCommitsDetected bool, err error) {
 	commits, err := git.ShowCommitRange(ref)
 	if err != nil {
 		return false, err
@@ -208,7 +208,7 @@ func checkAncestors(ref string) (checkTags bool, err error) {
 
 	for _, commit := range commits {
 		if commit.ChangeId != "" || commit.StoryId != "" {
-			checkTags = true
+			salsaflowCommitsDetected = true
 		}
 	}
 
