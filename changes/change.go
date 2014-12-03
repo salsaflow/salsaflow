@@ -2,7 +2,6 @@ package changes
 
 import (
 	// Stdlib
-	"regexp"
 	"sort"
 
 	// Internal
@@ -94,46 +93,4 @@ func (list changeList) Swap(i, j int) {
 	tmp := list[i]
 	list[i] = list[j]
 	list[j] = tmp
-}
-
-// Utility functions -----------------------------------------------------------
-
-func FilterChangesBySource(changes []*Change, include, exclude []*regexp.Regexp) []*Change {
-	filtered := make([]*Change, 0)
-
-	for _, change := range changes {
-		includeMatches := false
-		if len(include) == 0 {
-			includeMatches = true
-		} else {
-		IncludeLoop:
-			for _, commit := range change.Commits {
-				for _, pattern := range include {
-					if pattern.MatchString(commit.Source) {
-						includeMatches = true
-						break IncludeLoop
-					}
-				}
-			}
-		}
-
-		excludeMatches := false
-		if len(exclude) != 0 {
-		ExcludeLoop:
-			for _, commit := range change.Commits {
-				for _, pattern := range exclude {
-					if pattern.MatchString(commit.Source) {
-						excludeMatches = true
-						break ExcludeLoop
-					}
-				}
-			}
-		}
-
-		if includeMatches && !excludeMatches {
-			filtered = append(filtered, change)
-		}
-	}
-
-	return filtered
 }

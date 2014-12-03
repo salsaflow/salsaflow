@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
@@ -225,10 +224,8 @@ func checkCommits(release common.RunningRelease, releaseBranch string) error {
 		return errs.NewError(task, err, nil)
 	}
 
-	// Exclude filter including the release branch.
-	exclude := []*regexp.Regexp{regexp.MustCompile(fmt.Sprintf("^refs/heads/%v$", releaseBranch))}
-
-	groups, err := changes.StoryChanges(stories, nil, exclude)
+	panic("IMPLEMENT THIS")
+	groups, err := changes.StoryChanges(stories)
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
