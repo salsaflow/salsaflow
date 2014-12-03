@@ -135,18 +135,27 @@ to install the correct version.
 	task := "Check the RBTools version being used"
 	log.Run(task)
 
-	// rbt prints the version string to stderr. WHY? Who knows...
-	_, stderr, err := shell.Run("rbt", "--version")
+	// rbt 0.5.x prints the version string to stdout,
+	// rbt 0.6.x prints the version string to stderr.
+	stdout, stderr, err := shell.Run("rbt", "--version")
 	if err != nil {
 		// Return the hint instead of stderr.
 		// Failing to run rbt --version probably means that it's not installed.
 		return errs.NewError(task, err, hint)
 	}
 
+	var outputBuffer *bytes.Buffer
+	if stdout.Len() != 0 {
+		outputBuffer = stdout
+	} else {
+		outputBuffer = stderr
+	}
+	output := outputBuffer.String()
+
 	pattern := regexp.MustCompile("^RBTools (([0-9]+)[.]([0-9]+).*)")
-	parts := pattern.FindStringSubmatch(stderr.String())
+	parts := pattern.FindStringSubmatch(output)
 	if len(parts) != 4 {
-		err := errors.New("failed to parse 'rbt --version' output: " + stderr.String())
+		err := fmt.Errorf("failed to parse 'rbt --version' output: %v", output)
 		return errs.NewError(task, err, nil)
 	}
 	rbtVersion := parts[1]
