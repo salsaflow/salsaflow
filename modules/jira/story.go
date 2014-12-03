@@ -3,6 +3,8 @@ package jira
 import (
 	// Stdlib
 	"fmt"
+	"strconv"
+	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
@@ -12,7 +14,22 @@ import (
 
 type story struct {
 	*client.Issue
+	seq int
 	api *client.Client
+}
+
+func newStory(api *client.Client, issue *client.Issue) (*story, error) {
+	parts := strings.SplitAfterN(issue.Key, "-", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid issue key: %v", issue.Key)
+	}
+
+	seq, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("invalid issue key: %v", issue.Key)
+	}
+
+	return &story{issue, seq, api}, nil
 }
 
 func (story *story) Id() string {
@@ -61,4 +78,9 @@ func (story *story) Start() *errs.Error {
 		return errs.NewError(fmt.Sprintf("Start story %v", story.Issue.Key), err, nil)
 	}
 	return nil
+}
+
+func (s *story) LessThan(commonStory common.Story) bool {
+	otherStory := commonStory.(*story)
+	return s.seq < otherStory.seq
 }

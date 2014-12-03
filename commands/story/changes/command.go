@@ -71,14 +71,13 @@ func run(cmd *gocli.Command, args []string) {
 func runMain(storyId string) (err error) {
 	// Get the list of all relevant story commits.
 	task := "Get the list of relevant story commits"
-	commits, err := git.ListStoryCommits(storyId)
+	commits, err := collectCommits(storyId)
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
 	// Group the commits by change ID.
 	groups := changes.GroupCommitsByChangeId(commits)
-	groups = changes.FilterChangesBySource(groups, include.Values, exclude.Values)
 
 	// Dump the change details into the console.
 	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
@@ -108,4 +107,19 @@ func runMain(storyId string) (err error) {
 
 	tw.Flush()
 	return nil
+}
+
+func collectCommits(storyId string) ([]*git.Commit, error) {
+	// Collect the relevant commits.
+	commits, err := git.GrepCommitsCaseInsensitive(fmt.Sprintf("^Story-Id: %v$", storyId))
+	if err != nil {
+		return nil, err
+	}
+
+	// Fix the commit sources.
+	if err := git.FixCommitSources(commits); err != nil {
+		return nil, err
+	}
+
+	return commits, nil
 }

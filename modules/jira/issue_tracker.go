@@ -123,7 +123,11 @@ func toCommonStories(issues []*client.Issue, config Config) []common.Story {
 	api := newClient(config)
 	stories := make([]common.Story, len(issues))
 	for i := range issues {
-		stories[i] = &story{issues[i], api}
+		s, err := newStory(api, issues[i])
+		if err != nil {
+			panic(err)
+		}
+		stories[i] = s
 	}
 	return stories
 }

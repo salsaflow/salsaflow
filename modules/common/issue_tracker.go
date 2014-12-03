@@ -60,6 +60,10 @@ type Story interface {
 	SetAssignees([]User) *errs.Error
 
 	Start() *errs.Error
+
+	// LessThan is being used for sorting stories for output.
+	// Stories are printed in the order they are sorted by this function.
+	LessThan(Story) bool
 }
 
 type NextRelease interface {

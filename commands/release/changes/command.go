@@ -10,7 +10,6 @@ import (
 	"github.com/salsaflow/salsaflow/app"
 	"github.com/salsaflow/salsaflow/changes"
 	"github.com/salsaflow/salsaflow/errs"
-	"github.com/salsaflow/salsaflow/flag"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules"
@@ -22,37 +21,32 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  changes [-porcelain]
-          [-include_source=REGEXP ...]
-          [-exclude_source=REGEXP ...]`,
+  changes [-porcelain] [-to_cherrypick]`,
 	Short: "list the changes associated with the current release",
 	Long: `
   List the change sets (the commits with the same change ID)
   associated with the current release together with some details,
   e.g. the commit SHA, the source ref and the commit title.
 
-  -include_source and -exclude_source flags can be used to limit
-  what change sets are listed. When these flags are used, every change set
-  is checked and the whole set is printed iff there is a commit with the source
-  matching one of the include filters and there is no commit with the source
-  matching one of the exclude filters.
-
-  -porcelain flag will make the output more script-friendly,
+  The 'porcelain' flag will make the output more script-friendly,
   e.g. it will fill the change ID in every column.
+
+  The 'to_cherrypick' flag can be used to list the changes that are assigned
+  to the release but haven't been cherry-picked onto the release branch yet.
 	`,
 	Action: run,
 }
 
 var (
-	porcelain bool
-	include   = flag.NewRegexpSetFlag()
-	exclude   = flag.NewRegexpSetFlag()
+	flagPorcelain    bool
+	flagToCherryPick bool
 )
 
 func init() {
-	Command.Flags.BoolVar(&porcelain, "porcelain", false, "enable script-friendly output")
-	Command.Flags.Var(include, "include_source", "source ref to include")
-	Command.Flags.Var(exclude, "exclude_source", "source ref to exclude")
+	Command.Flags.BoolVar(&flagPorcelain, "porcelain", flagPorcelain,
+		"enable script-friendly output")
+	Command.Flags.BoolVar(&flagToCherryPick, "to_cherrypick", flagToCherryPick,
+		"list the changes to cherry-pick")
 }
 
 func run(cmd *gocli.Command, args []string) {
@@ -63,13 +57,11 @@ func run(cmd *gocli.Command, args []string) {
 
 	app.InitOrDie()
 
-	log.Disable()
+	if flagPorcelain {
+		log.Disable()
+	}
 	err := runMain()
-	log.Replace(os.Stderr)
 	if err != nil {
-		if porcelain {
-			os.Exit(1)
-		}
 		errs.Fatal(err)
 	}
 }
@@ -94,14 +86,15 @@ func runMain() error {
 	}
 
 	// Get the current release version string.
-	task = "Get the current release version string"
+	task = "Get the release branch version string"
 	releaseVersion, err := version.GetByBranch(releaseBranch)
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
 	// Get the stories associated with the current release.
-	task = "Get the stories associated with the current release"
+	task = "Fetch the stories associated with the current release"
+	log.Run(task)
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
 		return errs.NewError(task, err, nil)
@@ -122,24 +115,84 @@ func runMain() error {
 	// Get the story changes.
 	task = "Collect the story changes"
 	log.Run(task)
-	storyGroups, err := changes.StoryChanges(stories, include.Values, exclude.Values)
+	groups, err := changes.StoryChanges(stories)
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
 	// Just return in case there are no relevant commits found.
-	if len(storyGroups) == 0 {
+	if len(groups) == 0 {
 		return errs.NewError(task, errors.New("no relevant commits found"), nil)
 	}
 
+	// Sort the change groups.
+	groups = changes.SortStoryChanges(groups, stories)
+
+	if flagToCherryPick {
+		groups, err = groupsToCherryPick(groups)
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
+	}
+
 	// Dump the change details into the console.
-	if !porcelain {
+	if !flagPorcelain {
 		fmt.Println()
 	}
-	changes.DumpStoryChanges(storyGroups, os.Stdout, porcelain)
-	if !porcelain {
+	changes.DumpStoryChanges(groups, os.Stdout, flagPorcelain)
+	if !flagPorcelain {
 		fmt.Println()
 	}
 
 	return nil
+}
+
+func groupsToCherryPick(groups []*changes.StoryChangeGroup) ([]*changes.StoryChangeGroup, error) {
+	// Get the commits that are reachable from the release branch.
+	gitConfig, err := git.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+	releaseBranch := gitConfig.ReleaseBranchName()
+
+	reachableCommits, err := git.ShowCommitRange(releaseBranch)
+	if err != nil {
+		return nil, err
+	}
+
+	reachableCommitMap := make(map[string]struct{}, len(reachableCommits))
+	for _, commit := range reachableCommits {
+		reachableCommitMap[commit.SHA] = struct{}{}
+	}
+
+	// Get the changes that needs to be cherry-picked.
+	var toCherryPick []*changes.StoryChangeGroup
+
+	for _, group := range groups {
+		// Prepare a new StoryChangeGroup to hold missing changes.
+		storyGroup := &changes.StoryChangeGroup{
+			StoryId: group.StoryId,
+		}
+
+	ChangesLoop:
+		// Loop over the story changes and the commits associated with
+		// these changes. A change needs cherry-picking in case there are
+		// some commits left when we drop the commits reachable from
+		// the release branch.
+		for _, change := range group.Changes {
+			for _, commit := range change.Commits {
+				if _, ok := reachableCommitMap[commit.SHA]; ok {
+					continue ChangesLoop
+				}
+			}
+
+			storyGroup.Changes = append(storyGroup.Changes, change)
+		}
+
+		if len(storyGroup.Changes) != 0 {
+			toCherryPick = append(toCherryPick, storyGroup)
+		}
+	}
+
+	return toCherryPick, nil
 }
