@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	// Internal
-	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/scripts"
 )
 
@@ -18,12 +17,7 @@ func Get() (*Version, error) {
 	}
 
 	// Parse the output and return the version.
-	task := "Parse the version string"
-	ver, err := Parse(strings.TrimSpace(stdout.String()))
-	if err != nil {
-		return nil, errs.NewError(task, err, nil)
-	}
-	return ver, nil
+	return Parse(strings.TrimSpace(stdout.String()))
 }
 
 // Set runs the set_version script.
