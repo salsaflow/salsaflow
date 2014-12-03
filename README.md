@@ -12,7 +12,7 @@ Actually, I don't know about you, but we use it here at [Salsita](https://www.sa
 
 ## Installation ##
 
-SalsaFlow is written in Go, which somehow implies how to install it.
+SalsaFlow is written in Go. Compiling has never been that fast. No more [sword fighting](http://xkcd.com/303/) in the corridor, sorry...
 
 ### Installing from a Package ###
 
@@ -45,6 +45,8 @@ To use SalsaFlow, you will also need
 
 * `git` version `1.9.x` or newer in your `PATH`
 
+Modules may also require some additional packages to be installed.
+
 ## Usage ##
 
 Well, the best thing you can do is to just run `salsaflow -h` and read.
@@ -52,44 +54,88 @@ Well, the best thing you can do is to just run `salsaflow -h` and read.
 Every SalsaFlow command is shortly explained when you run `salsaflow <command> -h`.
 A more comprehensive documentation is available on the [wiki](https://github.com/salsaflow/salsaflow/wiki).
 
-You probably want to read the following section before doing anything serious
-with SalsaFlow since SalsaFlow will refuse to do anything meaningful until
-it is configured properly.
+SalsaFlow can only be used when you are within a project repository.
+The repository is automagically initialised when you run any SalsaFlow command there.
+SalsaFlow uses a couple of git hooks, which are installed as a part
+of the initialisation process.
+
+You probably want to read the following section about SalsaFlow configuration
+before doing anything serious since SalsaFlow will anyway refuse to do anything
+useful until it is configured properly.
 
 ## Configuration ##
 
-There are two config files that are being used to configure SalsaFlow.
-One is for the user-wide configuration, the other one is for the project-specific stuff.
+There are two places where SalsaFlow configuration is being kept:
 
-### The Global Configuration File ###
+1. The local, project-specific configuration is expected to be placed
+   into `.salsaflow` directory in the repository root. This directory
+   contains the local configuration file, `config.yml`, as well as
+   some project-specific custom scripts that are to be supplied
+   by the user and committed into `.salsaflow/scripts`. More on custom
+   scripts later.
+2. The global, user-wide configuration is to be placed into `$HOME/.salsaflow.yml`.
+   This file mostly contains the data that cannot be committed,
+   i.e. access tokens and such.
+
+### Global Configuration ###
 
 The global, user-specific configuration file resides in `$HOME/.salsaflow.yml`.
+The format depends solely on the modules that are active. No worries, modules
+are explained later.
 
-The only universally required global config is:
+### Local Configuration ###
 
-```yaml
-github:
-  token: "<github-token>"
-```
-
-### The Local Configuration File ###
-
-The local, project-specific configuration file is expected to be placed
-in the repository root. It should be called `salsaflow.yml`.
-
-The only universally required local config is:
+SalsaFlow looks for the local cofiguration file in `.salsaflow/config.yml`.
+The only universally required local configuration keys are
 
 ```yaml
 issue_tracker: "<module-id>"
 code_review_tool: "<module-id>"
-scripts:
-  get_version: "<path-to-script>"
-  set_version: "<path-to-script>"
 ```
+
+#### Scripts ####
+
+SalsaFlow occasionally needs to perform an action that depends on the project type,
+e.g. to increment the version number when handling releases. These custom actions
+must be configured by placing certain custom scripts into `.salsaflow/scripts`
+directory in the repository.
+
+The following scripts must be supplied:
+
+* `get_version` - Print the current project version to stdout and exit.
+* `set_version` - Taking the new version string as the only argument, this script is expected to
+  set the project version string to the specified value. Make sure all new files are always
+  staged (`git add`), otherwise they won't get committed by SalsaFlow.
+
+Now, to make the whole scripting thing cross-platform, it is possible to supply
+multiple script files for every script name and run different scripts on different platforms.
+So, the filename schema for the scripts that are to be placed into the `scripts`
+directory is actually `<script-name>_<platform>.<runner>` where
+
+* `<script-name>` is the name as mentioned above, e.g. `get_version`.
+* `<platform>` can be any valid value for Go's `runtime.GOOS`, e.g. `windows`, `linux`,
+  `darwin` and so on. You can also use `unix` to run the script on all Unixy systems.
+* `<runner>` is the file extension that defines what interpreter to use to run the script.
+  Currently it can be `bash` (Bash), `js` (Node.js), `bat` (cmd.exe) or `ps1` (PowerShell.exe).
+  Naturally, only some combinations make sense, e.g. you cannot run PowerShell on Mac OS X,
+  so a script called `get_version_darwin.ps1` would never be executed.
+
+Check some [examples](https://github.com/salsaflow/skeleton-golang) to understand better how the whole thing works.
+
+#### Project Bootstrapping ####
+
+To get up to speed quickly, `repo bootstrap` command can be used to prepare the local
+configuration file so that the user only fills in the missing values that are clearly marked.
+
+`repo bootstrap` can be also told to use certain GitHub repository to bootstrap the local
+configuration directory. When this bootstrapping skeleton is supplied, the contents of the given
+repository are simply poured into the local configuration directory. This can be easily used to
+share custom scripts for certain project type so that the scripts are implemented once and then
+just copied around. You can check the [repository](https://github.com/salsaflow/skeleton-golang)
+that was used to bootstrap SalsaFlow itself.
 
 #### Modules ####
 
-As you must have noticed, _modules_ are mentioned above.
 SalsaFlow is modular where possible, and the configuration files contain
 sections where the configuration for these modules is specified.
 
@@ -100,11 +146,11 @@ issue_tracker: "jira"
 code_review_tool: "review_board"
 ```
 
-This is very close to dependency injection or something, you just tell SalsaFlow
-what implementation to use for the given module (interface).
+This is very close to dependency injection. There are a few module types and it
+must be specified what implementation to use for the given module type (interface).
 
 Then, when necessary, the module-specific config goes to the section
-that is called after the module name, for example:
+that is names after the module name, for example:
 
 ```yaml
 jira:
@@ -153,6 +199,9 @@ jira:
     - server_prefix: jira.example.com
       username: "username"
       password: "secret"
+    - server_prefix: jira.another-example.com
+      username: "another-username"
+      password: "another-secret"
 ```
 
 where
@@ -180,6 +229,9 @@ review_board:
 where
 
 * `server_url` is the URL that can be used to access Review Board.
+
+Please make sure that `RBTools` package version `0.6.x` is installed.
+This module relies on the `rbt` command heavily.
 
 ## Original Authors ##
 
