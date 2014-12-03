@@ -22,6 +22,18 @@ const (
 	ScriptNameSetVersion = "set_version"
 )
 
+type ErrNotFound struct {
+	scriptName string
+}
+
+func (err *ErrNotFound) Error() string {
+	return fmt.Sprintf("custom SalsaFlow script '%v' not found", err.scriptName)
+}
+
+func (err *ErrNotFound) ScriptName() string {
+	return err.scriptName
+}
+
 func Run(name string, args ...string) (stdout *bytes.Buffer, err error) {
 	// Get the repository root.
 	root, err := gitutil.RepositoryRootAbsolutePath()
@@ -53,7 +65,7 @@ func Run(name string, args ...string) (stdout *bytes.Buffer, err error) {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
-		return nil, fmt.Errorf("custom script file not found for '%v'", name)
+		return nil, &ErrNotFound{name}
 	}
 
 	// Run the given script in the repository root.

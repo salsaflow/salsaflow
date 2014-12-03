@@ -9,6 +9,7 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/scripts"
 )
 
 func GetByBranch(branch string) (ver *Version, err error) {
@@ -34,7 +35,15 @@ func GetByBranch(branch string) (ver *Version, err error) {
 	}()
 
 	// Get the version.
-	return Get()
+	v, err := Get()
+	if err != nil {
+		if ex, ok := err.(*scripts.ErrNotFound); ok {
+			return nil, fmt.Errorf(
+				"custom SalsaFlow script '%v' not found on branch '%v'", ex.ScriptName(), branch)
+		}
+		return nil, err
+	}
+	return v, nil
 }
 
 func SetForBranch(ver *Version, branch string) (act action.Action, err error) {
@@ -78,6 +87,10 @@ func SetForBranch(ver *Version, branch string) (act action.Action, err error) {
 
 	// Set the project version to the desired value.
 	if err := Set(ver); err != nil {
+		if ex, ok := err.(*scripts.ErrNotFound); ok {
+			return nil, fmt.Errorf(
+				"custom SalsaFlow script '%v' not found on branch '%v'", ex.ScriptName(), branch)
+		}
 		return nil, err
 	}
 
