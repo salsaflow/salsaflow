@@ -9,7 +9,7 @@ type Platform int
 const (
 	PlatformUnix Platform = iota + 1
 	PlatformWindows
-	PlatformUnsupported
+	PlatformUnknown
 )
 
 type ScriptRunner struct {
@@ -44,7 +44,7 @@ func ParsePlatform(platform string) Platform {
 	case "windows":
 		return PlatformWindows
 	default:
-		return PlatformUnsupported
+		return PlatformUnknown
 	}
 }
 

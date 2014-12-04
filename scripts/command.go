@@ -74,19 +74,23 @@ func Command(scriptName string, args ...string) (*exec.Cmd, error) {
 		// Get other filename parts.
 		base := script[:len(script)-len(ext)]
 		parts := strings.Split(base, "_")
-		if len(parts) == 1 {
-			continue
-		}
-
-		var (
-			platform = parts[len(parts)-1]
-			name     = base[:len(base)-len(platform)-1]
-		)
+		platform := parts[len(parts)-1]
+		var name string
 
 		// Make sure the platform matches the current platform.
 		platformId := runners.ParsePlatform(platform)
-		if platformId != currentPlatformId {
+		if platformId == runners.PlatformUnknown {
+			// There is no platform string appended, use the current platform.
+			platformId = currentPlatformId
+			// In this case, the script name is the whole base.
+			name = base
+		} else if platformId != currentPlatformId {
+			// This script is not for the current platform,
+			// continue to the next script filename.
 			continue
+		} else {
+			// Set the name according to the schema (platform != "").
+			name = base[:len(base)-len(platform)-1]
 		}
 
 		// Make sure the name matches the requested script name.
