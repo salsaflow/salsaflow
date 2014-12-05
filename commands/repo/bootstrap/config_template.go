@@ -19,6 +19,6 @@ type LocalContext struct {
 	CodeReviewToolKey string
 }
 
-func BumpLocalConfig(dst io.Writer, ctx *LocalContext) error {
+func WriteLocalConfigTemplate(dst io.Writer, ctx *LocalContext) error {
 	return template.Must(template.New("LocalConfig").Parse(LocalConfigTemplate)).Execute(dst, ctx)
 }
