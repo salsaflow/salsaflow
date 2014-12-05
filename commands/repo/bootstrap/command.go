@@ -25,7 +25,7 @@ var Command = &gocli.Command{
   bootstrap [-issue_tracker=ISSUE_TRACKER]
             [-code_review_tool=CODE_REVIEW_TOOL]
             [-skeleton=SKELETON]`,
-	Short: "prune delivered story branches",
+	Short: "generate local config for SalsaFlow",
 	Long: `
   This command can be used to set up the repository to work with SalsaFlow.
 
