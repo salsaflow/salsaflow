@@ -54,6 +54,7 @@ More in-depth SalsaFlow principes are explained in the [wiki](https://github.com
 
 The complete list of SalsaFlow commands follows (links pointing to the `develop` docs):
 
+* [story changes](https://github.com/salsaflow/salsaflow/blob/develop/commands/story/changes/README.md)
 * [story open](https://github.com/salsaflow/salsaflow/blob/develop/commands/story/open/README.md)
 
 SalsaFlow can only be used when you are within a project repository.
