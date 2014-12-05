@@ -50,9 +50,11 @@ Modules may also require some additional packages to be installed.
 ## Usage ##
 
 Well, the best thing you can do is to just run `salsaflow -h` and read.
+More in-depth SalsaFlow principes are explained in the [wiki](https://github.com/salsaflow/salsaflow/wiki).
 
-Every SalsaFlow command is shortly explained when you run `salsaflow <command> -h`.
-A more comprehensive documentation is available on the [wiki](https://github.com/salsaflow/salsaflow/wiki).
+The complete list of SalsaFlow commands follows (links pointing to the `develop` docs):
+
+* [story open](https://github.com/salsaflow/salsaflow/blob/develop/commands/story/open/README.md)
 
 SalsaFlow can only be used when you are within a project repository.
 The repository is automagically initialised when you run any SalsaFlow command there.
