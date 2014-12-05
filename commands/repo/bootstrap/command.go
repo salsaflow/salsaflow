@@ -165,7 +165,7 @@ func runMain() error {
 	}
 	defer file.Close()
 
-	err = BumpLocalConfig(file, &LocalContext{
+	err = WriteLocalConfigTemplate(file, &LocalContext{
 		IssueTrackerKey:   flagIssueTracker.Value(),
 		CodeReviewToolKey: flagCodeReviewTool.Value(),
 	})
@@ -175,7 +175,7 @@ func runMain() error {
 
 	// Move the skeleton files into place.
 	if flagSkeleton != "" {
-		task := "Pour the skeleton into the metadata directory"
+		task := "Copy the skeleton into the metadata directory"
 		log.Go(task)
 		log.NewLine("")
 		if err := pourSkeleton(flagSkeleton, configDir); err != nil {
