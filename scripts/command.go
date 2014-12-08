@@ -71,31 +71,30 @@ func Command(scriptName string, args ...string) (*exec.Cmd, error) {
 			continue
 		}
 
-		// Get other filename parts.
+		// Get the file base, i.e. the filename without the file extension.
 		base := script[:len(script)-len(ext)]
-		parts := strings.Split(base, "_")
-		platform := parts[len(parts)-1]
-		var name string
 
-		// Make sure the platform matches the current platform.
-		platformId := runners.ParsePlatform(platform)
-		if platformId == runners.PlatformUnknown {
-			// There is no platform string appended, use the current platform.
+		// In case the whole base matches, this is a cross-platform script and we are done.
+		// Otherwise we have to parse the base further and decide what to do.
+		var platformId runners.Platform
+		if base == scriptName {
 			platformId = currentPlatformId
-			// In this case, the script name is the whole base.
-			name = base
-		} else if platformId != currentPlatformId {
-			// This script is not for the current platform,
-			// continue to the next script filename.
-			continue
 		} else {
-			// Set the name according to the schema (platform != "").
-			name = base[:len(base)-len(platform)-1]
-		}
+			// Split the base.
+			parts := strings.Split(base, "_")
 
-		// Make sure the name matches the requested script name.
-		if name != scriptName {
-			continue
+			// Make sure the platform matches the current platform.
+			platform := parts[len(parts)-1]
+			platformId = runners.ParsePlatform(platform)
+			if platformId != currentPlatformId {
+				continue
+			}
+
+			// Make sure the name matches the requested script name.
+			name := base[:len(base)-len(platform)-1]
+			if name != scriptName {
+				continue
+			}
 		}
 
 		// Get the runner for the given file extension.
