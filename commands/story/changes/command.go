@@ -11,7 +11,6 @@ import (
 	"github.com/salsaflow/salsaflow/app"
 	"github.com/salsaflow/salsaflow/changes"
 	"github.com/salsaflow/salsaflow/errs"
-	"github.com/salsaflow/salsaflow/flag"
 	"github.com/salsaflow/salsaflow/git"
 
 	// Other
@@ -19,25 +18,14 @@ import (
 )
 
 var Command = &gocli.Command{
-	UsageLine: `
-  changes [-porcelain]
-          [-include_source=REGEXP ...]
-          [-exclude_source=REGEXP ...]
-          STORY`,
-	Short: "list the changes associated with the given story",
+	UsageLine: "changes [-porcelain] STORY",
+	Short:     "list the changes associated with the given story",
 	Long: `
   List the change sets (the commits with the same change ID)
   associated with the given story together with some interesting details,
   e.g. the commit SHA, the source ref and the commit title.
 
-  -include_source and -exclude_source flags can be used to limit
-  what change sets are actually listed. When these flags are used,
-  every change set (the commits with the same change ID) is checked
-  and the whole set is printed iff there is a commit with the source
-  matching one of the include filters and there is no commit with
-  the source matching one of the exclude filters.
-
-  -porcelain flag will make the output more script-friendly,
+  The 'porcelain' flag will make the output more script-friendly,
   e.g. it will fill the change ID in every column.
 	`,
 	Action: run,
@@ -45,14 +33,10 @@ var Command = &gocli.Command{
 
 var (
 	porcelain bool
-	include   = flag.NewRegexpSetFlag()
-	exclude   = flag.NewRegexpSetFlag()
 )
 
 func init() {
 	Command.Flags.BoolVar(&porcelain, "porcelain", false, "enable script-friendly output")
-	Command.Flags.Var(include, "include_source", "source ref to include")
-	Command.Flags.Var(exclude, "exclude_source", "source ref to exclude")
 }
 
 func run(cmd *gocli.Command, args []string) {
