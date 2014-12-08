@@ -42,8 +42,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/text/transform",
-			"Comment": "null-112",
-			"Rev": "2f707e0ad64637ca1318279be7201f5ed19c4050"
+			"Rev": "985ee5acfaf1ff6712c7c99438752f8e09416ccb"
 		},
 		{
 			"ImportPath": "gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal",
