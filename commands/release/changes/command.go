@@ -20,8 +20,7 @@ import (
 )
 
 var Command = &gocli.Command{
-	UsageLine: `
-  changes [-porcelain] [-to_cherrypick]`,
+	UsageLine: "changes [-porcelain] [-to_cherrypick]",
 	Short: "list the changes associated with the current release",
 	Long: `
   List the change sets (the commits with the same change ID)
