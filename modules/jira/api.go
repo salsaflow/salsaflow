@@ -84,6 +84,7 @@ func updateIssues(
 			updatedIssues = append(updatedIssues, ret.issue)
 		}
 	}
+	fmt.Fprintln(stderr)
 
 	if err != nil {
 		if rollbackFunc != nil {
