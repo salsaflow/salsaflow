@@ -4,6 +4,7 @@ import (
 	// Stdlib
 	"bytes"
 	"io/ioutil"
+	"os"
 	"os/user"
 	"path/filepath"
 
@@ -76,6 +77,14 @@ func readLocalConfig() (content *bytes.Buffer, err error) {
 	task := "Read the local config file"
 	contentBytes, err := ioutil.ReadFile(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			hint := bytes.NewBufferString(`
+The local configuration file was not found.
+Check 'repo bootstrap' to see how to generate it.
+
+`)
+			return nil, errs.NewError(task, err, hint)
+		}
 		return nil, errs.NewError(task, err, nil)
 	}
 	return bytes.NewBuffer(contentBytes), nil
