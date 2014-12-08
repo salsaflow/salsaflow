@@ -124,7 +124,7 @@ func pourSkeleton(skeletonName string, localConfigDir string) error {
 			return os.MkdirAll(dstPath, srcPathInfo.Mode())
 		}
 
-		fmt.Println(">>> Pouring", suffix)
+		fmt.Println("---> Copy", suffix)
 
 		// Otherwise just copy the file.
 		srcFd, err := os.Open(srcPath)
