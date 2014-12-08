@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	// Internal
-	"github.com/salsaflow/salsaflow/app"
 	"github.com/salsaflow/salsaflow/config"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/flag"
@@ -113,8 +112,6 @@ func run(cmd *gocli.Command, args []string) {
 		cmd.Usage()
 		errs.Fatal(errors.New("flag 'code_review_tool' is not set"))
 	}
-
-	app.InitOrDie()
 
 	if err := runMain(); err != nil {
 		errs.Fatal(err)
