@@ -25,7 +25,7 @@ import (
 )
 
 var Command = &gocli.Command{
-	UsageLine: "deploy [-release=RELEASE_TAG]",
+	UsageLine: "deploy [-release=VERSION]",
 	Short:     "deploy a release into production",
 	Long: `
   Deploy the chosen release into production.
@@ -47,7 +47,7 @@ var Command = &gocli.Command{
 var flagRelease string
 
 func init() {
-	Command.Flags.StringVar(&flagRelease, "release", flagRelease, "release tag to deploy")
+	Command.Flags.StringVar(&flagRelease, "release", flagRelease, "project version to deploy")
 }
 
 func run(cmd *gocli.Command, args []string) {
@@ -96,18 +96,29 @@ func runMain() error {
 	}
 
 	// In case the release is specified explicitly, just do the reset and return.
-	if ref := flagRelease; ref != "" {
-		if err := ensureRefExists(ref); err != nil {
+	if versionString := flagRelease; versionString != "" {
+		task := "Make sure the given release tag exists"
+		ver, err := version.Parse(versionString)
+		if err != nil {
 			return errs.NewError(task, err, nil)
 		}
-		return resetAndDeploy(stableBranch, flagRelease, remoteName)
+		tag := ver.ReleaseTagString()
+		if err := ensureRefExists(tag); err != nil {
+			return errs.NewError(task, err, nil)
+		}
+		return resetAndDeploy(stableBranch, tag, remoteName)
 	}
 
 	// Get the list of release tags since the last deployment.
 	task = "Get the list of deployable releases"
-	tags, err := newReleaseTags(stableBranch)
+	tags, err := listSortedNewReleaseTags(stableBranch)
 	if err != nil {
 		return errs.NewError(task, err, nil)
+	}
+
+	// We need the tags in the inverted order.
+	for i, j := 0, len(tags)-1; i < j; i, j = i+1, j-1 {
+		tags[i], tags[j] = tags[j], tags[i]
 	}
 
 	// Limit the list to the releases that are fully accepted.
@@ -138,6 +149,11 @@ func runMain() error {
 		}
 		if !ok {
 			log.Log(fmt.Sprintf("Release '%v' is not releasable", tag))
+			for _, r := range releasable {
+				log.NewLine(fmt.Sprintf(
+					"Marking '%v' as not releasable as well", r.Version().ReleaseTagString()))
+			}
+			releasable = releasable[:0]
 			continue
 		}
 
@@ -145,6 +161,11 @@ func runMain() error {
 	}
 	if len(releasable) == 0 {
 		return errs.NewError(task, errors.New("no deployable releases found"), nil)
+	}
+
+	// Invert the inversion.
+	for i, j := 0, len(releasable)-1; i < j; i, j = i+1, j-1 {
+		releasable[i], releasable[j] = releasable[j], releasable[i]
 	}
 
 	// Prompt the user to choose the release tag.
@@ -157,10 +178,10 @@ func runMain() error {
 		fmt.Fprintf(tw, "%v\t%v\n", i, release.Version())
 	}
 	tw.Flush()
-	fmt.Println()
 
-	index, err := prompt.PromptIndex(
-		"Choose the release to be deployed by entering its index: ", 0, len(tags)-1)
+	index, err := prompt.PromptIndex(`
+Choose the release to be deployed by inserting its index.
+Or you can just press Enter to abort: `, 0, len(tags)-1)
 	if err != nil {
 		if err == prompt.ErrCanceled {
 			prompt.PanicCancel()
@@ -192,12 +213,16 @@ func runMain() error {
 		}
 	}
 	if err != nil {
+		// Print a warning to tell the user how they should proceed.
 		logger := log.V(log.Info)
 		logger.Lock()
-		log.UnsafeWarn("Errors encountered while releasing stories in the issue tracker")
+		log.UnsafeWarn("Errors encountered while closing a release in the issue tracker.")
 		log.UnsafeNewLine("Please perform the release in the issue tracker manually")
 		log.UnsafeNewLine("to make sure the issue tracker is consistent.")
 		logger.Unlock()
+
+		// Discard the stderr, it has been printed already.
+		err = errs.RootCause(err)
 	}
 	return err
 }
@@ -246,7 +271,7 @@ func resetAndDeploy(stableBranch, targetRef, remoteName string) error {
 	return nil
 }
 
-func newReleaseTags(stableBranch string) ([]string, error) {
+func listSortedNewReleaseTags(stableBranch string) ([]string, error) {
 	// Get the list of all release tags.
 	tags, err := releases.ListTags()
 	if err != nil {
