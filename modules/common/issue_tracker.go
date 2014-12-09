@@ -38,10 +38,6 @@ type IssueTracker interface {
 	// representing the releases that have been started.
 	RunningRelease(*version.Version) (RunningRelease, error)
 
-	// SelectActiveStoryIds returns the IDs associated with the stories
-	// that are being actively worked on, i.e. they are not closed yet.
-	SelectActiveStoryIds(ids []string) (activeIds []string, err error)
-
 	// OpenStory opens the given story in the web browser.
 	OpenStory(storyId string) error
 }
