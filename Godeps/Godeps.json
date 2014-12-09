@@ -1,9 +1,6 @@
 {
 	"ImportPath": "github.com/salsaflow/salsaflow",
 	"GoVersion": "go1.3.3",
-	"Packages": [
-		"./..."
-	],
 	"Deps": [
 		{
 			"ImportPath": "bitbucket.org/kardianos/osext",
@@ -37,16 +34,16 @@
 			"Rev": "d8840cbb2baa915f4836edda4750050a2c0b7aea"
 		},
 		{
+			"ImportPath": "github.com/salsita/go-pivotaltracker/v5/pivotal",
+			"Rev": "c2767a7b6c17b1e705407655fe77de5d05477ac6"
+		},
+		{
 			"ImportPath": "github.com/toqueteos/webbrowser",
 			"Rev": "4a77f4aa7da542c319bced7a5065b5d2b4f7041b"
 		},
 		{
 			"ImportPath": "golang.org/x/text/transform",
 			"Rev": "985ee5acfaf1ff6712c7c99438752f8e09416ccb"
-		},
-		{
-			"ImportPath": "gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal",
-			"Rev": "c2767a7b6c17b1e705407655fe77de5d05477ac6"
 		},
 		{
 			"ImportPath": "gopkg.in/tchap/gocli.v2",
