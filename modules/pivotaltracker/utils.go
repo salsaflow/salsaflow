@@ -5,8 +5,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
-	"text/tabwriter"
+	//"io"
+	//"text/tabwriter"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/version"
@@ -81,41 +81,45 @@ func listStoriesByRelease(release *version.Version) ([]*pivotal.Story, error) {
 }
 
 func releaseDeliverable(stories []*pivotal.Story) (ok bool, details *bytes.Buffer) {
-	var (
-		deliverable = true
-		out         bytes.Buffer
-	)
-	tw := tabwriter.NewWriter(&out, 0, 8, 2, '\t', 0)
-	io.WriteString(tw, "\n")
-	io.WriteString(tw, "Story URL\tError\n")
-	io.WriteString(tw, "=========\t=====\n")
+	panic("Not implemented")
 
-StoryLoop:
-	for _, story := range stories {
-		// Skip the check when the relevant label is there.
-		for _, label := range config.SkipCheckLabels() {
-			if storyLabeled(story, label) {
-				continue StoryLoop
+	/*
+			var (
+				deliverable = true
+				out         bytes.Buffer
+			)
+			tw := tabwriter.NewWriter(&out, 0, 8, 2, '\t', 0)
+			io.WriteString(tw, "\n")
+			io.WriteString(tw, "Story URL\tError\n")
+			io.WriteString(tw, "=========\t=====\n")
+
+		StoryLoop:
+			for _, story := range stories {
+				// Skip the check when the relevant label is there.
+				for _, label := range config.SkipCheckLabels() {
+					if storyLabeled(story, label) {
+						continue StoryLoop
+					}
+				}
+
+				// Otherwise make sure the story is accepted.
+				if !storyLabeled(story, config.ReviewedLabel()) {
+					fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the reviewer")
+					deliverable = false
+				}
+				if !storyLabeled(story, config.VerifiedLabel()) {
+					fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the QA")
+					deliverable = false
+				}
 			}
-		}
 
-		// Otherwise make sure the story is accepted.
-		if !storyLabeled(story, config.ReviewedLabel()) {
-			fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the reviewer")
-			deliverable = false
-		}
-		if !storyLabeled(story, config.VerifiedLabel()) {
-			fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the QA")
-			deliverable = false
-		}
-	}
-
-	io.WriteString(tw, "\n")
-	if !deliverable {
-		tw.Flush()
-		return false, &out
-	}
-	return true, nil
+			io.WriteString(tw, "\n")
+			if !deliverable {
+				tw.Flush()
+				return false, &out
+			}
+			return true, nil
+	*/
 }
 
 func setStoriesState(stories []*pivotal.Story, state string) ([]*pivotal.Story, *bytes.Buffer, error) {
