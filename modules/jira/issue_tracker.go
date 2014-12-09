@@ -82,10 +82,6 @@ func (tracker *issueTracker) RunningRelease(
 	return newRunningRelease(tracker, releaseVersion)
 }
 
-func (tracker *issueTracker) SelectActiveStoryIds(ids []string) (activeIds []string, err error) {
-	panic("Not implemented")
-}
-
 func (tracker *issueTracker) OpenStory(storyId string) error {
 	relativeURL, _ := url.Parse("browse/" + storyId)
 	return webbrowser.Open(tracker.config.ServerURL().ResolveReference(relativeURL).String())

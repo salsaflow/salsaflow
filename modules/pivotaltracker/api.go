@@ -5,14 +5,15 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
-	"text/tabwriter"
+	//"io"
+	//"text/tabwriter"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/version"
 
 	// Other
-	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
+	"github.com/salsita/go-pivotaltracker/v5/pivotal"
 )
 
 var (
@@ -21,18 +22,24 @@ var (
 )
 
 func fetchMe() (*pivotal.Me, error) {
-	client := pivotal.NewClient(config.ApiToken())
+	config, err := LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	client := pivotal.NewClient(config.UserToken())
 	me, _, err := client.Me.Get()
 	return me, err
 }
 
-func listStories(filter string) ([]*pivotal.Story, error) {
-	var (
-		token     = config.ApiToken()
-		projectId = config.ProjectId()
-	)
-	client := pivotal.NewClient(token)
-	stories, _, err := client.Stories.List(projectId, filter)
+func searchStories(format string, v ...interface{}) ([]*pivotal.Story, error) {
+	config, err := LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	client := pivotal.NewClient(config.UserToken())
+	stories, _, err := client.Stories.List(config.ProjectId(), fmt.Sprintf(format, v...))
 	return stories, err
 }
 
@@ -56,7 +63,7 @@ func listStoriesById(ids []string) ([]*pivotal.Story, error) {
 			return nil, err
 		}
 	}
-	return listStories(filter.String())
+	return searchStories(filter.String())
 }
 
 func listNextReleaseStories() ([]*pivotal.Story, error) {
@@ -66,7 +73,7 @@ func listNextReleaseStories() ([]*pivotal.Story, error) {
 		pivotal.StoryTypeBug,
 		pivotal.StoryStateFinished,
 		"release-"+version.MatcherString)
-	return listStories(filter)
+	return searchStories(filter)
 }
 
 func listStoriesByRelease(release *version.Version) ([]*pivotal.Story, error) {
@@ -77,55 +84,59 @@ func listStoriesByRelease(release *version.Version) ([]*pivotal.Story, error) {
 		pivotal.StoryStateFinished,
 		releaseLabel(release),
 	)
-	return listStories(filter)
+	return searchStories(filter)
 }
 
 func releaseDeliverable(stories []*pivotal.Story) (ok bool, details *bytes.Buffer) {
-	var (
-		deliverable = true
-		out         bytes.Buffer
-	)
-	tw := tabwriter.NewWriter(&out, 0, 8, 2, '\t', 0)
-	io.WriteString(tw, "\n")
-	io.WriteString(tw, "Story URL\tError\n")
-	io.WriteString(tw, "=========\t=====\n")
+	panic("Not implemented")
 
-StoryLoop:
-	for _, story := range stories {
-		// Skip the check when the relevant label is there.
-		for _, label := range config.SkipCheckLabels() {
-			if storyLabeled(story, label) {
-				continue StoryLoop
+	/*
+			var (
+				deliverable = true
+				out         bytes.Buffer
+			)
+			tw := tabwriter.NewWriter(&out, 0, 8, 2, '\t', 0)
+			io.WriteString(tw, "\n")
+			io.WriteString(tw, "Story URL\tError\n")
+			io.WriteString(tw, "=========\t=====\n")
+
+		StoryLoop:
+			for _, story := range stories {
+				// Skip the check when the relevant label is there.
+				for _, label := range config.SkipCheckLabels() {
+					if storyLabeled(story, label) {
+						continue StoryLoop
+					}
+				}
+
+				// Otherwise make sure the story is accepted.
+				if !storyLabeled(story, config.ReviewedLabel()) {
+					fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the reviewer")
+					deliverable = false
+				}
+				if !storyLabeled(story, config.VerifiedLabel()) {
+					fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the QA")
+					deliverable = false
+				}
 			}
-		}
 
-		// Otherwise make sure the story is accepted.
-		if !storyLabeled(story, config.ReviewedLabel()) {
-			fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the reviewer")
-			deliverable = false
-		}
-		if !storyLabeled(story, config.VerifiedLabel()) {
-			fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the QA")
-			deliverable = false
-		}
-	}
-
-	io.WriteString(tw, "\n")
-	if !deliverable {
-		tw.Flush()
-		return false, &out
-	}
-	return true, nil
+			io.WriteString(tw, "\n")
+			if !deliverable {
+				tw.Flush()
+				return false, &out
+			}
+			return true, nil
+	*/
 }
 
-func setStoriesState(stories []*pivotal.Story, state string) ([]*pivotal.Story, *bytes.Buffer, error) {
+func setStoriesState(stories []*pivotal.Story, state string) ([]*pivotal.Story, error) {
 	updateRequest := &pivotal.Story{State: state}
 	return updateStories(stories, func(story *pivotal.Story) *pivotal.Story {
 		return updateRequest
 	})
 }
 
-func addLabel(stories []*pivotal.Story, label string) ([]*pivotal.Story, *bytes.Buffer, error) {
+func addLabel(stories []*pivotal.Story, label string) ([]*pivotal.Story, error) {
 	return updateStories(stories, func(story *pivotal.Story) *pivotal.Story {
 		// Make sure the label is not already there.
 		labels := story.Labels
@@ -142,7 +153,7 @@ func addLabel(stories []*pivotal.Story, label string) ([]*pivotal.Story, *bytes.
 	})
 }
 
-func removeLabel(stories []*pivotal.Story, label string) ([]*pivotal.Story, *bytes.Buffer, error) {
+func removeLabel(stories []*pivotal.Story, label string) ([]*pivotal.Story, error) {
 	return updateStories(stories, func(story *pivotal.Story) *pivotal.Story {
 		// Drop the label that matches.
 		labels := make([]*pivotal.Label, 0, len(story.Labels))
@@ -184,10 +195,15 @@ type storyUpdateResult struct {
 	err   error
 }
 
-func updateStories(stories []*pivotal.Story, updateFunc storyUpdateFunc) ([]*pivotal.Story, *bytes.Buffer, error) {
+func updateStories(stories []*pivotal.Story, updateFunc storyUpdateFunc) ([]*pivotal.Story, error) {
+	config, err := LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	// Prepare the PT client.
 	var (
-		token     = config.ApiToken()
+		token     = config.UserToken()
 		projectId = config.ProjectId()
 	)
 	client := pivotal.NewClient(token)
@@ -217,7 +233,6 @@ func updateStories(stories []*pivotal.Story, updateFunc storyUpdateFunc) ([]*piv
 	var (
 		ss     = make([]*pivotal.Story, 0, len(stories))
 		stderr = new(bytes.Buffer)
-		err    error
 	)
 	for i := 0; i < cap(retCh); i++ {
 		ret := <-retCh
@@ -228,5 +243,8 @@ func updateStories(stories []*pivotal.Story, updateFunc storyUpdateFunc) ([]*piv
 		}
 	}
 
-	return ss, stderr, err
+	if err != nil {
+		return nil, errs.NewError("Update Pivotal Tracker stories", err, stderr)
+	}
+	return ss, nil
 }

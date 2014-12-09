@@ -6,6 +6,16 @@ import (
 )
 
 const LocalConfigTemplate = `issue_tracker: "{{.IssueTrackerKey}}"
+{{ if eq .IssueTrackerKey "pivotal_tracker" }}pivotal_tracker:
+#  project_id: 123456
+#  labels:
+#    point_me: "point_me"
+#    no_review: "no review"
+#    reviewed: "reviewed"
+#    verified: "qa+"
+#    skip_check_labels:
+#      - "wontfix"
+#      - "dupe"{{ end }}
 {{ if eq .IssueTrackerKey "jira" }}jira:
 #  server_url: "https://example.com/jira"
 #  project_key: "EX"{{ end }}

@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	// Other
-	"gopkg.in/salsita/go-pivotaltracker.v0/v5/pivotal"
+	"github.com/salsita/go-pivotaltracker/v5/pivotal"
 )
 
 type user struct {
