@@ -65,20 +65,23 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 		ownerIds[i] = id
 	}
 	updateRequest := &pivotal.Story{OwnerIds: ownerIds}
-	_, stderr, err := updateStories([]*pivotal.Story{story.Story}, func(story *pivotal.Story) *pivotal.Story {
+	_, err := updateStories([]*pivotal.Story{story.Story}, func(story *pivotal.Story) *pivotal.Story {
 		return updateRequest
 	})
 	if err != nil {
-		return errs.NewError(task, err, stderr)
+		return errs.NewError(task, err, nil)
 	}
 	return nil
 }
 
 func (story *story) Start() *errs.Error {
 	stories := []*pivotal.Story{story.Story}
-	_, stderr, err := setStoriesState(stories, pivotal.StoryStateStarted)
-	if err != nil {
-		return errs.NewError("Start Pivotal Tracker story", stderr, err)
+	if _, err := setStoriesState(stories, pivotal.StoryStateStarted); err != nil {
+		return errs.NewError("Start Pivotal Tracker story", err, nil)
 	}
 	return nil
+}
+
+func (story *story) LessThan(otherStory common.Story) bool {
+	panic("Not implemented")
 }
