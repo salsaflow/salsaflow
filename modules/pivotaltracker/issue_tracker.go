@@ -1,12 +1,16 @@
 package pivotaltracker
 
 import (
+	// Stdlib
+	"fmt"
+
 	// Internal
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/version"
 
 	// Other
 	"github.com/salsita/go-pivotaltracker/v5/pivotal"
+	"github.com/toqueteos/webbrowser"
 )
 
 type issueTracker struct {
@@ -69,5 +73,5 @@ func (tracker *issueTracker) RunningRelease(
 }
 
 func (tracker *issueTracker) OpenStory(storyId string) error {
-	panic("Not implemented")
+	return webbrowser.Open(fmt.Sprintf("https://pivotaltracker.com/story/show/%v", storyId))
 }
