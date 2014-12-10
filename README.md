@@ -66,6 +66,7 @@ The complete list of SalsaFlow commands follows (links pointing to the `develop`
 * [story open](https://github.com/salsaflow/salsaflow/blob/develop/commands/story/open/README.md)
 * [story start](https://github.com/salsaflow/salsaflow/blob/develop/commands/story/start/README.md)
 * [version](https://github.com/salsaflow/salsaflow/blob/develop/commands/version/README.md)
+* [version bump](https://github.com/salsaflow/salsaflow/blob/develop/commands/version/bump/README.md)
 
 SalsaFlow can only be used when you are within a project repository.
 The repository is automagically initialised when you run any SalsaFlow command there.
