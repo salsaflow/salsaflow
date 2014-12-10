@@ -50,9 +50,24 @@ Modules may also require some additional packages to be installed.
 ## Usage ##
 
 Well, the best thing you can do is to just run `salsaflow -h` and read.
+More in-depth SalsaFlow principes are explained in the [wiki](https://github.com/salsaflow/salsaflow/wiki).
 
-Every SalsaFlow command is shortly explained when you run `salsaflow <command> -h`.
-A more comprehensive documentation is available on the [wiki](https://github.com/salsaflow/salsaflow/wiki).
+The complete list of SalsaFlow commands follows (links pointing to the `develop` docs):
+
+* [pkg install](https://github.com/salsaflow/salsaflow/blob/develop/commands/pkg/install/README.md)
+* [pkg upgrade](https://github.com/salsaflow/salsaflow/blob/develop/commands/pkg/upgrade/README.md)
+* [release changes](https://github.com/salsaflow/salsaflow/blob/develop/commands/release/changes/README.md)
+* [release deploy](https://github.com/salsaflow/salsaflow/blob/develop/commands/release/deploy/README.md)
+* [release stage](https://github.com/salsaflow/salsaflow/blob/develop/commands/release/stage/README.md)
+* [release start](https://github.com/salsaflow/salsaflow/blob/develop/commands/release/start/README.md)
+* [repo bootstrap](https://github.com/salsaflow/salsaflow/blob/develop/commands/repo/bootstrap/README.md)
+* [repo init](https://github.com/salsaflow/salsaflow/blob/develop/commands/repo/init/README.md)
+* [review post](https://github.com/salsaflow/salsaflow/blob/develop/commands/review/post/README.md)
+* [story changes](https://github.com/salsaflow/salsaflow/blob/develop/commands/story/changes/README.md)
+* [story open](https://github.com/salsaflow/salsaflow/blob/develop/commands/story/open/README.md)
+* [story start](https://github.com/salsaflow/salsaflow/blob/develop/commands/story/start/README.md)
+* [version](https://github.com/salsaflow/salsaflow/blob/develop/commands/version/README.md)
+* [version bump](https://github.com/salsaflow/salsaflow/blob/develop/commands/version/bump/README.md)
 
 SalsaFlow can only be used when you are within a project repository.
 The repository is automagically initialised when you run any SalsaFlow command there.
