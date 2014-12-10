@@ -49,6 +49,7 @@ type User interface {
 type Story interface {
 	Id() string
 	ReadableId() string
+	Tag() string
 	Title() string
 
 	Assignees() []User

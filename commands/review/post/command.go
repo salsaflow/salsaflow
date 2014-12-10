@@ -424,7 +424,7 @@ Please pick up the story to assign the commit to:`, commit.SHA, commit.MessageTi
 			}
 
 			// Extend the commit message to include Story-Id.
-			commitMessage := fmt.Sprintf("%v\nStory-Id: %v\n", commit.Message, story.ReadableId())
+			commitMessage := fmt.Sprintf("%v\nStory-Id: %v\n", commit.Message, story.Tag())
 
 			// Amend the cherry-picked commit to include the new commit message.
 			task = "Amend the commit message for " + commit.SHA

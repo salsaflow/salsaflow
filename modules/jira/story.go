@@ -40,6 +40,10 @@ func (story *story) ReadableId() string {
 	return story.Issue.Key
 }
 
+func (story *story) Tag() string {
+	return story.Issue.Key
+}
+
 func (story *story) Title() string {
 	return story.Issue.Fields.Summary
 }

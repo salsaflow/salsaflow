@@ -21,9 +21,13 @@ func (story *story) Id() string {
 	return strconv.Itoa(story.Story.Id)
 }
 
-// Pivotal Tracker doesn't have readable id so this just returns normal id.
+// Pivotal Tracker doesn't have any readable id, just return the story ID.
 func (story *story) ReadableId() string {
 	return strconv.Itoa(story.Story.Id)
+}
+
+func (story *story) Tag() string {
+	return fmt.Sprintf("%v/stories/%v", story.Story.ProjectId, story.Story.Id)
 }
 
 func (story *story) Title() string {
