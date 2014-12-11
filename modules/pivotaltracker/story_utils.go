@@ -11,10 +11,10 @@ import (
 	"github.com/salsita/go-pivotaltracker/v5/pivotal"
 )
 
-func toCommonStories(stories []*pivotal.Story) []common.Story {
+func toCommonStories(stories []*pivotal.Story, config Config) []common.Story {
 	commonStories := make([]common.Story, len(stories))
 	for i := range stories {
-		commonStories[i] = &story{stories[i]}
+		commonStories[i] = &story{stories[i], config}
 	}
 	return commonStories
 }
@@ -37,4 +37,13 @@ StoryLoop:
 	}
 
 	return ss
+}
+
+func labeled(story *pivotal.Story, label string) bool {
+	for _, lab := range story.Labels {
+		if lab.Name == label {
+			return true
+		}
+	}
+	return false
 }
