@@ -144,11 +144,30 @@ func (release *runningRelease) Stage() (action.Action, error) {
 }
 
 func (release *runningRelease) Releasable() (bool, error) {
-	panic("Not implemented")
+	task := "Make sure the stories can be released"
+	log.Run(task)
+
+	// Make sure the stories are loaded.
+	if err := release.ensureStoriesLoaded(); err != nil {
+		return false, errs.NewError(task, err, nil)
+	}
+	stories := release.stories
+
+	// Make sure all relevant stories are Accepted.
+	// This includes the stories with SkipCheckLabels.
+	// These should be Accepted as well, maybe by a daemon.
+	for _, story := range stories {
+		if story.State != pivotal.StoryStateAccepted {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func (release *runningRelease) Release() error {
-	panic("Not implemented")
+	// There is no release step in the Pivotal Tracker really.
+	// All the stories are accepted, nothing to be done here.
+	return nil
 }
 
 func (release *runningRelease) ensureStoriesLoaded() error {
