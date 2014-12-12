@@ -16,6 +16,7 @@ import (
 	"github.com/salsaflow/salsaflow/modules"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/releases"
 	"github.com/salsaflow/salsaflow/version"
 
 	// Other
@@ -224,15 +225,19 @@ func checkCommits(release common.RunningRelease, releaseBranch string) error {
 		return errs.NewError(task, err, nil)
 	}
 
-	panic("IMPLEMENT THIS")
 	groups, err := changes.StoryChanges(stories)
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+
+	toCherryPick, err := releases.StoryChangesToCherryPick(groups)
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
 	// In case there are some changes being left behind,
 	// ask the user to confirm whether to proceed or not.
-	if len(groups) == 0 {
+	if len(toCherryPick) == 0 {
 		return nil
 	}
 
@@ -242,7 +247,7 @@ Some changes are being left behind!
 In other words, some changes that are assigned to the current release
 have not been cherry-picked onto the release branch yet.
 	`)
-	if err := changes.DumpStoryChanges(groups, os.Stdout, false); err != nil {
+	if err := changes.DumpStoryChanges(toCherryPick, os.Stdout, false); err != nil {
 		panic(err)
 	}
 	fmt.Println()
