@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
@@ -47,7 +48,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 		releaseLabel = release.trunkVersion.ReleaseTagString()
 	)
 
-	// Collect the stories to be added to the current release.
+	// Collect the commits that modified trunk since the last release.
 	task := "Collect the stories that modified trunk"
 	log.Run(task)
 	commits, err := releases.ListNewTrunkCommits()
@@ -55,9 +56,20 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 		return false, errs.NewError(task, err, nil)
 	}
 
-	// Fetch the collected stories from Pivotal Tracker.
+	// Get the story IDs associated with these commits.
+	tags := git.StoryIdTags(commits)
+	ids := make([]string, len(tags))
+	for _, tag := range tags {
+		// Story-Id for PT is "<project-id>/stories/<story-id>".
+		i := strings.LastIndex(tag, "/")
+		if i == -1 {
+			return false, errs.NewError(task, fmt.Errorf("invalid Story-Id tag: %v", tag), nil)
+		}
+		ids = append(ids, tag[i+1:])
+	}
+
+	// Fetch the collected stories from Pivotal Tracker, if necessary.
 	var additional []*pivotal.Story
-	ids := git.StoryIds(commits)
 	if len(ids) != 0 {
 		task = "Fetch the collected stories from Pivotal Tracker"
 		log.Run(task)
