@@ -72,48 +72,6 @@ func listStoriesById(
 	return searchStories(client, projectId, filter.String())
 }
 
-func releaseDeliverable(stories []*pivotal.Story) (ok bool, details *bytes.Buffer) {
-	panic("Not implemented")
-
-	/*
-			var (
-				deliverable = true
-				out         bytes.Buffer
-			)
-			tw := tabwriter.NewWriter(&out, 0, 8, 2, '\t', 0)
-			io.WriteString(tw, "\n")
-			io.WriteString(tw, "Story URL\tError\n")
-			io.WriteString(tw, "=========\t=====\n")
-
-		StoryLoop:
-			for _, story := range stories {
-				// Skip the check when the relevant label is there.
-				for _, label := range config.SkipCheckLabels() {
-					if storyLabeled(story, label) {
-						continue StoryLoop
-					}
-				}
-
-				// Otherwise make sure the story is accepted.
-				if !storyLabeled(story, config.ReviewedLabel()) {
-					fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the reviewer")
-					deliverable = false
-				}
-				if !storyLabeled(story, config.VerifiedLabel()) {
-					fmt.Fprintf(tw, "%v\t%v\n", story.URL, "not accepted by the QA")
-					deliverable = false
-				}
-			}
-
-			io.WriteString(tw, "\n")
-			if !deliverable {
-				tw.Flush()
-				return false, &out
-			}
-			return true, nil
-	*/
-}
-
 func addLabelFunc(label string) storyUpdateFunc {
 	return func(story *pivotal.Story) *pivotal.Story {
 		// Make sure the label is not already there.
