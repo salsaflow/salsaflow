@@ -54,37 +54,26 @@ func run(cmd *gocli.Command, args []string) {
 }
 
 func runMain() (err error) {
-	// Remember the current branch.
-	task := "Remember the current branch"
-	currentBranch, err := git.CurrentBranch()
-	if err != nil {
-		return err
-	}
-	defer func(branch string) {
-		// Checkout the original branch on return.
-		log.Run(fmt.Sprintf("Checkout the original branch (%v)", branch))
-		if ex := git.Checkout(branch); ex != nil {
-			if err == nil {
-				err = ex
-			} else {
-				errs.Log(ex)
-			}
-		}
-	}(currentBranch)
-
 	// Load git config.
-	config, err := git.LoadConfig()
+	gitConfig, err := git.LoadConfig()
 	if err != nil {
 		return err
 	}
 	var (
-		remoteName    = config.RemoteName()
-		releaseBranch = config.ReleaseBranchName()
-		stagingBranch = config.StagingBranchName()
+		remoteName    = gitConfig.RemoteName()
+		releaseBranch = gitConfig.ReleaseBranchName()
+		stagingBranch = gitConfig.StagingBranchName()
 	)
 
 	// Instantiate the issue tracker.
 	tracker, err := modules.GetIssueTracker()
+	if err != nil {
+		return err
+	}
+
+	// Get the current branch.
+	task := "Get the current branch"
+	currentBranch, err := git.CurrentBranch()
 	if err != nil {
 		return err
 	}
