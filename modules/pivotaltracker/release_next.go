@@ -135,7 +135,7 @@ func (release *nextRelease) Start() (action.Action, error) {
 	// Add release labels to the relevant stories.
 	task := "Label the stories with the release label"
 	log.Run(task)
-	releaseLabel := fmt.Sprintf("release-%v", release.trunkVersion)
+	releaseLabel := getReleaseLabel(release.trunkVersion)
 	stories, err := addLabel(client, release.config.ProjectId(),
 		release.additionalStories, releaseLabel)
 	if err != nil {

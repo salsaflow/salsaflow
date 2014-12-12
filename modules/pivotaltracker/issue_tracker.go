@@ -75,7 +75,7 @@ func (tracker *issueTracker) RunningRelease(
 	releaseVersion *version.Version,
 ) (common.RunningRelease, error) {
 
-	return newRunningRelease(releaseVersion)
+	return newRunningRelease(releaseVersion, tracker.config)
 }
 
 func (tracker *issueTracker) OpenStory(storyId string) error {

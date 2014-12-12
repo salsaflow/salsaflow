@@ -47,3 +47,27 @@ func labeled(story *pivotal.Story, label string) bool {
 	}
 	return false
 }
+
+func stateAtLeast(story *pivotal.Story, state string) bool {
+	return !stateLessThan(story.State, state)
+}
+
+func stateLessThan(stateA, stateB string) bool {
+	indexA, indexB := stateToIndex(stateA), stateToIndex(stateB)
+	return indexA < indexB
+}
+
+var stateIndexes = map[string]int{
+	pivotal.StoryStateUnscheduled: 1,
+	pivotal.StoryStatePlanned:     2,
+	pivotal.StoryStateUnstarted:   3,
+	pivotal.StoryStateStarted:     4,
+	pivotal.StoryStateFinished:    5,
+	pivotal.StoryStateDelivered:   6,
+	pivotal.StoryStateAccepted:    7,
+	pivotal.StoryStateRejected:    8,
+}
+
+func stateToIndex(state string) int {
+	return stateIndexes[state]
+}
