@@ -15,7 +15,7 @@ This command goes through the following steps:
   2. Make sure the trunk branch is up to date.
   3. Make sure the release branch does not exist.
   4. The user is prompted to confirm the release. This step largely depends on
-     the issue tracker module that is being used. Various checks can be carries
+     the issue tracker module that is being used. Various checks can be carried
      out here to make sure the release can be started.
   5. Create the release branch on top of the trunk branch.
   6. Set and commit the trunk version string. This means that the version string
