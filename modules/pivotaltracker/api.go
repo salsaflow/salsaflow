@@ -211,12 +211,13 @@ func updateStories(
 			}
 
 			// Collect the rollback results.
-			rollbackStderr := bytes.NewBufferString("\nRollback Errors\n---------------\n")
+			rollbackStderr := bytes.NewBufferString("Rollback Errors\n---------------\n")
 			for _ = range updatedStories {
 				if ret := <-retCh; ret.err != nil {
 					fmt.Fprintln(rollbackStderr, ret.err)
 				}
 			}
+			fmt.Fprintln(stderr)
 
 			// Append the rollback error output to the update error output.
 			if _, err := io.Copy(stderr, rollbackStderr); err != nil {
