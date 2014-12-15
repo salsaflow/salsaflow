@@ -26,4 +26,5 @@ This command goes through the following steps:
 3. Tag the release branch with the release tag.
 4. Delete the release branch.
 5. Reset the staging branch to point to the newly created tag.
-6. Update the remote repository. This is also supposed to trigger deployment.
+6. Push to the remote repository to delete the release branch, update
+   the staging branch and create the release tag.
