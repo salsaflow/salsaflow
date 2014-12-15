@@ -118,10 +118,14 @@ StoryLoop:
 	story, err := prompt.PromptStory(
 		"\nYou can start working on one of the following stories:", stories)
 	if err != nil {
-		if err == prompt.ErrCanceled {
-			panic(err)
+		switch err {
+		case prompt.ErrNoStories:
+			return errors.New("no startable stories found")
+		case prompt.ErrCanceled:
+			prompt.PanicCancel()
+		default:
+			return err
 		}
-		return err
 	}
 	fmt.Println()
 
