@@ -3,7 +3,6 @@ package prompt
 import (
 	// Stdlib
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +19,8 @@ import (
 // maxStoryTitleColumnWidth specifies the width of the story title column for story listing.
 // The story title is truncated to this width in case it is too long.
 const maxStoryTitleColumnWidth = 80
+
+var ErrNoStories = errors.New("no stories to choose from")
 
 type InvalidInputError struct {
 	input string
@@ -102,12 +103,7 @@ func PromptStory(msg string, stories []common.Story) (common.Story, error) {
 
 	// Make sure there are actually some stories to be printed.
 	if len(stories) == 0 {
-		return nil, errs.NewError(task, errors.New("no stories to choose from"),
-			bytes.NewBufferString(`
-There are no stories that the unassigned commits can be assigned to.
-In other words, there are no stories in the right state for that.
-
-`))
+		return nil, ErrNoStories
 	}
 
 	// Print the intro message.

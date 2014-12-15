@@ -388,10 +388,19 @@ Some of the commits listed above are not assigned to any story.
 Please pick up the story that these commits will be assigned to:`
 		selectedStory, err := prompt.PromptStory(header, stories)
 		if err != nil {
-			if err == prompt.ErrCanceled {
-				panic(err)
+			switch err {
+			case prompt.ErrNoStories:
+				hint := `
+There are no stories that the unassigned commits can be assigned to.
+In other words, there are no stories in the right state for that.
+
+`
+				return commits, errs.NewError(task, err, bytes.NewBufferString(hint))
+			case prompt.ErrCanceled:
+				prompt.PanicCancel()
+			default:
+				return commits, err
 			}
-			return commits, err
 		}
 		story = selectedStory
 	}
