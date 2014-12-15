@@ -27,6 +27,8 @@ import (
 const (
 	LibraryVersion = "0.0.1"
 
+	DefaultMaxPendingRequests = 10
+
 	defaultUserAgent = "salsaflow/" + LibraryVersion
 )
 
@@ -56,19 +58,48 @@ type Client struct {
 
 	// Version service.
 	Versions *VersionService
+
+	// requestCh is used to limit the number of pending requests.
+	requestCh chan struct{}
+
+	// Options
+	optMaxPendingRequests int
 }
 
-func New(baseURL *url.URL, httpClient *http.Client) *Client {
+func New(baseURL *url.URL, httpClient *http.Client, options ...func(*Client)) *Client {
+	// Create a Client object.
 	client := &Client{
-		httpClient: httpClient,
-		BaseURL:    baseURL,
-		UserAgent:  defaultUserAgent,
+		httpClient:            httpClient,
+		BaseURL:               baseURL,
+		UserAgent:             defaultUserAgent,
+		optMaxPendingRequests: DefaultMaxPendingRequests,
 	}
+
+	// Set up the API services.
 	client.Myself = newMyselfService(client)
 	client.Projects = newProjectService(client)
 	client.Issues = newIssueService(client)
 	client.Versions = newVersionService(client)
+
+	// Set custom options.
+	for _, option := range options {
+		option(client)
+	}
+
+	// Finish initialising the client.
+	client.requestCh = make(chan struct{}, client.optMaxPendingRequests)
+
+	// Return the new Client instance.
 	return client
+}
+
+// SetOptMaxPendingRequests can be used to set a custom queue size
+// for the requests that are to be sent to JIRA.
+//
+// It only makes sense to call this method from an option function.
+// Calling it later on will have no effect whatsoever.
+func (c *Client) SetOptMaxPendingRequests(limit int) {
+	c.optMaxPendingRequests = limit
 }
 
 func (c *Client) NewRequest(method, urlPath string, body interface{}) (*http.Request, error) {
@@ -97,6 +128,13 @@ func (c *Client) NewRequest(method, urlPath string, body interface{}) (*http.Req
 }
 
 func (c *Client) Do(req *http.Request, responseResource interface{}) (*http.Response, error) {
+	// Acquire a request slot by sending to the request channel.
+	c.requestCh <- struct{}{}
+	defer func() {
+		// Release the request slot by receiving from the request channel.
+		<-c.requestCh
+	}()
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
