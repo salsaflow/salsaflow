@@ -26,6 +26,7 @@ const (
 	stateIdStaged           = "10105"
 	stateIdAccepted         = "10005"
 	stateIdDone             = "10108"
+	stateIdComplete         = "10404"
 	stateIdReleased         = "10106"
 	stateIdClosed           = "6"
 )
@@ -47,11 +48,15 @@ var stageableStateIds = []string{
 	stateIdStaged,
 	stateIdAccepted,
 	stateIdDone,
+	stateIdComplete,
+	stateIdClosed,
 }
 
 var acceptedStateIds = []string{
 	stateIdAccepted,
 	stateIdReleased,
+	stateIdDone,
+	stateIdComplete,
 	stateIdClosed,
 }
 
