@@ -76,7 +76,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// Fetch the additional issues from JIRA.
 	task = "Fetch the collected issues from JIRA"
 	log.Run(task)
-	ids := git.StoryIds(commits)
+	ids := git.StoryIdTags(commits)
 	issues, err := listStoriesById(newClient(release.tracker.config), ids)
 	if len(issues) == 0 && err != nil {
 		return false, errs.NewError(task, err, nil)

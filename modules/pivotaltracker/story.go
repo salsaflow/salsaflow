@@ -15,6 +15,7 @@ import (
 
 type story struct {
 	*pivotal.Story
+	config Config
 }
 
 func (story *story) Id() string {
@@ -60,6 +61,7 @@ func (story *story) AddAssignee(user common.User) *errs.Error {
 
 func (story *story) SetAssignees(users []common.User) *errs.Error {
 	task := fmt.Sprintf("Set owners for story %v", story.Story.Id)
+
 	ownerIds := make([]int, len(users))
 	for i, user := range users {
 		id, err := strconv.Atoi(user.Id())
@@ -68,21 +70,33 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 		}
 		ownerIds[i] = id
 	}
+
+	var (
+		client    = pivotal.NewClient(story.config.UserToken())
+		projectId = story.config.ProjectId()
+	)
 	updateRequest := &pivotal.Story{OwnerIds: ownerIds}
-	_, err := updateStories([]*pivotal.Story{story.Story}, func(story *pivotal.Story) *pivotal.Story {
-		return updateRequest
-	})
+	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
+	story.Story = updatedStory
 	return nil
 }
 
 func (story *story) Start() *errs.Error {
-	stories := []*pivotal.Story{story.Story}
-	if _, err := setStoriesState(stories, pivotal.StoryStateStarted); err != nil {
-		return errs.NewError("Start Pivotal Tracker story", err, nil)
+	task := fmt.Sprintf("Start Pivotal Tracker story %v", story.Story.Id)
+
+	var (
+		client    = pivotal.NewClient(story.config.UserToken())
+		projectId = story.config.ProjectId()
+	)
+	updateRequest := &pivotal.Story{State: pivotal.StoryStateStarted}
+	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
+	if err != nil {
+		return errs.NewError(task, err, nil)
 	}
+	story.Story = updatedStory
 	return nil
 }
 

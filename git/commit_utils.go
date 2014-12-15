@@ -6,8 +6,8 @@ import (
 
 const StoryIdUnassignedTagValue = "unassigned"
 
-// StoryIds returns the list of unique story IDs that can be found in the commits.
-func StoryIds(commits []*Commit) []string {
+// StoryIdTags returns the list of unique story ID tags that can be found in the commits.
+func StoryIdTags(commits []*Commit) []string {
 	idMap := make(map[string]struct{}, len(commits))
 	for _, commit := range commits {
 		if commit.StoryId != "" && commit.StoryId != StoryIdUnassignedTagValue {

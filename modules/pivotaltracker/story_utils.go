@@ -11,10 +11,10 @@ import (
 	"github.com/salsita/go-pivotaltracker/v5/pivotal"
 )
 
-func toCommonStories(stories []*pivotal.Story) []common.Story {
+func toCommonStories(stories []*pivotal.Story, config Config) []common.Story {
 	commonStories := make([]common.Story, len(stories))
 	for i := range stories {
-		commonStories[i] = &story{stories[i]}
+		commonStories[i] = &story{stories[i], config}
 	}
 	return commonStories
 }
@@ -37,4 +37,37 @@ StoryLoop:
 	}
 
 	return ss
+}
+
+func labeled(story *pivotal.Story, label string) bool {
+	for _, lab := range story.Labels {
+		if lab.Name == label {
+			return true
+		}
+	}
+	return false
+}
+
+func stateAtLeast(story *pivotal.Story, state string) bool {
+	return !stateLessThan(story.State, state)
+}
+
+func stateLessThan(stateA, stateB string) bool {
+	indexA, indexB := stateToIndex(stateA), stateToIndex(stateB)
+	return indexA < indexB
+}
+
+var stateIndexes = map[string]int{
+	pivotal.StoryStateUnscheduled: 1,
+	pivotal.StoryStatePlanned:     2,
+	pivotal.StoryStateUnstarted:   3,
+	pivotal.StoryStateStarted:     4,
+	pivotal.StoryStateFinished:    5,
+	pivotal.StoryStateDelivered:   6,
+	pivotal.StoryStateAccepted:    7,
+	pivotal.StoryStateRejected:    8,
+}
+
+func stateToIndex(state string) int {
+	return stateIndexes[state]
 }

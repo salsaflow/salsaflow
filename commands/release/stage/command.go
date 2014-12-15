@@ -16,6 +16,7 @@ import (
 	"github.com/salsaflow/salsaflow/modules"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/releases"
 	"github.com/salsaflow/salsaflow/version"
 
 	// Other
@@ -53,37 +54,26 @@ func run(cmd *gocli.Command, args []string) {
 }
 
 func runMain() (err error) {
-	// Remember the current branch.
-	task := "Remember the current branch"
-	currentBranch, err := git.CurrentBranch()
-	if err != nil {
-		return err
-	}
-	defer func(branch string) {
-		// Checkout the original branch on return.
-		log.Run(fmt.Sprintf("Checkout the original branch (%v)", branch))
-		if ex := git.Checkout(branch); ex != nil {
-			if err == nil {
-				err = ex
-			} else {
-				errs.Log(ex)
-			}
-		}
-	}(currentBranch)
-
 	// Load git config.
-	config, err := git.LoadConfig()
+	gitConfig, err := git.LoadConfig()
 	if err != nil {
 		return err
 	}
 	var (
-		remoteName    = config.RemoteName()
-		releaseBranch = config.ReleaseBranchName()
-		stagingBranch = config.StagingBranchName()
+		remoteName    = gitConfig.RemoteName()
+		releaseBranch = gitConfig.ReleaseBranchName()
+		stagingBranch = gitConfig.StagingBranchName()
 	)
 
 	// Instantiate the issue tracker.
 	tracker, err := modules.GetIssueTracker()
+	if err != nil {
+		return err
+	}
+
+	// Get the current branch.
+	task := "Get the current branch"
+	currentBranch, err := git.CurrentBranch()
 	if err != nil {
 		return err
 	}
@@ -224,15 +214,19 @@ func checkCommits(release common.RunningRelease, releaseBranch string) error {
 		return errs.NewError(task, err, nil)
 	}
 
-	panic("IMPLEMENT THIS")
 	groups, err := changes.StoryChanges(stories)
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+
+	toCherryPick, err := releases.StoryChangesToCherryPick(groups)
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
 	// In case there are some changes being left behind,
 	// ask the user to confirm whether to proceed or not.
-	if len(groups) == 0 {
+	if len(toCherryPick) == 0 {
 		return nil
 	}
 
@@ -242,7 +236,7 @@ Some changes are being left behind!
 In other words, some changes that are assigned to the current release
 have not been cherry-picked onto the release branch yet.
 	`)
-	if err := changes.DumpStoryChanges(groups, os.Stdout, false); err != nil {
+	if err := changes.DumpStoryChanges(toCherryPick, os.Stdout, false); err != nil {
 		panic(err)
 	}
 	fmt.Println()
