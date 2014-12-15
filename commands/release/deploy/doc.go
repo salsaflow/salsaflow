@@ -11,9 +11,9 @@ The release to be deployed can be selected in the following ways:
 
 1. The -release command line flag selects VERSION as the release
    to be deployed. That's it.
-2. When no release is specified manually, SalsaFlow prompts the user
-   to select one of the releases that happened since the previous deployment.
-   In other words, it lists the tags that happened since the current stable
+2. When no release is specified manually, SalsaFlow prompts the user to select
+   one of the releases that were staged since the previous deployment.
+   In other words, it lists the tags that were created since the current stable
    branch position.
 
 There are some checks in place so that you cannot simply deploy any release.
@@ -33,6 +33,7 @@ This command goes through the following steps:
      is not specified explicitly.
   3. Reset the stable branch to point to the tag associated with
      the given release.
-  4. Update the remote repository. This will most probably trigger deployment.
+  4. Push the stable branch to the remote repository. This is expected to trigger
+     deployment (or any post-release step that makes sense for the project).
 */
 package deployCmd
