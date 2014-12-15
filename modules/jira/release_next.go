@@ -115,7 +115,7 @@ IssueLoop:
 
 	// Ask the user to confirm.
 	ok, err := prompt.Confirm(
-		fmt.Sprintf("Are you sure you want to start release %v?", release.trunkVersion))
+		fmt.Sprintf("\nAre you sure you want to start release %v?", release.trunkVersion))
 	if err == nil {
 		release.additionalIssues = issues
 	}

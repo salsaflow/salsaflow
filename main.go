@@ -68,6 +68,6 @@ func catchSignals(ch chan os.Signal) {
 | Signal received, the child processes were notified. |
 | Send the signal again to exit immediately.          |
 +-----------------------------------------------------+
-	`)
+`)
 	signal.Stop(ch)
 }

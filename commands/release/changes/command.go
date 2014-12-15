@@ -9,6 +9,7 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/app"
 	"github.com/salsaflow/salsaflow/changes"
+	"github.com/salsaflow/salsaflow/commands/release/changes/cherrypick"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/log"
@@ -43,10 +44,14 @@ var (
 )
 
 func init() {
+	// Register the command line flags.
 	Command.Flags.BoolVar(&flagPorcelain, "porcelain", flagPorcelain,
 		"enable script-friendly output")
 	Command.Flags.BoolVar(&flagToCherryPick, "to_cherrypick", flagToCherryPick,
 		"list the changes to cherry-pick")
+
+	// Register the subcommands.
+	Command.MustRegisterSubcommand(cherrypickCmd.Command)
 }
 
 func run(cmd *gocli.Command, args []string) {
