@@ -197,9 +197,9 @@ func search(api *client.Client, query string) ([]*client.Issue, error) {
 }
 
 func listStoriesById(api *client.Client, ids []string) ([]*client.Issue, error) {
-	// Make sure there are some IDs being passed in.
+	// In case the list of IDs is empty, just return an empty slice.
 	if len(ids) == 0 {
-		panic("assert len(ids) != 0")
+		return nil, nil
 	}
 
 	// Fetch the issues from JIRA, return immediately on success.
