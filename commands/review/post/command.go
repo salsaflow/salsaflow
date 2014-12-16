@@ -90,16 +90,7 @@ func run(cmd *gocli.Command, args []string) {
 
 	app.InitOrDie()
 
-	// Exit cleanly when the panic is actually ErrCanceled.
-	defer func() {
-		if r := recover(); r != nil {
-			if r == prompt.ErrCanceled {
-				log.Println("\nOperation canceled. You are welcome to come back any time!")
-			} else {
-				panic(r)
-			}
-		}
-	}()
+	defer prompt.RecoverCancel()
 
 	var err error
 	switch {
@@ -126,10 +117,26 @@ func postRevision(revision string) error {
 		return errs.NewError(task, err, nil)
 	}
 
-	return postReviewRequests(commits, revision == "HEAD")
+	if err := postReviewRequests(commits, revision == "HEAD"); err != nil {
+		return err
+	}
+
+	// In case there is no error, tell the user what to do next.
+	printFollowup()
+	return nil
 }
 
 func postBranch(parentBranch string) error {
+	// Load the git-related config.
+	gitConfig, err := git.LoadConfig()
+	if err != nil {
+		return err
+	}
+	var (
+		remoteName  = gitConfig.RemoteName()
+		trunkBranch = gitConfig.TrunkBranchName()
+	)
+
 	// Get the current branch name.
 	currentBranch, err := git.CurrentBranch()
 	if err != nil {
@@ -141,12 +148,6 @@ func postBranch(parentBranch string) error {
 		task := "Fetch the remote repository"
 		log.Run(task)
 
-		gitConfig, err := git.LoadConfig()
-		if err != nil {
-			return errs.NewError(task, err, nil)
-		}
-
-		var remoteName = gitConfig.RemoteName()
 		if err := git.UpdateRemotes(remoteName); err != nil {
 			return errs.NewError(task, err, nil)
 		}
@@ -198,7 +199,12 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	}
 
 	// Post the review requests.
-	return postReviewRequests(commits, true)
+	if err := postReviewRequests(commits, true); err != nil {
+		return err
+	}
+
+	// Ask the user what to do next.
+	return parentFollowupDialog(currentBranch, remoteName, trunkBranch)
 }
 
 func postReviewRequests(commits []*git.Commit, canAmend bool) error {
@@ -242,9 +248,6 @@ You are about to post review requests for the following commits:
 	if err := sendReviewRequests(commits); err != nil {
 		return errs.NewError(task, err, nil)
 	}
-
-	// In case there is no error, tell the user what to do next.
-	printFollowup()
 
 	return nil
 }
@@ -554,4 +557,129 @@ This will create a new review request that is linked to the one being fixed.
   # IMPORTANT: Your code has not been merged and/or pushed. #
   ###########################################################
 `)
+}
+
+func parentFollowupDialog(currentBranch, remoteName, trunkBranch string) error {
+	// Decide whether to push the current branch.
+	fmt.Printf(`
+----------
+
+Now we have to decide what to do next.
+
+What shall we do with the current branch (%v)?
+
+  1) do nothing
+  2) push
+  3) push --force
+
+`, currentBranch)
+	index, err := prompt.PromptIndex("Choose [1-3]: ", 1, 3)
+	if err != nil {
+		return err
+	}
+	switch index {
+	case 1:
+	case 2:
+		fmt.Println()
+		task := fmt.Sprintf("Push branch '%v'", currentBranch)
+		log.Run(task)
+		err := git.Push(remoteName, fmt.Sprintf("%v:%v", currentBranch, currentBranch))
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
+	case 3:
+		fmt.Println()
+		task := fmt.Sprintf("Push branch '%v' (--force)", currentBranch)
+		log.Run(task)
+		err := git.PushForce(remoteName, fmt.Sprintf("%v:%v", currentBranch, currentBranch))
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
+	}
+
+	// Decide whether to merge the current branch into trunk or not.
+	var trunkModified bool
+	fmt.Printf(`
+You might want to merge the current branch (%v) into trunk, right?
+
+  1) do nothing
+  2) merge into trunk
+  3) merge into trunk (--no-ff)
+
+`, currentBranch)
+	index, err = prompt.PromptIndex("Choose [1-3]: ", 1, 3)
+	if err != nil {
+		return err
+	}
+	switch index {
+	case 1:
+	case 2:
+		fmt.Println()
+		if err := merge(currentBranch, trunkBranch); err != nil {
+			return err
+		}
+		trunkModified = true
+	case 3:
+		fmt.Println()
+		if err := merge(currentBranch, trunkBranch, "--no-ff"); err != nil {
+			return err
+		}
+		trunkModified = true
+	}
+
+	// Decide whether to push trunk or not.
+	if !trunkModified {
+		return nil
+	}
+	fmt.Print(`
+Now that the trunk branch has been modified, you might want to push it, right?
+
+  1) do nothing
+  2) push
+
+`)
+	index, err = prompt.PromptIndex("Choose [1-2]: ", 1, 2)
+	if err != nil {
+		return err
+	}
+	switch index {
+	case 1:
+	case 2:
+		fmt.Println()
+		task := fmt.Sprintf("Push branch '%v'", trunkBranch)
+		log.Run(task)
+		err := git.Push(remoteName, fmt.Sprintf("%v:%v", trunkBranch, trunkBranch))
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
+	}
+
+	return nil
+}
+
+// merge merges commit into branch.
+func merge(commit, branch string, flags ...string) error {
+	task := fmt.Sprintf("Merge '%v' into branch '%v'", commit, branch)
+	log.Run(task)
+
+	currentBranch, err := git.CurrentBranch()
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+
+	if err := git.Checkout(branch); err != nil {
+		return errs.NewError(task, err, nil)
+	}
+
+	args := make([]string, 1, 1+len(flags))
+	args[0] = commit
+	args = append(args, flags...)
+	if _, err := git.RunCommand("merge", args...); err != nil {
+		return errs.NewError(task, err, nil)
+	}
+
+	if err := git.Checkout(currentBranch); err != nil {
+		return errs.NewError(task, err, nil)
+	}
+	return nil
 }
