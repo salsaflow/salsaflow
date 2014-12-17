@@ -47,15 +47,33 @@ type User interface {
 }
 
 type Story interface {
+	// Id returns the ID of the story.
 	Id() string
+
+	// ReadableId returns the human-friendly ID of the story.
+	// This ID is used when listing stories to the user.
 	ReadableId() string
+
+	// Tag returns a string that is then used for the Story-Id tag.
+	// The tag is supposed to identify the story, but it might be
+	// more complicated than just the story ID.
 	Tag() string
+
+	// Title returns a short description of the story.
+	// It is used to describe stories when listing them to the user.
 	Title() string
 
+	// Assignees returns the list of users that are assigned to the story.
 	Assignees() []User
+
+	// AddAssignee can be used to add an additional user to the list of assignees.
 	AddAssignee(User) *errs.Error
+
+	// SetAssigness can be used to set the list of assignees,
+	// effectively replacing the current list.
 	SetAssignees([]User) *errs.Error
 
+	// Start can be used to start the story in the issue tracker.
 	Start() *errs.Error
 
 	// LessThan is being used for sorting stories for output.
