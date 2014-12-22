@@ -110,7 +110,7 @@ func runMain() error {
 	}
 	defer func() {
 		// Do not checkout the original branch in case the name is empty.
-		// This is later use to disable the checkout of the original branch.
+		// This is later used to disable the checkout of the original branch.
 		if currentBranch == "" {
 			return
 		}
