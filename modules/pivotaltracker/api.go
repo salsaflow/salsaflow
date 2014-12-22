@@ -36,11 +36,14 @@ func searchStories(
 	format string, v ...interface{},
 ) ([]*pivotal.Story, error) {
 
-	// Automatically limit the story type.
-	format = fmt.Sprintf("(type:%v OR type:%v) AND %v",
-		pivotal.StoryTypeFeature, pivotal.StoryTypeBug, format)
+	// Generate the query.
+	query := fmt.Sprintf(format, v...)
 
-	stories, _, err := client.Stories.List(projectId, fmt.Sprintf(format, v...))
+	// Automatically limit the story type.
+	query = fmt.Sprintf("(type:%v OR type:%v) AND (%v)",
+		pivotal.StoryTypeFeature, pivotal.StoryTypeBug, query)
+
+	stories, _, err := client.Stories.List(projectId, query)
 	return stories, err
 }
 
@@ -58,7 +61,7 @@ func listStoriesById(
 	var filter bytes.Buffer
 	for _, id := range ids {
 		if filter.Len() != 0 {
-			if _, err := filter.WriteString("OR "); err != nil {
+			if _, err := filter.WriteString(" OR "); err != nil {
 				return nil, err
 			}
 		}
