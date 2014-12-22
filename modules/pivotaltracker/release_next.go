@@ -58,7 +58,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 
 	// Get the story IDs associated with these commits.
 	tags := git.StoryIdTags(commits)
-	ids := make([]string, len(tags))
+	ids := make([]string, 0, len(tags))
 	for _, tag := range tags {
 		// Story-Id for PT is "<project-id>/stories/<story-id>".
 		i := strings.LastIndex(tag, "/")
@@ -101,9 +101,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 
 	// Fetch the already assigned but unpointed stories.
 	pmStories, err := searchStories(client, release.config.ProjectId(),
-		"(type:%v OR type:%v) AND label:\"%v\" AND label:\"%v\"",
-		pivotal.StoryTypeFeature, pivotal.StoryTypeBug,
-		releaseLabel, pmLabel)
+		"label:\"%v\" AND label:\"%v\"", releaseLabel, pmLabel)
 	if err != nil {
 		return false, errs.NewError(task, err, nil)
 	}
