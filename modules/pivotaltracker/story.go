@@ -100,6 +100,6 @@ func (story *story) Start() *errs.Error {
 	return nil
 }
 
-func (story *story) LessThan(otherStory common.Story) bool {
-	panic("Not implemented")
+func (s *story) LessThan(otherStory common.Story) bool {
+	return s.CreatedAt.Before(*otherStory.(*story).CreatedAt)
 }

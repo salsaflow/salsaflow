@@ -48,9 +48,9 @@ func StoryChanges(stories []common.Story) ([]*StoryChangeGroup, error) {
 	// Prepare the regexp to use to select commits by commit messages.
 	// This regexp is ORing the chosen Story-Id tag values.
 	var grepFlag bytes.Buffer
-	fmt.Fprintf(&grepFlag, "^Story-Id: (%v", stories[0].ReadableId())
+	fmt.Fprintf(&grepFlag, "^Story-Id: (%v", stories[0].Tag())
 	for _, story := range stories[1:] {
-		fmt.Fprintf(&grepFlag, "|%v", story.ReadableId())
+		fmt.Fprintf(&grepFlag, "|%v", story.Tag())
 	}
 	fmt.Fprint(&grepFlag, ")$")
 
@@ -84,7 +84,7 @@ func SortStoryChanges(groups []*StoryChangeGroup, stories []common.Story) []*Sto
 	// Create a map to be able to find stories by ReadableId quickly.
 	storyMap := make(map[string]common.Story, len(stories))
 	for _, story := range stories {
-		storyMap[story.ReadableId()] = story
+		storyMap[story.Tag()] = story
 	}
 
 	// Wrap the change groups to be able to sort them.
