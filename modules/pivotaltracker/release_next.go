@@ -118,6 +118,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 		if err != nil {
 			return false, err
 		}
+		fmt.Println()
 		return false, errs.NewError(task, errors.New("unpointed stories detected"), nil)
 	}
 
