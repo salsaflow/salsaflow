@@ -163,11 +163,6 @@ func runMain() error {
 		return errs.NewError(task, errors.New("no deployable releases found"), nil)
 	}
 
-	// Invert the inversion.
-	for i, j := 0, len(releasable)-1; i < j; i, j = i+1, j-1 {
-		releasable[i], releasable[j] = releasable[j], releasable[i]
-	}
-
 	// Prompt the user to choose the release tag.
 	task = "Prompt the user to choose the release to be deployed"
 	fmt.Printf("\nThe following releases can be deployed:\n\n")
@@ -202,7 +197,8 @@ Or you can just press Enter to abort: `, 0, len(tags)-1)
 	//
 	// In case there is an error, tell the details to the user and let them
 	// handle the cleanup since it's not possible to easily rollback the push.
-	for _, release := range releasable[:index+1] {
+	for i := len(releasable) - 1; i >= index; i-- {
+		release := releasable[i]
 		releaseName := release.Version().ReleaseTagString()
 		task := fmt.Sprintf("Mark release '%v' as released", releaseName)
 		log.Run(task)
