@@ -31,7 +31,7 @@ var Command = &gocli.Command{
   post [-update=RRID] [-fixes=RRID] [-open] [REVISION]
 
   post [-fixes=RRID] [-no_fetch] [-no_rebase]
-       [-ask_once] [-open] -parent=BRANCH`,
+       [-ask_once] [-open] [-no_dialog] -parent=BRANCH`,
 	Short: "post code review requests",
 	Long: `
   Post a code review request for each commit specified.
@@ -56,6 +56,7 @@ var Command = &gocli.Command{
 var (
 	flagAskOnce  bool
 	flagFixes    uint
+	flagNoDialog bool
 	flagNoFetch  bool
 	flagNoRebase bool
 	flagOpen     bool
@@ -68,6 +69,8 @@ func init() {
 		"ask once and reuse the story ID for all commits")
 	Command.Flags.UintVar(&flagFixes, "fixes", flagFixes,
 		"mark the commits as fixing issues in the given review request")
+	Command.Flags.BoolVar(&flagNoDialog, "no_dialog", flagNoDialog,
+		"skip the followup dialog in case -parent is being used")
 	Command.Flags.BoolVar(&flagNoFetch, "no_fetch", flagNoFetch,
 		"do not fetch the upstream repository")
 	Command.Flags.BoolVar(&flagNoRebase, "no_rebase", flagNoRebase,
@@ -201,6 +204,12 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	// Post the review requests.
 	if err := postReviewRequests(commits, true); err != nil {
 		return err
+	}
+
+	// Just print the regular followup in case the dialog is disabled.
+	if flagNoDialog {
+		printFollowup()
+		return nil
 	}
 
 	// Ask the user what to do next.
