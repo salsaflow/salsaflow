@@ -229,6 +229,31 @@ where
 
 As apparent from the example, there can be multiple server records in the file.
 
+#### Pivotal Tracker ####
+
+To activate this module, put the following config into the **local** configuration file:
+
+```yaml
+issue_tracker: "pivotal_tracker"
+pivotal_tracker:
+  project_id: 123456
+```
+
+where
+
+* `project_id` is the Pivotal Tracker project ID, obviously.
+
+The **global** configuration file must then contain the following additional config:
+
+```yaml
+pivotal_tracker:
+  token: "secret-token-goes-here"
+```
+
+where
+
+* `token` is your personal Pivotal Tracker API token.
+
 ### Supported Code Review Tools ###
 
 #### Review Board ####
