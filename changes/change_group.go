@@ -59,17 +59,14 @@ func StoryChanges(stories []common.Story) ([]*StoryChangeGroup, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(commits) == 0 {
-		return nil, nil
-	}
 
-	// Split by Change-Id.
+	// Return the change groups.
+	return StoryChangesFromCommits(commits)
+}
+
+func StoryChangesFromCommits(commits []*git.Commit) ([]*StoryChangeGroup, error) {
+	// Group by Change-Id.
 	changeGroups := GroupCommitsByChangeId(commits)
-
-	// In case there are no changes left, we are done.
-	if len(changeGroups) == 0 {
-		return nil, nil
-	}
 
 	// Fix the commit sources.
 	if err := git.FixCommitSources(commits); err != nil {
