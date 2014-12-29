@@ -124,7 +124,7 @@ func runMain() (err error) {
 	// Make sure there are no commits being left behind,
 	// e.g. make sure no commits are forgotten on the trunk branch,
 	// i.e. make sure that everything necessary was cherry-picked.
-	if err := checkCommits(release, releaseBranch); err != nil {
+	if err := checkCommits(tracker, release, releaseBranch); err != nil {
 		return err
 	}
 
@@ -205,7 +205,12 @@ func runMain() (err error) {
 		stagingBranch+":"+stagingBranch) // Push the staging branch.
 }
 
-func checkCommits(release common.RunningRelease, releaseBranch string) error {
+func checkCommits(
+	tracker common.IssueTracker,
+	release common.RunningRelease,
+	releaseBranch string,
+) error {
+
 	var task = "Make sure no changes are being left behind"
 	log.Run(task)
 
@@ -236,7 +241,7 @@ Some changes are being left behind!
 In other words, some changes that are assigned to the current release
 have not been cherry-picked onto the release branch yet.
 	`)
-	if err := changes.DumpStoryChanges(toCherryPick, os.Stdout, false); err != nil {
+	if err := changes.DumpStoryChanges(os.Stdout, toCherryPick, tracker, false); err != nil {
 		panic(err)
 	}
 	fmt.Println()

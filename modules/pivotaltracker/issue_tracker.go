@@ -3,6 +3,7 @@ package pivotaltracker
 import (
 	// Stdlib
 	"fmt"
+	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/modules/common"
@@ -80,4 +81,12 @@ func (tracker *issueTracker) RunningRelease(
 
 func (tracker *issueTracker) OpenStory(storyId string) error {
 	return webbrowser.Open(fmt.Sprintf("https://pivotaltracker.com/story/show/%v", storyId))
+}
+
+func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId string, err error) {
+	parts := strings.Split(tag, "/")
+	if len(parts) != 3 {
+		return "", fmt.Errorf("invalid Pivotal Tracker Story-Id tag: %v", tag)
+	}
+	return parts[2], nil
 }

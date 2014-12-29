@@ -87,6 +87,10 @@ func (tracker *issueTracker) OpenStory(storyId string) error {
 	return webbrowser.Open(tracker.config.ServerURL().ResolveReference(relativeURL).String())
 }
 
+func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId string, err error) {
+	return tag, nil
+}
+
 func (tracker *issueTracker) getVersionResource(ver *version.Version) (*client.Version, error) {
 	var (
 		projectKey  = tracker.config.ProjectKey()

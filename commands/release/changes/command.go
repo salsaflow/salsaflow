@@ -144,7 +144,7 @@ func runMain() error {
 	if !flagPorcelain {
 		fmt.Println()
 	}
-	changes.DumpStoryChanges(groups, os.Stdout, flagPorcelain)
+	changes.DumpStoryChanges(os.Stdout, groups, tracker, flagPorcelain)
 	if !flagPorcelain {
 		fmt.Println()
 	}

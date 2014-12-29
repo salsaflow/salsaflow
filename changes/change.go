@@ -9,9 +9,9 @@ import (
 )
 
 type Change struct {
-	StoryId  string
-	ChangeId string
-	Commits  []*git.Commit
+	StoryIdTag  string
+	ChangeIdTag string
+	Commits     []*git.Commit
 }
 
 func GroupCommitsByChangeId(commits []*git.Commit) []*Change {
@@ -21,16 +21,16 @@ CommitsLoop:
 	for _, commit := range commits {
 		// Try to add the commit to one of the existing changes.
 		for _, change := range changes {
-			if change.ChangeId == commit.ChangeId {
+			if change.ChangeIdTag == commit.ChangeIdTag {
 				change.addCommit(commit)
 				continue CommitsLoop
 			}
 		}
 		// Otherwise create a new change and append it.
 		changes = append(changes, &Change{
-			StoryId:  commit.StoryId,
-			ChangeId: commit.ChangeId,
-			Commits:  []*git.Commit{commit},
+			StoryIdTag:  commit.StoryIdTag,
+			ChangeIdTag: commit.ChangeIdTag,
+			Commits:     []*git.Commit{commit},
 		})
 	}
 

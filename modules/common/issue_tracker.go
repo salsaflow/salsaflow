@@ -40,6 +40,9 @@ type IssueTracker interface {
 
 	// OpenStory opens the given story in the web browser.
 	OpenStory(storyId string) error
+
+	// StoryTagToReadableStoryId parses the Story-Id tag and returns the relevant readable ID.
+	StoryTagToReadableStoryId(tag string) (storyId string, err error)
 }
 
 type User interface {

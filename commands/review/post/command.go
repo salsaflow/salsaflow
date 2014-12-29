@@ -269,7 +269,7 @@ func rewriteCommits(commits []*git.Commit, canAmend bool) ([]*git.Commit, error)
 		storyIdMissing bool
 	)
 	for _, commit := range commits {
-		if commit.StoryId == "" {
+		if commit.StoryIdTag == "" {
 			storyIdMissing = true
 		}
 		if commit.Merge == "" {
@@ -424,7 +424,7 @@ In other words, there are no stories in the right state for that.
 			return commits, errs.NewError(task, err, nil)
 		}
 
-		if commit.StoryId == "" {
+		if commit.StoryIdTag == "" {
 			if !flagAskOnce {
 				// Ask for the story ID for the current commit.
 				header := fmt.Sprintf(`

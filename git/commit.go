@@ -20,8 +20,8 @@ type Commit struct {
 	CommitDate   time.Time
 	MessageTitle string
 	Message      string
-	ChangeId     string
-	StoryId      string
+	ChangeIdTag  string
+	StoryIdTag   string
 }
 
 var commitTemplate = `commit {{.SHA}} {{.Source}}{{with .Merge}}Merge: {{.}}{{"\n"}}{{end}}
