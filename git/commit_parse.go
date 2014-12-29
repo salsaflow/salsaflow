@@ -165,7 +165,7 @@ func ParseCommits(input []byte) (commits []*Commit, err error) {
 				nextState = logScanDiff
 				continue
 			case ChangeIdTagPattern.MatchString(trimmedLine):
-				if commit.ChangeId != "" {
+				if commit.ChangeIdTag != "" {
 					err = fmt.Errorf("git log [commit %v]: duplicate Change-Id tag", commit.SHA)
 					return
 				}
@@ -174,9 +174,9 @@ func ParseCommits(input []byte) (commits []*Commit, err error) {
 					err = fmt.Errorf("git log [commit %v]: invalid Change-Id tag", commit.SHA)
 					return
 				}
-				commit.ChangeId = parts[1]
+				commit.ChangeIdTag = parts[1]
 			case StoryIdTagPattern.MatchString(trimmedLine):
-				if commit.StoryId != "" {
+				if commit.StoryIdTag != "" {
 					err = fmt.Errorf("git log [commit %v]: duplicate Story-Id tag", commit.SHA)
 					return
 				}
@@ -185,7 +185,7 @@ func ParseCommits(input []byte) (commits []*Commit, err error) {
 					err = fmt.Errorf("git log [commit %v]: invalid Story-Id tag", commit.SHA)
 					return
 				}
-				commit.StoryId = parts[1]
+				commit.StoryIdTag = parts[1]
 			}
 			if len(line) >= numSpaces {
 				line = line[numSpaces:]

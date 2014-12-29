@@ -32,7 +32,7 @@ func StoryChangesToCherryPick(
 	for _, group := range groups {
 		// Prepare a new StoryChangeGroup to hold missing changes.
 		storyGroup := &changes.StoryChangeGroup{
-			StoryId: group.StoryId,
+			StoryIdTag: group.StoryIdTag,
 		}
 
 	ChangesLoop:

@@ -32,7 +32,7 @@ func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit, opts map[strin
 	switch {
 	case commit.SHA == "":
 		panic("SHA not set for the commit being posted")
-	case commit.StoryId == "":
+	case commit.StoryIdTag == "":
 		panic("story ID not set for the commit being posted")
 	}
 
@@ -56,7 +56,7 @@ func (tool *codeReviewTool) PostReviewRequest(commit *git.Commit, opts map[strin
 	args := []string{"post",
 		"--server", config.ServerURL().String(),
 		"--guess-fields", "yes",
-		"--bugs-closed", commit.StoryId}
+		"--bugs-closed", commit.StoryIdTag}
 
 	if fixes != "" {
 		args = append(args, "--depends-on", fixes)

@@ -157,7 +157,7 @@ func run(remoteName, pushURL string) error {
 				switch {
 				// Once we encounter a tag inside of the revision range,
 				// we automatically start checking for tags.
-				case commit.ChangeId != "" || commit.StoryId != "":
+				case commit.ChangeIdTag != "" || commit.StoryIdTag != "":
 					salsaflowCommitsDetected = true
 
 				// In case the tags are empty, check all ancestors for the relevant tags as well.
@@ -177,14 +177,14 @@ func run(remoteName, pushURL string) error {
 			}
 
 			// Check the Change-Id tag.
-			if commit.ChangeId == "" /* && salsaflowCommitsDetected */ {
+			if commit.ChangeIdTag == "" /* && salsaflowCommitsDetected */ {
 				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", commit.SHA, commit.MessageTitle,
 					revRange.To, "commit message: Change-Id tag missing")
 				invalid = true
 			}
 
 			// Check the Story-Id tag.
-			if commit.StoryId == "" /* && salsaflowCommitsDetected */ {
+			if commit.StoryIdTag == "" /* && salsaflowCommitsDetected */ {
 				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", commit.SHA, commit.MessageTitle,
 					revRange.To, "commit message: Story-Id tag missing")
 				invalid = true
@@ -207,7 +207,7 @@ func checkAncestors(ref string) (salsaflowCommitsDetected bool, err error) {
 	}
 
 	for _, commit := range commits {
-		if commit.ChangeId != "" || commit.StoryId != "" {
+		if commit.ChangeIdTag != "" || commit.StoryIdTag != "" {
 			salsaflowCommitsDetected = true
 		}
 	}

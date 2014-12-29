@@ -75,11 +75,11 @@ func runMain(storyId string) (err error) {
 		commit := group.Commits[0]
 		var changeId string
 		if porcelain {
-			changeId = commit.ChangeId
+			changeId = commit.ChangeIdTag
 		}
 
 		fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n",
-			commit.ChangeId, commit.SHA, commit.Source, commit.MessageTitle)
+			commit.ChangeIdTag, commit.SHA, commit.Source, commit.MessageTitle)
 		for _, commit := range group.Commits[1:] {
 			fmt.Fprintf(
 				tw, "%v\t%v\t%v\t%v\n", changeId, commit.SHA, commit.Source, commit.MessageTitle)

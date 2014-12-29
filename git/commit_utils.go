@@ -10,8 +10,8 @@ const StoryIdUnassignedTagValue = "unassigned"
 func StoryIdTags(commits []*Commit) []string {
 	idMap := make(map[string]struct{}, len(commits))
 	for _, commit := range commits {
-		if commit.StoryId != "" && commit.StoryId != StoryIdUnassignedTagValue {
-			idMap[commit.StoryId] = struct{}{}
+		if commit.StoryIdTag != "" && commit.StoryIdTag != StoryIdUnassignedTagValue {
+			idMap[commit.StoryIdTag] = struct{}{}
 		}
 	}
 

@@ -183,7 +183,7 @@ func runMain() error {
 	)
 	for _, group := range groups {
 		g := &changes.StoryChangeGroup{
-			StoryId: group.StoryId,
+			StoryIdTag: group.StoryIdTag,
 		}
 
 		for _, ch := range group.Changes {
@@ -218,7 +218,7 @@ func runMain() error {
 The following story changes are not reachable from the trunk branch:
 
 `)
-		changes.DumpStoryChanges(unreachable, &details, false)
+		changes.DumpStoryChanges(&details, unreachable, tracker, false)
 		fmt.Fprint(&details, `
 Please cherry-pick these changes onto the trunk branch.
 Only then we can proceed and cherry-pick the changes.
@@ -231,7 +231,7 @@ Only then we can proceed and cherry-pick the changes.
 	// Everything seems fine, let's continue with the process
 	// by dumping the change details into the console.
 	fmt.Println()
-	changes.DumpStoryChanges(groups, os.Stdout, false)
+	changes.DumpStoryChanges(os.Stdout, groups, tracker, false)
 
 	// Ask the user to confirm before doing any cherry-picking.
 	task = "Ask the user to confirm cherry-picking"

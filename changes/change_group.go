@@ -14,8 +14,8 @@ import (
 )
 
 type StoryChangeGroup struct {
-	StoryId string
-	Changes []*Change
+	StoryIdTag string
+	Changes    []*Change
 }
 
 func GroupChangesByStoryId(changes []*Change) []*StoryChangeGroup {
@@ -23,13 +23,13 @@ func GroupChangesByStoryId(changes []*Change) []*StoryChangeGroup {
 	groupMap := make(map[string]*StoryChangeGroup, len(changes))
 
 	for _, change := range changes {
-		group, ok := groupMap[change.StoryId]
+		group, ok := groupMap[change.StoryIdTag]
 		if !ok {
 			group = &StoryChangeGroup{
-				StoryId: change.StoryId,
-				Changes: make([]*Change, 0, 1),
+				StoryIdTag: change.StoryIdTag,
+				Changes:    make([]*Change, 0, 1),
 			}
-			groupMap[change.StoryId] = group
+			groupMap[change.StoryIdTag] = group
 		}
 		group.Changes = append(group.Changes, change)
 	}
@@ -90,7 +90,7 @@ func SortStoryChanges(groups []*StoryChangeGroup, stories []common.Story) []*Sto
 	// Wrap the change groups to be able to sort them.
 	wrappers := make([]*sortWrapper, 0, len(groups))
 	for _, group := range groups {
-		story := storyMap[group.StoryId]
+		story := storyMap[group.StoryIdTag]
 		wrappers = append(wrappers, &sortWrapper{group, story})
 	}
 
@@ -128,8 +128,14 @@ func (slice sortWrapperSlice) Swap(i, j int) {
 // DumpStoryChanges writes a nicely formatted output to the io.Writer passed in.
 //
 // In case the porcelain argument is true, the output is printed in a more machine-friendly way.
-func DumpStoryChanges(groups []*StoryChangeGroup, w io.Writer, porcelain bool) error {
-	tw := tabwriter.NewWriter(w, 0, 8, 2, '\t', 0)
+func DumpStoryChanges(
+	writer io.Writer,
+	groups []*StoryChangeGroup,
+	tracker common.IssueTracker,
+	porcelain bool,
+) error {
+
+	tw := tabwriter.NewWriter(writer, 0, 8, 2, '\t', 0)
 
 	if !porcelain {
 		_, err := io.WriteString(tw, "Story\tChange\tCommit SHA\tCommit Source\tCommit Title\n")
@@ -142,10 +148,13 @@ func DumpStoryChanges(groups []*StoryChangeGroup, w io.Writer, porcelain bool) e
 		}
 	}
 	for _, group := range groups {
-		storyId := group.StoryId
+		storyId, err := tracker.StoryTagToReadableStoryId(group.StoryIdTag)
+		if err != nil {
+			return err
+		}
 
 		for _, change := range group.Changes {
-			changeId := change.ChangeId
+			changeId := change.ChangeIdTag
 
 			// Print the first line.
 			commit := change.Commits[0]
