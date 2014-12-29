@@ -3,27 +3,30 @@ package changesCmd
 import (
 	// Stdlib
 	"fmt"
-	"io"
 	"os"
-	"text/tabwriter"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/app"
 	"github.com/salsaflow/salsaflow/changes"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/modules"
 
 	// Other
 	"gopkg.in/tchap/gocli.v2"
 )
 
 var Command = &gocli.Command{
-	UsageLine: "changes [-porcelain] STORY",
+	UsageLine: "changes [-porcelain] STORY_ID_TAG_PATTERN",
 	Short:     "list the changes associated with the given story",
 	Long: `
   List the change sets (the commits with the same change ID)
-  associated with the given story together with some interesting details,
+  associated with the given stories together with some interesting details,
   e.g. the commit SHA, the source ref and the commit title.
+
+  The changes (commits) to be included are specified using a regexp
+  that is used to match the Story-Id tag, so the commits having the tag
+  matching STORY_ID_TAG_PATTERN are selected and printed.
 
   The 'porcelain' flag will make the output more script-friendly,
   e.g. it will fill the change ID in every column.
@@ -52,58 +55,39 @@ func run(cmd *gocli.Command, args []string) {
 	}
 }
 
-func runMain(storyId string) (err error) {
-	// Get the list of all relevant story commits.
+func runMain(storyIdPattern string) (err error) {
+	// Get the issue tracker instance.
+	tracker, err := modules.GetIssueTracker()
+	if err != nil {
+		return err
+	}
+
+	// Get the list of all relevant changes.
 	task := "Get the list of relevant story commits"
-	commits, err := collectCommits(storyId)
+	groups, err := collectChanges(storyIdPattern)
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
-	// Group the commits by change ID.
-	groups := changes.GroupCommitsByChangeId(commits)
-
-	// Dump the change details into the console.
-	tw := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
-
+	// Dump the changes to stdout.
 	if !porcelain {
-		io.WriteString(tw, "\n")
-		io.WriteString(tw, "Change\tCommit SHA\tCommit Source\tCommit Title\n")
-		io.WriteString(tw, "======\t==========\t=============\t============\n")
+		fmt.Println()
 	}
-	for _, group := range groups {
-		commit := group.Commits[0]
-		var changeId string
-		if porcelain {
-			changeId = commit.ChangeIdTag
-		}
-
-		fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n",
-			commit.ChangeIdTag, commit.SHA, commit.Source, commit.MessageTitle)
-		for _, commit := range group.Commits[1:] {
-			fmt.Fprintf(
-				tw, "%v\t%v\t%v\t%v\n", changeId, commit.SHA, commit.Source, commit.MessageTitle)
-		}
-	}
+	err = changes.DumpStoryChanges(os.Stdout, groups, tracker, porcelain)
 	if !porcelain {
-		io.WriteString(tw, "\n")
+		fmt.Println()
 	}
-
-	tw.Flush()
-	return nil
+	return err
 }
 
-func collectCommits(storyId string) ([]*git.Commit, error) {
+func collectChanges(pattern string) ([]*changes.StoryChangeGroup, error) {
 	// Collect the relevant commits.
-	commits, err := git.GrepCommitsCaseInsensitive(fmt.Sprintf("^Story-Id: %v$", storyId))
+	commits, err := git.GrepCommitsCaseInsensitive(
+		fmt.Sprintf("^Story-Id: .*%v", pattern), "--all")
 	if err != nil {
 		return nil, err
 	}
 
-	// Fix the commit sources.
-	if err := git.FixCommitSources(commits); err != nil {
-		return nil, err
-	}
-
-	return commits, nil
+	// Group the commits.
+	return changes.StoryChangesFromCommits(commits)
 }
