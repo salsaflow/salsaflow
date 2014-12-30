@@ -282,5 +282,10 @@ the repository status and potentially resolve the cherry-picking manually.
 	}
 
 	log.Log("All missing changes cherry-picked into the release branch")
+	fmt.Println(`
+  ###################################################################
+  # IMPORTANT: The release branch is not being pushed automatically #
+  ###################################################################
+`)
 	return nil
 }
