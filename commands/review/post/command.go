@@ -237,8 +237,7 @@ You are about to post review requests for the following commits:
 		return errs.NewError(task, err, nil)
 	}
 	if !confirmed {
-		fmt.Println("\nFair enough, have a nice day!")
-		return nil
+		prompt.PanicCancel()
 	}
 	fmt.Println()
 
