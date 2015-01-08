@@ -55,9 +55,8 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 		projectId = tracker.config.ProjectId()
 	)
 	ptStories, err := searchStories(client, projectId,
-		"(state:%v OR state:%v) AND -label:\"%v\" AND -label:\"%v\"",
-		pivotal.StoryStateStarted, pivotal.StoryStateFinished,
-		tracker.config.ReviewedLabel(), tracker.config.NoReviewLabel())
+		"state:%v AND -label:\"%v\" AND -label:\"%v\"",
+		pivotal.StoryStateStarted, tracker.config.ReviewedLabel(), tracker.config.NoReviewLabel())
 	if err != nil {
 		return nil, err
 	}
