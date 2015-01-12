@@ -16,7 +16,6 @@ const (
 	DefaultPointMeLabel  = "point me"
 	DefaultNoReviewLabel = "no review"
 	DefaultReviewedLabel = "reviewed"
-	DefaultVerifiedLabel = "qa+"
 )
 
 var DefaultSkipCheckLabels = []string{"dupe", "wontfix"}
@@ -30,7 +29,6 @@ type LocalConfig struct {
 			PointMeLabel    string   `yaml:"point_me"`
 			NoReviewLabel   string   `yaml:"no_review"`
 			ReviewedLabel   string   `yaml:"reviewed"`
-			VerifiedLabel   string   `yaml:"verified"`
 			SkipCheckLabels []string `yaml:"skip_check_labels"`
 		} `yaml:"labels"`
 	} `yaml:"pivotal_tracker"`
@@ -51,8 +49,6 @@ func (local *LocalConfig) validate() error {
 		err = &config.ErrKeyNotSet{Id + ".labels.no_review"}
 	case pt.Labels.ReviewedLabel == "":
 		err = &config.ErrKeyNotSet{Id + ".labels.reviewed"}
-	case pt.Labels.VerifiedLabel == "":
-		err = &config.ErrKeyNotSet{Id + ".labels.verified"}
 	}
 	if err != nil {
 		return errs.NewError(task, err, nil)
@@ -91,7 +87,6 @@ type Config interface {
 	PointMeLabel() string
 	NoReviewLabel() string
 	ReviewedLabel() string
-	VerifiedLabel() string
 	SkipCheckLabels() []string
 	UserToken() string
 	IncludeStoryLabelFilter() *regexp.Regexp
@@ -120,9 +115,6 @@ func LoadConfig() (Config, error) {
 	}
 	if labels.ReviewedLabel == "" {
 		labels.ReviewedLabel = DefaultReviewedLabel
-	}
-	if labels.VerifiedLabel == "" {
-		labels.VerifiedLabel = DefaultVerifiedLabel
 	}
 	labels.SkipCheckLabels = append(labels.SkipCheckLabels, DefaultSkipCheckLabels...)
 
@@ -179,10 +171,6 @@ func (proxy *configProxy) NoReviewLabel() string {
 
 func (proxy *configProxy) ReviewedLabel() string {
 	return proxy.local.PT.Labels.ReviewedLabel
-}
-
-func (proxy *configProxy) VerifiedLabel() string {
-	return proxy.local.PT.Labels.VerifiedLabel
 }
 
 func (proxy *configProxy) SkipCheckLabels() []string {
