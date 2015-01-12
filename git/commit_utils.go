@@ -103,6 +103,7 @@ func FixCommitSources(commits []*Commit) error {
 		releaseBranch = config.ReleaseBranchName()
 	)
 
+	// Get the trunk commits.
 	trunkCommits, err := ShowCommitRange(trunkBranch)
 	if err != nil {
 		return err
@@ -114,18 +115,40 @@ func FixCommitSources(commits []*Commit) error {
 		return err
 	}
 
-	releaseCommits, err := ShowCommitRange(
-		fmt.Sprintf("%v..%v", trunkBranch, releaseBranch))
+	// Check whether the release branch exists.
+	releaseExists, err := RemoteBranchExists(releaseBranch, remoteName)
 	if err != nil {
 		return err
 	}
 
-	remoteReleaseCommits, err := ShowCommitRange(
-		fmt.Sprintf("%v..%v@{upstream}", releaseBranch, releaseBranch))
-	if err != nil {
-		return err
+	// Get the release commits in case the release branch exists.
+	var (
+		releaseCommits       []*Commit
+		remoteReleaseCommits []*Commit
+	)
+	if releaseExists {
+		// Create the local release branch in case it does not exist.
+		err = CreateTrackingBranchUnlessExists(releaseBranch, remoteName)
+		if err != nil {
+			return err
+		}
+
+		// Collect the commits.
+		var err error
+		releaseCommits, err = ShowCommitRange(
+			fmt.Sprintf("%v..%v", trunkBranch, releaseBranch))
+		if err != nil {
+			return err
+		}
+
+		remoteReleaseCommits, err = ShowCommitRange(
+			fmt.Sprintf("%v..%v@{upstream}", releaseBranch, releaseBranch))
+		if err != nil {
+			return err
+		}
 	}
 
+	// Collect the right commit sources.
 	sourceMap := make(map[string]string,
 		len(trunkCommits)+len(remoteTrunkCommits)+len(releaseCommits)+len(remoteReleaseCommits))
 
@@ -139,16 +162,19 @@ func FixCommitSources(commits []*Commit) error {
 		sourceMap[commit.SHA] = src
 	}
 
-	src = fmt.Sprintf("refs/heads/%v", releaseBranch)
-	for _, commit := range releaseCommits {
-		sourceMap[commit.SHA] = src
+	if releaseExists {
+		src = fmt.Sprintf("refs/heads/%v", releaseBranch)
+		for _, commit := range releaseCommits {
+			sourceMap[commit.SHA] = src
+		}
+
+		src = fmt.Sprintf("refs/remotes/%v/%v", remoteName, releaseBranch)
+		for _, commit := range remoteReleaseCommits {
+			sourceMap[commit.SHA] = src
+		}
 	}
 
-	src = fmt.Sprintf("refs/remotes/%v/%v", remoteName, releaseBranch)
-	for _, commit := range remoteReleaseCommits {
-		sourceMap[commit.SHA] = src
-	}
-
+	// Fix the commit sources.
 	for _, commit := range commits {
 		if src, ok := sourceMap[commit.SHA]; ok {
 			commit.Source = src
