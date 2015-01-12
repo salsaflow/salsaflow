@@ -108,6 +108,9 @@ issue_tracker: "<module-id>"
 code_review_tool: "<module-id>"
 ```
 
+Too see a full example, just check the SalsaFlow
+[config](https://github.com/salsaflow/salsaflow/blob/develop/.salsaflow/config.yml) for this project.
+
 #### Scripts ####
 
 SalsaFlow occasionally needs to perform an action that depends on the project type,
