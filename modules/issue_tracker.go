@@ -12,6 +12,7 @@ import (
 	// Internal: modules
 	"github.com/salsaflow/salsaflow/modules/jira"
 	"github.com/salsaflow/salsaflow/modules/pivotaltracker"
+	"github.com/salsaflow/salsaflow/modules/sprintly"
 )
 
 // IssueTracker instantiation --------------------------------------------------
@@ -21,6 +22,7 @@ type IssueTrackerFactory func() (common.IssueTracker, error)
 var issueTrackerFactories = map[string]IssueTrackerFactory{
 	jira.Id:           jira.Factory,
 	pivotaltracker.Id: pivotaltracker.Factory,
+	sprintly.Id:       sprintly.Factory,
 }
 
 func AvailableIssueTrackerKeys() []string {
