@@ -347,6 +347,10 @@ StoryLoop:
 	}
 	stories = myStories
 
+	// Append the unassigned pseudo-story to make it possible to
+	// set the Story-Id tag to "unassigned".
+	stories = append([]common.Story{&unassignedStory{}}, stories...)
+
 	// Tell the user what is happening.
 	log.Run("Prepare a temporary branch to rewrite commit messages")
 
@@ -690,4 +694,45 @@ func merge(commit, branch string, flags ...string) error {
 		return errs.NewError(task, err, nil)
 	}
 	return nil
+}
+
+// unassignedStory is being used to insert the option of choosing
+// "unassigned" while selecting the Story-Id tag value.
+type unassignedStory struct{}
+
+func (story *unassignedStory) Id() string {
+	panic("Not implemented")
+}
+
+func (story *unassignedStory) ReadableId() string {
+	return git.StoryIdUnassignedTagValue
+}
+
+func (story *unassignedStory) Tag() string {
+	return git.StoryIdUnassignedTagValue
+}
+
+func (story *unassignedStory) Title() string {
+	return fmt.Sprintf(
+		"Choose this to set the Story-Id tag to '%v'", git.StoryIdUnassignedTagValue)
+}
+
+func (story *unassignedStory) Assignees() []common.User {
+	panic("Not implemented")
+}
+
+func (story *unassignedStory) AddAssignee(user common.User) *errs.Error {
+	panic("Not implemented")
+}
+
+func (story *unassignedStory) SetAssignees(users []common.User) *errs.Error {
+	panic("Not implemented")
+}
+
+func (story *unassignedStory) Start() *errs.Error {
+	panic("Not implemented")
+}
+
+func (story *unassignedStory) LessThan(other common.Story) bool {
+	panic("Not implemented")
 }
