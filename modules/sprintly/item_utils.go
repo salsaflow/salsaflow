@@ -15,3 +15,12 @@ func toCommonStories(items []sprintly.Item) []common.Story {
 	}
 	return commonStories
 }
+
+func tagged(item *sprintly.Item, tag string) bool {
+	for _, t := range item.Tags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
+}

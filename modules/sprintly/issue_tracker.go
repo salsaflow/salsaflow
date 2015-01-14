@@ -120,7 +120,12 @@ func (tracker *issueTracker) NextRelease(
 	nextTrunkVersion *version.Version,
 ) (common.NextRelease, error) {
 
-	panic("Not implemented")
+	return &nextRelease{
+		client:           tracker.client,
+		config:           tracker.config,
+		trunkVersion:     trunkVersion,
+		nextTrunkVersion: nextTrunkVersion,
+	}, nil
 }
 
 func (tracker *issueTracker) RunningRelease(
