@@ -55,7 +55,7 @@ func decodeArgs(dst interface{}, r *http.Request) error {
 	decoder.RegisterConverter(ItemStatusSomeday, func(value string) reflect.Value {
 		return reflect.ValueOf(ItemStatus(value))
 	})
-	decoder.RegisterConverter(ItemScoreNone, func(value string) reflect.Value {
+	decoder.RegisterConverter(ItemScoreUnset, func(value string) reflect.Value {
 		return reflect.ValueOf(ItemScore(value))
 	})
 

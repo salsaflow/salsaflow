@@ -28,7 +28,7 @@ const (
 type ItemScore string
 
 const (
-	ItemScoreNone      ItemScore = "~"
+	ItemScoreUnset     ItemScore = "~"
 	ItemScoreSmall     ItemScore = "S"
 	ItemScoreMedium    ItemScore = "M"
 	ItemScoreLarge     ItemScore = "L"
