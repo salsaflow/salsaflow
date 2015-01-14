@@ -27,7 +27,7 @@ func (item *item) ReadableId() string {
 }
 
 func (item *item) Tag() string {
-	return fmt.Sprintf("%v/item/%v", item.Product.Id, item.Number)
+	return fmt.Sprintf("%v/%v", item.Product.Id, item.Number)
 }
 
 func (item *item) Title() string {

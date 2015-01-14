@@ -65,12 +65,12 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	tags := git.StoryIdTags(commits)
 	numbers := make([]int, 0, len(tags))
 	for _, tag := range tags {
-		// Story-Id tag for Sprintly is "<product-id>/item/<item-number>".
+		// Story-Id tag for Sprintly is "<product-id>/<item-number>".
 		parts := strings.Split(tag, "/")
-		if len(parts) != 3 {
+		if len(parts) != 2 {
 			return false, errs.NewError(task, fmt.Errorf("invalid Story-Id tag: %v", tag), nil)
 		}
-		number, err := strconv.Atoi(parts[2])
+		number, err := strconv.Atoi(parts[1])
 		if err != nil {
 			return false, errs.NewError(task, fmt.Errorf("invalid Story-Id tag: %v", tag), nil)
 		}
