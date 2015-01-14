@@ -105,15 +105,27 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 	// which would require another remote call. However, we know the username
 	// since it is saved in the configuration file, so we can filter locally
 	// based on that information.
-	username := tracker.config.Username()
-	for i, item := range items {
+	//
+	// Also drom the items that are tagged as reviewed or no review.
+	// That means that the coding phase is finished.
+	var (
+		inDevelopment = make([]sprintly.Item, 0, len(items))
+		username      = tracker.config.Username()
+		reviewedTag   = tracker.config.ReviewedTag()
+		noReviewTag   = tracker.config.NoReviewTag()
+	)
+	for _, item := range items {
 		if item.AssignedTo.Email != username {
-			items = append(items[:i], items[i+1:]...)
+			continue
 		}
+		if tagged(&item, reviewedTag) || tagged(&item, noReviewTag) {
+			continue
+		}
+		inDevelopment = append(inDevelopment, item)
 	}
 
 	// Convert the items into []common.Story
-	return toCommonStories(items), nil
+	return toCommonStories(inDevelopment), nil
 }
 
 func (tracker *issueTracker) NextRelease(

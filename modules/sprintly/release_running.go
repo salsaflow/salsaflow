@@ -19,8 +19,6 @@ import (
 	"github.com/salsita/go-sprintly/sprintly"
 )
 
-const DeploymentEnvironmentStaging = "staging"
-
 var errNotStageable = errors.New("release cannot be staged")
 
 type runningRelease struct {
@@ -89,31 +87,11 @@ func (release *runningRelease) EnsureStageable() error {
 // The rollback function is a NOOP in this case since there is no way
 // how to delete a deployment once created in Sprintly.
 func (release *runningRelease) Stage() (action.Action, error) {
-	task := "Create a new deployment for the stories being staged"
+	task := "Ping Sprintly to register the deployment"
 	log.Run(task)
 
-	// Get the items associated with this release.
-	items, err := release.items()
-	if err != nil {
-		return nil, errs.NewError(task, err, nil)
-	}
-
-	// Collect the item numbers that are being deployed.
-	numbers := make([]int, 0, len(items))
-	for _, item := range items {
-		numbers = append(numbers, item.Number)
-	}
-
-	// Create the deployment.
-	var (
-		client    = release.client
-		productId = release.config.ProductId()
-	)
-	_, _, err = client.Deploys.Create(productId, &sprintly.DeployCreateArgs{
-		Environment: DeploymentEnvironmentStaging,
-		ItemNumbers: numbers,
-	})
-	if err != nil {
+	// Create the Sprintly deployment.
+	if err := release.deploy(release.config.StagingEnvironment()); err != nil {
 		return nil, errs.NewError(task, err, nil)
 	}
 
@@ -123,14 +101,31 @@ func (release *runningRelease) Stage() (action.Action, error) {
 		log.Warn("It is not possible to delete a Sprintly deployment, skipping ...")
 		return nil
 	}), nil
+
 }
 
 func (release *runningRelease) Releasable() (bool, error) {
-	panic("Not implemented")
+	// Get the items associated with this release.
+	items, err := release.items()
+	if err != nil {
+		return false, err
+	}
+
+	// Make sure that all items are Accepted.
+	for _, item := range items {
+		if item.Status != sprintly.ItemStatusAccepted {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func (release *runningRelease) Release() error {
-	panic("Not implemented")
+	task := "Ping Sprintly to register the deployment"
+	log.Run(task)
+
+	// Create the Sprintly deployment.
+	return release.deploy(release.config.ProductionEnvironment())
 }
 
 func (release *runningRelease) items() ([]sprintly.Item, error) {
@@ -163,4 +158,29 @@ func (release *runningRelease) items() ([]sprintly.Item, error) {
 
 	// Return the cached items.
 	return release.cachedItems, nil
+}
+
+func (release *runningRelease) deploy(environment string) error {
+	// Get the items associated with this release.
+	items, err := release.items()
+	if err != nil {
+		return err
+	}
+
+	// Collect the item numbers that are being deployed.
+	numbers := make([]int, 0, len(items))
+	for _, item := range items {
+		numbers = append(numbers, item.Number)
+	}
+
+	// Create the deployment.
+	var (
+		client    = release.client
+		productId = release.config.ProductId()
+	)
+	_, _, err = client.Deploys.Create(productId, &sprintly.DeployCreateArgs{
+		Environment: environment,
+		ItemNumbers: numbers,
+	})
+	return err
 }

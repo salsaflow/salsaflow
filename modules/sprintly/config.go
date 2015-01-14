@@ -9,22 +9,26 @@ import (
 const (
 	Id = "sprintly"
 
-	DefaultNoReviewLabel = "no review"
-	DefaultReviewedLabel = "reviewed"
-)
+	DefaultNoReviewTag = "no review"
+	DefaultReviewedTag = "reviewed"
 
-var DefaultSkipCheckLabels = []string{"dupe", "wontfix"}
+	DefaultStagingEnvironment    = "staging"
+	DefaultProductionEnvironment = "production"
+)
 
 // Local configuration ---------------------------------------------------------
 
 type LocalConfig struct {
 	Sprintly struct {
 		ProductId int `yaml:"product_id"`
-		Labels    struct {
-			NoReviewLabel   string   `yaml:"no_review"`
-			ReviewedLabel   string   `yaml:"reviewed"`
-			SkipCheckLabels []string `yaml:"skip_check_labels"`
-		} `yaml:"labels"`
+		Tags      struct {
+			NoReviewTag string `yaml:"no_review"`
+			ReviewedTag string `yaml:"reviewed"`
+		} `yaml:"tags"`
+		Environments struct {
+			Staging    string `yaml:"staging"`
+			Production string `yaml:"production"`
+		} `yaml:"environments"`
 	} `yaml:"sprintly"`
 }
 
@@ -37,10 +41,14 @@ func (local *LocalConfig) validate() error {
 	switch {
 	case sprintly.ProductId == 0:
 		err = &config.ErrKeyNotSet{Id + ".product_id"}
-	case sprintly.Labels.NoReviewLabel == "":
-		err = &config.ErrKeyNotSet{Id + ".labels.no_review"}
-	case sprintly.Labels.ReviewedLabel == "":
-		err = &config.ErrKeyNotSet{Id + ".labels.reviewed"}
+	case sprintly.Tags.NoReviewTag == "":
+		err = &config.ErrKeyNotSet{Id + ".tags.no_review"}
+	case sprintly.Tags.ReviewedTag == "":
+		err = &config.ErrKeyNotSet{Id + ".tags.reviewed"}
+	case sprintly.Environments.Staging == "":
+		err = &config.ErrKeyNotSet{Id + ".environments.staging"}
+	case sprintly.Environments.Production == "":
+		err = &config.ErrKeyNotSet{Id + ".environments.production"}
 	}
 	if err != nil {
 		return errs.NewError(task, err, nil)
@@ -79,9 +87,10 @@ func (global *GlobalConfig) validate() error {
 
 type Config interface {
 	ProductId() int
-	NoReviewLabel() string
-	ReviewedLabel() string
-	SkipCheckLabels() []string
+	NoReviewTag() string
+	ReviewedTag() string
+	StagingEnvironment() string
+	ProductionEnvironment() string
 	Username() string
 	Token() string
 }
@@ -100,14 +109,21 @@ func LoadConfig() (Config, error) {
 		return nil, err
 	}
 
-	labels := &local.Sprintly.Labels
-	if labels.NoReviewLabel == "" {
-		labels.NoReviewLabel = DefaultNoReviewLabel
+	tags := &local.Sprintly.Tags
+	if tags.NoReviewTag == "" {
+		tags.NoReviewTag = DefaultNoReviewTag
 	}
-	if labels.ReviewedLabel == "" {
-		labels.ReviewedLabel = DefaultReviewedLabel
+	if tags.ReviewedTag == "" {
+		tags.ReviewedTag = DefaultReviewedTag
 	}
-	labels.SkipCheckLabels = append(labels.SkipCheckLabels, DefaultSkipCheckLabels...)
+
+	envs := &local.Sprintly.Environments
+	if envs.Staging == "" {
+		envs.Staging = DefaultStagingEnvironment
+	}
+	if envs.Production == "" {
+		envs.Production = DefaultProductionEnvironment
+	}
 
 	if err := local.validate(); err != nil {
 		return nil, err
@@ -135,16 +151,20 @@ func (proxy *configProxy) ProductId() int {
 	return proxy.local.Sprintly.ProductId
 }
 
-func (proxy *configProxy) NoReviewLabel() string {
-	return proxy.local.Sprintly.Labels.NoReviewLabel
+func (proxy *configProxy) NoReviewTag() string {
+	return proxy.local.Sprintly.Tags.NoReviewTag
 }
 
-func (proxy *configProxy) ReviewedLabel() string {
-	return proxy.local.Sprintly.Labels.ReviewedLabel
+func (proxy *configProxy) ReviewedTag() string {
+	return proxy.local.Sprintly.Tags.ReviewedTag
 }
 
-func (proxy *configProxy) SkipCheckLabels() []string {
-	return proxy.local.Sprintly.Labels.SkipCheckLabels
+func (proxy *configProxy) StagingEnvironment() string {
+	return proxy.local.Sprintly.Environments.Staging
+}
+
+func (proxy *configProxy) ProductionEnvironment() string {
+	return proxy.local.Sprintly.Environments.Production
 }
 
 func (proxy *configProxy) Username() string {
