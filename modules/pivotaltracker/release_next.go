@@ -45,7 +45,7 @@ func newNextRelease(
 func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	var (
 		client       = pivotal.NewClient(release.config.UserToken())
-		releaseLabel = release.trunkVersion.ReleaseTagString()
+		releaseLabel = getReleaseLabel(release.trunkVersion)
 	)
 
 	// Collect the commits that modified trunk since the last release.
