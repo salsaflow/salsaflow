@@ -31,21 +31,6 @@ type nextRelease struct {
 	additionalItems []sprintly.Item
 }
 
-func newNextRelease(
-	client *sprintly.Client,
-	config Config,
-	trunkVersion *version.Version,
-	nextTrunkVersion *version.Version,
-) (*nextRelease, error) {
-
-	return &nextRelease{
-		client:           client,
-		config:           config,
-		trunkVersion:     trunkVersion,
-		nextTrunkVersion: nextTrunkVersion,
-	}, nil
-}
-
 func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	var (
 		client         = release.client

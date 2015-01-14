@@ -3,6 +3,7 @@ package sprintly
 import (
 	// Stdlib
 	"fmt"
+	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
@@ -132,7 +133,11 @@ func (tracker *issueTracker) RunningRelease(
 	releaseVersion *version.Version,
 ) (common.RunningRelease, error) {
 
-	panic("Not implemented")
+	return &runningRelease{
+		client:  tracker.client,
+		config:  tracker.config,
+		version: releaseVersion,
+	}, nil
 }
 
 func (tracker *issueTracker) OpenStory(storyId string) error {
@@ -140,5 +145,10 @@ func (tracker *issueTracker) OpenStory(storyId string) error {
 }
 
 func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId string, err error) {
-	panic("Not implemented")
+	task := "Parse Story-Id tag"
+	parts := strings.Split(tag, "/")
+	if len(parts) != 2 {
+		return "", errs.NewError(task, fmt.Errorf("invalid Story-Id tag: %v", tag), nil)
+	}
+	return parts[1], nil
 }
