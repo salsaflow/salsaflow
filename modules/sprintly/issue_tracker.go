@@ -11,8 +11,8 @@ import (
 	"github.com/salsaflow/salsaflow/version"
 
 	// Other
-	// "github.com/toqueteos/webbrowser"
 	"github.com/salsita/go-sprintly/sprintly"
+	"github.com/toqueteos/webbrowser"
 )
 
 type issueTracker struct {
@@ -153,7 +153,8 @@ func (tracker *issueTracker) RunningRelease(
 }
 
 func (tracker *issueTracker) OpenStory(storyId string) error {
-	panic("Not implemented")
+	productId := tracker.config.ProductId()
+	return webbrowser.Open(fmt.Sprintf("https://sprint.ly/product/%v/item/%v", productId, storyId))
 }
 
 func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId string, err error) {
