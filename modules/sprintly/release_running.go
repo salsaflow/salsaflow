@@ -131,8 +131,6 @@ func (release *runningRelease) Release() error {
 func (release *runningRelease) items() ([]sprintly.Item, error) {
 	// Fetch the items unless cached.
 	if release.cachedItems == nil {
-		task := "Fetch items from Sprintly"
-		log.Run(task)
 		var (
 			client         = release.client
 			productId      = release.config.ProductId()
@@ -140,19 +138,37 @@ func (release *runningRelease) items() ([]sprintly.Item, error) {
 		)
 		// Need to list all possible item statuses since by default
 		// only the items from Backlog are returned.
-		items, _, err := client.Items.List(productId, &sprintly.ItemListArgs{
-			Status: []sprintly.ItemStatus{
-				sprintly.ItemStatusSomeday,
-				sprintly.ItemStatusBacklog,
-				sprintly.ItemStatusInProgress,
-				sprintly.ItemStatusCompleted,
-				sprintly.ItemStatusAccepted,
-			},
-			Tags: []string{itemReleaseTag},
-		})
+		items, err := listItemsByTag(client, productId, []string{itemReleaseTag})
 		if err != nil {
-			return nil, errs.NewError(task, err, nil)
+			return nil, err
 		}
+
+		// Make sure that all items are tagged for the release.
+		// In can happen that someone adds a sub-item and forgets to tag it.
+		missingTag := make([]sprintly.Item, 0, len(items))
+		for _, item := range items {
+			if !tagged(&item, itemReleaseTag) {
+				missingTag = append(missingTag, item)
+			}
+		}
+		if len(missingTag) != 0 {
+			task := "Automatically add sub-items into the release"
+			log.Run(task)
+
+			// Update the items in Sprintly.
+			_, err := addTag(client, productId, missingTag, itemReleaseTag)
+			if err != nil {
+				return nil, errs.NewError(task, err, nil)
+			}
+
+			// Update the local objects.
+			for _, item := range items {
+				if !tagged(&item, itemReleaseTag) {
+					item.Tags = append(item.Tags, itemReleaseTag)
+				}
+			}
+		}
+
 		release.cachedItems = items
 	}
 

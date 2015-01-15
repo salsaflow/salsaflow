@@ -65,10 +65,8 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// Fetch the collected items from Sprintly, if necessary.
 	var additional []sprintly.Item
 	if len(numbers) != 0 {
-		task = "Fetch the collected items from Sprintly"
-		log.Run(task)
-
 		var err error
+		// listItemsByNumber lists children as well, so there is no way we can miss a sub-item.
 		additional, err = listItemsByNumber(client, productId, numbers)
 		if err != nil {
 			return false, err
@@ -89,26 +87,33 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	task = "Make sure there are no unrated items"
 	log.Run(task)
 
-	// Fetch the items that were assigned manually.
-	assignedItems, _, err := client.Items.List(productId, &sprintly.ItemListArgs{
-		Tags: []string{itemReleaseTag},
-	})
-	if err != nil {
-		return false, errs.NewError(task, err, nil)
-	}
-	// Keep only the items that are unrated (score not set).
-	unrated := make([]sprintly.Item, 0, len(assignedItems))
-	for _, item := range assignedItems {
-		if item.Score == sprintly.ItemScoreUnset {
-			unrated = append(unrated, item)
-		}
-	}
-	// Also add these that are to be added but are unrated.
+	// Check the additional items and collect the unrated ones.
+	unrated := make([]sprintly.Item, 0)
 	for _, item := range additional {
 		if item.Score == sprintly.ItemScoreUnset {
 			unrated = append(unrated, item)
 		}
 	}
+
+	// Fetch the items that were assigned manually.
+	assignedItems, err := listItemsByTag(client, productId, []string{itemReleaseTag})
+	if err != nil {
+		return false, errs.NewError(task, err, nil)
+	}
+
+	// Check the manually assigned items and collect the unrated ones.
+	for _, item := range assignedItems {
+		if item.Score == sprintly.ItemScoreUnset {
+			unrated = append(unrated, item)
+		}
+
+		// Also, since the sub-items of the assigned items are returned as well,
+		// they may be missing the release tag, so let's register them to be tagged.
+		if !tagged(&item, itemReleaseTag) {
+			additional = append(additional, item)
+		}
+	}
+
 	// In case there are some unrated items, abort the release process.
 	if len(unrated) != 0 {
 		fmt.Println("\nThe following items have not been rated yet:\n")

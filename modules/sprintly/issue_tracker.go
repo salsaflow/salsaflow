@@ -65,7 +65,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 	)
 
 	// Fetch the items from Sprintly.
-	items, _, err := tracker.client.Items.List(productId, &sprintly.ItemListArgs{
+	items, err := listItems(tracker.client, productId, &sprintly.ItemListArgs{
 		Status: []sprintly.ItemStatus{sprintly.ItemStatusBacklog},
 	})
 	if err != nil {
@@ -93,7 +93,7 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 
 	// Fetch all items that are in progress.
 	productId := tracker.config.ProductId()
-	items, _, err := tracker.client.Items.List(productId, &sprintly.ItemListArgs{
+	items, err := listItems(tracker.client, productId, &sprintly.ItemListArgs{
 		Status: []sprintly.ItemStatus{sprintly.ItemStatusInProgress},
 	})
 	if err != nil {
