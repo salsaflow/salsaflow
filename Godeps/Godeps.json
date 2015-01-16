@@ -42,7 +42,7 @@
 		},
 		{
 			"ImportPath": "github.com/salsita/go-sprintly/sprintly",
-			"Rev": "d4feecec2690be4dee55d00398ab746c6ca3f66f"
+			"Rev": "6cd9d7493c8234dfae4c09f3572a958f188022b6"
 		},
 		{
 			"ImportPath": "github.com/toqueteos/webbrowser",

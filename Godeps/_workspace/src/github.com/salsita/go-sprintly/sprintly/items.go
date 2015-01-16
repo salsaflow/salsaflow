@@ -1,6 +1,7 @@
 package sprintly
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -66,6 +67,7 @@ type Item struct {
 	Score        ItemScore     `json:"score,omitempty"`
 	Status       ItemStatus    `json:"status,omitempty"`
 	Tags         []string      `json:"tags,omitempty"`
+	Parent       interface{}   `json:"parent,omitempty"`
 	ShortURL     string        `json:"short_url,omitempty"`
 	Product      *Product      `json:"product,omitempty"`
 	Progress     *ItemProgress `json:"progress,omitempty"`
@@ -81,6 +83,34 @@ type Item struct {
 	Who  string `json:"who,omitempty"`
 	What string `json:"what,omitempty"`
 	Why  string `json:"why,omitempty"`
+}
+
+func (item *Item) ParentNumber() (int, error) {
+	// "item.parent" is not set.
+	if item.Parent == nil {
+		return 0, nil
+	}
+
+	// "item.parent" is a float64.
+	if number, ok := item.Parent.(float64); ok {
+		return int(number), nil
+	}
+
+	// "item.parent.number" is a float64.
+	if parent, ok := item.Parent.(map[string]interface{}); ok {
+		v, ok := parent["number"]
+		if !ok {
+			return 0, errors.New("Item.ParentNumber: parent.number is empty")
+		}
+		number, ok := v.(float64)
+		if !ok {
+			return 0, errors.New("Item.ParentNumber: parent.number is not a number")
+		}
+		return int(number), nil
+	}
+
+	// Unexpected payload encountered.
+	return 0, errors.New("Item.ParentNumber: unable to get the parent number")
 }
 
 // Progress represents a Sprintly item progress.
