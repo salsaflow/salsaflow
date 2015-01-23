@@ -15,18 +15,20 @@ fi
 go get github.com/inconshreveable/gonative
 
 # ---> Clone Go sources
+goVersion=$(go version | awk '{ print $3 }')
+
 if [ ! -d "$PREFIX/go" ]; then
 	[ ! -d "$PREFIX" ] && mkdir -p "$PREFIX"
-	cd "$PREFIX" && hg clone -u release https://code.google.com/p/go
+	cd "$PREFIX" && git clone https://go.googlesource.com/go && cd go && git checkout "$goVersion"
 else
-	cd "$PREFIX/go" && hg pull -u
+	cd "$PREFIX/go" && git pull && git checkout "$goVersion"
 fi
 
 # ---> Build gonative
 mkdir -p "$PREFIX/gonative" && cd "$PREFIX/gonative"
 set +e
-GOROOT="$PREFIX/go" gonative -src="$PREFIX/go" -platforms="windows_amd64 darwin_amd64 linux_amd64" -version="1.3.3"
+GOROOT="$PREFIX/go" gonative build -src="$PREFIX/go" -platforms="windows_amd64 darwin_amd64 linux_amd64" -version="${goVersion#go}"
 if [ "$?" -ne 0 ]; then
-	rm -R "$PREFIX/gonative"
+	rm -Rf "$PREFIX/gonative"
 	exit 1
 fi
