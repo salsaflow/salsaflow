@@ -115,9 +115,9 @@ func formatOptInteger(value interface{}) string {
 
 func ensureRbtVersion() error {
 	hint := bytes.NewBufferString(`
-You need to install RBTools version 0.6. Please run
+You need to install RBTools version 0.7. Please run
 
-  $ pip install rbtools~=0.6 --allow-external rbtools --allow-unverified rbtools
+  $ pip install rbtools==0.7 --allow-external rbtools --allow-unverified rbtools
 
 to install the correct version.
 
@@ -163,7 +163,7 @@ to install the correct version.
 	major, _ := strconv.Atoi(parts[2])
 	minor, _ := strconv.Atoi(parts[3])
 
-	if !(major == 0 && minor == 6) {
+	if !(major == 0 && minor == 7) {
 		return errs.NewError(
 			task, errors.New("unsupported rbt version detected: "+rbtVersion), hint)
 	}
