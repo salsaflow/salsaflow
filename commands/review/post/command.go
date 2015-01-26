@@ -366,7 +366,7 @@ StoryLoop:
 	if err != nil {
 		return commits, errs.NewError(task, err, nil)
 	}
-	parentSHA := strings.TrimSpace(stdout.String())
+	parentSHA := strings.Fields(stdout.String())[0]
 
 	// Prepare a temporary branch that will be used to amend commit messages.
 	task = "Create a temporary branch to rewrite commit messages"
