@@ -49,7 +49,7 @@ type Story struct {
 	Description   string     `json:"description,omitempty"`
 	Type          string     `json:"story_type,omitempty"`
 	State         string     `json:"current_state,omitempty"`
-	Estimate      float64    `json:"estimate,omitempty"`
+	Estimate      *float64   `json:"estimate,omitempty"`
 	AcceptedAt    *time.Time `json:"accepted_at,omitempty"`
 	Deadline      *time.Time `json:"deadline,omitempty"`
 	RequestedById int        `json:"requested_by_id,omitempty"`

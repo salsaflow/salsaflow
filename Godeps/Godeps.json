@@ -35,7 +35,7 @@
 		},
 		{
 			"ImportPath": "github.com/salsita/go-pivotaltracker/v5/pivotal",
-			"Rev": "c2767a7b6c17b1e705407655fe77de5d05477ac6"
+			"Rev": "c0e57cde6d04b3c7ccb49a1b23c0606ffcba3b98"
 		},
 		{
 			"ImportPath": "github.com/toqueteos/webbrowser",
