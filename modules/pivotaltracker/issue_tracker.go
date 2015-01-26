@@ -44,7 +44,15 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		return nil, err
 	}
 
-	ptStories = storiesMatchingByLabel(ptStories, tracker.config.IncludeStoryLabelFilter())
+	// Drop the stories that are not estimated.
+	estimatedStories := make([]*pivotal.Story, 0, len(ptStories))
+	for _, story := range ptStories {
+		if story.Estimate != nil {
+			estimatedStories = append(estimatedStories, story)
+		}
+	}
+
+	ptStories = storiesMatchingByLabel(estimatedStories, tracker.config.IncludeStoryLabelFilter())
 
 	return toCommonStories(ptStories, tracker.config), nil
 }
