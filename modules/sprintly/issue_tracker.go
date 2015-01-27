@@ -134,8 +134,8 @@ func (tracker *issueTracker) NextRelease(
 ) (common.NextRelease, error) {
 
 	return &nextRelease{
+		tracker:          tracker,
 		client:           tracker.client,
-		config:           tracker.config,
 		trunkVersion:     trunkVersion,
 		nextTrunkVersion: nextTrunkVersion,
 	}, nil

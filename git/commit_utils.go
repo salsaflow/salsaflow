@@ -6,22 +6,6 @@ import (
 
 const StoryIdUnassignedTagValue = "unassigned"
 
-// StoryIdTags returns the list of unique story ID tags that can be found in the commits.
-func StoryIdTags(commits []*Commit) []string {
-	idMap := make(map[string]struct{}, len(commits))
-	for _, commit := range commits {
-		if commit.StoryIdTag != "" && commit.StoryIdTag != StoryIdUnassignedTagValue {
-			idMap[commit.StoryIdTag] = struct{}{}
-		}
-	}
-
-	idList := make([]string, 0, len(idMap))
-	for id := range idMap {
-		idList = append(idList, id)
-	}
-	return idList
-}
-
 func GrepCommitsCaseInsensitive(filter string, args ...string) ([]*Commit, error) {
 	argsList := make([]string, 6, 6+len(args))
 	argsList[0] = "--source"

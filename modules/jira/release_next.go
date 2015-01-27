@@ -9,7 +9,6 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
-	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules/jira/client"
 	"github.com/salsaflow/salsaflow/prompt"
@@ -68,7 +67,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// Collect the issues to be added to the current release.
 	task := "Collect the issues that modified trunk since the last release"
 	log.Run(task)
-	commits, err := releases.ListNewTrunkCommits()
+	ids, err := releases.ListStoryIdsToBeAssigned(release.tracker)
 	if err != nil {
 		return false, errs.NewError(task, err, nil)
 	}
@@ -76,7 +75,6 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// Fetch the additional issues from JIRA.
 	task = "Fetch the collected issues from JIRA"
 	log.Run(task)
-	ids := git.StoryIdTags(commits)
 	issues, err := listStoriesById(newClient(release.tracker.config), ids)
 	if len(issues) == 0 && err != nil {
 		return false, errs.NewError(task, err, nil)

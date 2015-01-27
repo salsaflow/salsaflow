@@ -5,12 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
-	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/prompt"
 	"github.com/salsaflow/salsaflow/releases"
@@ -21,51 +19,40 @@ import (
 )
 
 type nextRelease struct {
+	tracker *issueTracker
+
 	trunkVersion     *version.Version
 	nextTrunkVersion *version.Version
-
-	config Config
 
 	additionalStories []*pivotal.Story
 }
 
 func newNextRelease(
+	tracker *issueTracker,
 	trunkVersion *version.Version,
 	nextTrunkVersion *version.Version,
-	config Config,
 ) (*nextRelease, error) {
 
 	return &nextRelease{
+		tracker:          tracker,
 		trunkVersion:     trunkVersion,
 		nextTrunkVersion: nextTrunkVersion,
-		config:           config,
 	}, nil
 }
 
 func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	var (
-		client       = pivotal.NewClient(release.config.UserToken())
+		config       = release.tracker.config
+		client       = pivotal.NewClient(config.UserToken())
 		releaseLabel = getReleaseLabel(release.trunkVersion)
 	)
 
 	// Collect the commits that modified trunk since the last release.
 	task := "Collect the stories that modified trunk"
 	log.Run(task)
-	commits, err := releases.ListNewTrunkCommits()
+	ids, err := releases.ListStoryIdsToBeAssigned(release.tracker)
 	if err != nil {
 		return false, errs.NewError(task, err, nil)
-	}
-
-	// Get the story IDs associated with these commits.
-	tags := git.StoryIdTags(commits)
-	ids := make([]string, 0, len(tags))
-	for _, tag := range tags {
-		// Story-Id for PT is "<project-id>/stories/<story-id>".
-		i := strings.LastIndex(tag, "/")
-		if i == -1 {
-			return false, errs.NewError(task, fmt.Errorf("invalid Story-Id tag: %v", tag), nil)
-		}
-		ids = append(ids, tag[i+1:])
 	}
 
 	// Fetch the collected stories from Pivotal Tracker, if necessary.
@@ -75,7 +62,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 		log.Run(task)
 
 		var err error
-		additional, err = listStoriesById(client, release.config.ProjectId(), ids)
+		additional, err = listStoriesById(client, config.ProjectId(), ids)
 		if len(additional) == 0 && err != nil {
 			return false, errs.NewError(task, err, nil)
 		}
@@ -97,10 +84,10 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// Check the Point Me label.
 	task = "Make sure there are no unpointed stories"
 	log.Run(task)
-	pmLabel := release.config.PointMeLabel()
+	pmLabel := config.PointMeLabel()
 
 	// Fetch the already assigned but unpointed stories.
-	pmStories, err := searchStories(client, release.config.ProjectId(),
+	pmStories, err := searchStories(client, config.ProjectId(),
 		"label:\"%v\" AND label:\"%v\"", releaseLabel, pmLabel)
 	if err != nil {
 		return false, errs.NewError(task, err, nil)
@@ -114,7 +101,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// In case there are some unpointed stories, stop the release.
 	if len(pmStories) != 0 {
 		fmt.Println("\nThe following stories are still yet to be pointed:\n")
-		err := prompt.ListStories(toCommonStories(pmStories, release.config), os.Stdout)
+		err := prompt.ListStories(toCommonStories(pmStories, config), os.Stdout)
 		if err != nil {
 			return false, err
 		}
@@ -125,7 +112,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// Print the stories to be added to the release.
 	if len(additional) != 0 {
 		fmt.Println("\nThe following stories are going to be added to the release:\n")
-		err := prompt.ListStories(toCommonStories(additional, release.config), os.Stdout)
+		err := prompt.ListStories(toCommonStories(additional, config), os.Stdout)
 		if err != nil {
 			return false, err
 		}
@@ -141,13 +128,17 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 }
 
 func (release *nextRelease) Start() (action.Action, error) {
-	client := pivotal.NewClient(release.config.UserToken())
+	var (
+		config    = release.tracker.config
+		client    = pivotal.NewClient(config.UserToken())
+		projectId = config.ProjectId()
+	)
 
 	// Add release labels to the relevant stories.
 	task := "Label the stories with the release label"
 	log.Run(task)
 	releaseLabel := getReleaseLabel(release.trunkVersion)
-	stories, err := addLabel(client, release.config.ProjectId(),
+	stories, err := addLabel(client, projectId,
 		release.additionalStories, releaseLabel)
 	if err != nil {
 		return nil, errs.NewError(task, err, nil)
@@ -157,8 +148,7 @@ func (release *nextRelease) Start() (action.Action, error) {
 	// Return the rollback action, which removes the release labels that were appended.
 	return action.ActionFunc(func() error {
 		log.Rollback(task)
-		_, err := removeLabel(client, release.config.ProjectId(),
-			stories, releaseLabel)
+		_, err := removeLabel(client, projectId, stories, releaseLabel)
 		if err != nil {
 			return errs.NewError("Remove the release label from the stories", err, nil)
 		}

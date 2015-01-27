@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
-	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/prompt"
 	"github.com/salsaflow/salsaflow/releases"
@@ -22,8 +20,8 @@ import (
 )
 
 type nextRelease struct {
-	client *sprintly.Client
-	config Config
+	tracker *issueTracker
+	client  *sprintly.Client
 
 	trunkVersion     *version.Version
 	nextTrunkVersion *version.Version
@@ -34,30 +32,24 @@ type nextRelease struct {
 func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	var (
 		client         = release.client
-		productId      = release.config.ProductId()
+		productId      = release.tracker.config.ProductId()
 		itemReleaseTag = getItemReleaseTag(release.trunkVersion)
 	)
 
 	// Collect the commits that modified trunk since the last release.
 	task := "Collect the stories that modified trunk"
 	log.Run(task)
-	commits, err := releases.ListNewTrunkCommits()
+	ids, err := releases.ListStoryIdsToBeAssigned(release.tracker)
 	if err != nil {
 		return false, errs.NewError(task, err, nil)
 	}
 
 	// Get the story ids associated with these commits.
-	tags := git.StoryIdTags(commits)
-	numbers := make([]int, 0, len(tags))
-	for _, tag := range tags {
-		// Story-Id tag for Sprintly is "<product-id>/<item-number>".
-		parts := strings.Split(tag, "/")
-		if len(parts) != 2 {
-			return false, errs.NewError(task, fmt.Errorf("invalid Story-Id tag: %v", tag), nil)
-		}
-		number, err := strconv.Atoi(parts[1])
+	numbers := make([]int, 0, len(ids))
+	for _, id := range ids {
+		number, err := strconv.Atoi(id)
 		if err != nil {
-			return false, errs.NewError(task, fmt.Errorf("invalid Story-Id tag: %v", tag), nil)
+			return false, errs.NewError(task, fmt.Errorf("invalid item number: %v", id), nil)
 		}
 		numbers = append(numbers, number)
 	}
@@ -146,7 +138,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 func (release *nextRelease) Start() (action.Action, error) {
 	var (
 		client         = release.client
-		productId      = release.config.ProductId()
+		productId      = release.tracker.config.ProductId()
 		itemReleaseTag = getItemReleaseTag(release.trunkVersion)
 	)
 
