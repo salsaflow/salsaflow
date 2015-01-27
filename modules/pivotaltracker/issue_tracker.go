@@ -76,7 +76,7 @@ func (tracker *issueTracker) NextRelease(
 	nextTrunkVersion *version.Version,
 ) (common.NextRelease, error) {
 
-	return newNextRelease(trunkVersion, nextTrunkVersion, tracker.config)
+	return newNextRelease(tracker, trunkVersion, nextTrunkVersion)
 }
 
 func (tracker *issueTracker) RunningRelease(

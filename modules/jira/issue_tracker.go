@@ -4,6 +4,7 @@ import (
 	// Stdlib
 	"fmt"
 	"net/url"
+	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/modules/common"
@@ -88,6 +89,10 @@ func (tracker *issueTracker) OpenStory(storyId string) error {
 }
 
 func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId string, err error) {
+	prefix := fmt.Sprintf("%v-", tracker.config.ProjectKey())
+	if !strings.HasPrefix(tag, prefix) {
+		return "", fmt.Errorf("not a valid issue key: %v", tag)
+	}
 	return tag, nil
 }
 
