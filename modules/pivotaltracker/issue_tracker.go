@@ -44,10 +44,10 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		return nil, err
 	}
 
-	// Drop the stories that are not estimated.
+	// Drop the features that are not estimated.
 	estimatedStories := make([]*pivotal.Story, 0, len(ptStories))
 	for _, story := range ptStories {
-		if story.Estimate != nil {
+		if !(story.Type == pivotal.StoryTypeFeature && story.Estimate == nil) {
 			estimatedStories = append(estimatedStories, story)
 		}
 	}
