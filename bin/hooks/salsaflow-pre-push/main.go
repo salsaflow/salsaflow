@@ -17,6 +17,7 @@ import (
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/hooks"
 	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/prompt"
 )
 
 const zeroHash = "0000000000000000000000000000000000000000"
@@ -176,16 +177,18 @@ func run(remoteName, pushURL string) error {
 				continue
 			}
 
+			commitMessageTitle := prompt.Shorten(commit.MessageTitle, 50)
+
 			// Check the Change-Id tag.
 			if commit.ChangeIdTag == "" /* && salsaflowCommitsDetected */ {
-				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", commit.SHA, commit.MessageTitle,
+				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", commit.SHA, commitMessageTitle,
 					revRange.To, "commit message: Change-Id tag missing")
 				invalid = true
 			}
 
 			// Check the Story-Id tag.
 			if commit.StoryIdTag == "" /* && salsaflowCommitsDetected */ {
-				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", commit.SHA, commit.MessageTitle,
+				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", commit.SHA, commitMessageTitle,
 					revRange.To, "commit message: Story-Id tag missing")
 				invalid = true
 			}

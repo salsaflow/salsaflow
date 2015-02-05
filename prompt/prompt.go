@@ -154,25 +154,10 @@ func ListStories(stories []common.Story, w io.Writer) (err error) {
 	must(io.WriteString(tw, "  =====\t========\t===========\n"))
 	for i, story := range stories {
 		must(fmt.Fprintf(
-			tw, "  %v\t%v\t%v\n", i, story.ReadableId(), formatStoryTitle(story.Title())))
+			tw, "  %v\t%v\t%v\n", i, story.ReadableId(),
+			Shorten(story.Title(), maxStoryTitleColumnWidth)))
 	}
 	must(0, tw.Flush())
 
 	return nil
-}
-
-func formatStoryTitle(title string) string {
-	if len(title) < maxStoryTitleColumnWidth {
-		return title
-	}
-
-	// maxStoryTitleColumnWidth incorporates the trailing " ...",
-	// so that is why we subtract len(" ...") when truncating.
-	truncatedTitle := title[:maxStoryTitleColumnWidth-4]
-	if title[maxStoryTitleColumnWidth-4] != ' ' {
-		if i := strings.LastIndex(truncatedTitle, " "); i != -1 {
-			truncatedTitle = truncatedTitle[:i]
-		}
-	}
-	return truncatedTitle + " ..."
 }

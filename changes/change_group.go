@@ -11,6 +11,7 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/modules/common"
+	"github.com/salsaflow/salsaflow/prompt"
 )
 
 type StoryChangeGroup struct {
@@ -155,8 +156,9 @@ func DumpStoryChanges(
 
 			// Print the first line.
 			commit := change.Commits[0]
+			commitMessageTitle := prompt.Shorten(commit.MessageTitle, 50)
 			_, err := fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
-				storyId, changeId, commit.SHA, commit.Source, commit.MessageTitle)
+				storyId, changeId, commit.SHA, commit.Source, commitMessageTitle)
 			if err != nil {
 				return err
 			}
@@ -170,7 +172,7 @@ func DumpStoryChanges(
 			// Print the rest with the chosen columns being empty.
 			for _, commit := range change.Commits[1:] {
 				_, err := fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
-					storyId, changeId, commit.SHA, commit.Source, commit.MessageTitle)
+					storyId, changeId, commit.SHA, commit.Source, commitMessageTitle)
 				if err != nil {
 					return err
 				}

@@ -429,6 +429,8 @@ In other words, there are no stories in the right state for that.
 
 		if commit.StoryIdTag == "" {
 			if !flagAskOnce {
+				commitMessageTitle := prompt.Shorten(commit.MessageTitle, 50)
+
 				// Ask for the story ID for the current commit.
 				header := fmt.Sprintf(`
 The following commit is not assigned to any story:
@@ -436,7 +438,7 @@ The following commit is not assigned to any story:
   commit hash:  %v
   commit title: %v
 
-Please pick up the story to assign the commit to:`, commit.SHA, commit.MessageTitle)
+Please pick up the story to assign the commit to:`, commit.SHA, commitMessageTitle)
 				selectedStory, err := prompt.PromptStory(header, stories)
 				if err != nil {
 					if err == prompt.ErrCanceled {
@@ -494,7 +496,8 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 	must(fmt.Fprintf(tw, "%vCommit SHA\tCommit Title\n", prefix))
 	must(fmt.Fprintf(tw, "%v==========\t============\n", prefix))
 	for _, commit := range commits {
-		must(fmt.Fprintf(tw, "%v%v\t%v\n", prefix, commit.SHA, commit.MessageTitle))
+		commitMessageTitle := prompt.Shorten(commit.MessageTitle, 50)
+		must(fmt.Fprintf(tw, "%v%v\t%v\n", prefix, commit.SHA, commitMessageTitle))
 	}
 
 	must(0, tw.Flush())
