@@ -95,8 +95,17 @@ There are two places where SalsaFlow configuration is being kept:
 ### Global Configuration ###
 
 The global, user-specific configuration file resides in `$HOME/.salsaflow.yml`.
-The format depends solely on the modules that are active. No worries, modules
+The format depends mostly on the modules that are active. No worries, modules
 are explained later.
+
+The only config that is necessary is a GitHub API token that can be used to
+read public repositories. It is used for upgrading SF since it accesses
+GitHub releases for SalsaFlow. So, the format is following:
+
+```yaml
+github:
+  token: "your-github-token"
+```
 
 ### Local Configuration ###
 
