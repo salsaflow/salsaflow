@@ -37,8 +37,9 @@ func main() {
 
 	// Run the main function.
 	if err := run(os.Args[1], os.Args[2]); err != nil {
+		errs.Log(err)
 		asciiart.PrintGrimReaper("PUSH ABORTED")
-		errs.Fatal(err)
+		os.Exit(1)
 	}
 }
 
@@ -102,6 +103,20 @@ func run(remoteName, pushURL string) error {
 		}
 		if !isCoreBranch {
 			continue
+		}
+
+		// Make sure the reference is up to date.
+		// In this case the reference is not up to date when
+		// the remote hash cannot be found in the local clone.
+		task := fmt.Sprintf("Make sure remote ref '%s' is up to date", remoteRef)
+		if _, err := git.Run("cat-file", "-t", remoteSha); err != nil {
+			hint := fmt.Sprintf(`
+Commit %v does not exist locally.
+This is probably because '%v' is not up to date.
+Please update the reference before pushing.
+
+`, remoteSha, remoteRef)
+			return errs.NewError(task, err, bytes.NewBufferString(hint))
 		}
 
 		log.Log(fmt.Sprintf("Checking commits updating reference '%s'", remoteRef))
