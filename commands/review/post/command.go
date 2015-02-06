@@ -30,8 +30,8 @@ var Command = &gocli.Command{
 	UsageLine: `
   post [-update=RRID] [-fixes=RRID] [-open] [REVISION]
 
-  post [-fixes=RRID] [-no_fetch] [-no_rebase]
-       [-ask_once] [-open] [-no_dialog] -parent=BRANCH`,
+  post [-fixes=RRID] [-no_fetch] [-no_rebase] [-ask_once]
+       [-no_seq] [-open] [-no_dialog] -parent=BRANCH`,
 	Short: "post code review requests",
 	Long: `
   Post a code review request for each commit specified.
@@ -49,6 +49,8 @@ var Command = &gocli.Command{
 
   When no parent branch nor the revision is specified, the last commit
   on the current branch is selected and posted alone into the code review tool.
+
+  The review request are posted sequentially unless -no_seq is set.
   `,
 	Action: run,
 }
@@ -59,6 +61,7 @@ var (
 	flagNoDialog bool
 	flagNoFetch  bool
 	flagNoRebase bool
+	flagNoSeq    bool
 	flagOpen     bool
 	flagParent   string
 	flagUpdate   uint
@@ -75,6 +78,8 @@ func init() {
 		"do not fetch the upstream repository")
 	Command.Flags.BoolVar(&flagNoRebase, "no_rebase", flagNoRebase,
 		"do not rebase onto the parent branch")
+	Command.Flags.BoolVar(&flagNoSeq, "no_seq", flagNoSeq,
+		"post review requests in parallel")
 	Command.Flags.BoolVar(&flagOpen, "open", flagOpen,
 		"open the review requests in the browser")
 	Command.Flags.StringVar(&flagParent, "parent", flagParent,
@@ -504,11 +509,6 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 }
 
 func sendReviewRequests(commits []*git.Commit) error {
-	var (
-		topErr    error
-		topErrMux sync.Mutex
-	)
-
 	tool, err := modules.GetCodeReviewTool()
 	if err != nil {
 		return err
@@ -525,13 +525,51 @@ func sendReviewRequests(commits []*git.Commit) error {
 		postOpts["open"] = true
 	}
 
+	// Post the review requests.
+	if flagNoSeq {
+		return sendRequestsConcurrently(tool, commits, postOpts)
+	} else {
+		return sendRequests(tool, commits, postOpts)
+	}
+}
+
+func sendRequests(
+	tool common.CodeReviewTool,
+	commits []*git.Commit,
+	postOpts map[string]interface{},
+) error {
+
+	for _, commit := range commits {
+		task := "Post review request for commit " + commit.SHA
+		log.Run(task)
+
+		if err := tool.PostReviewRequest(commit, postOpts); err != nil {
+			return errs.NewError(task, err, nil)
+		}
+	}
+	return nil
+}
+
+func sendRequestsConcurrently(
+	tool common.CodeReviewTool,
+	commits []*git.Commit,
+	postOpts map[string]interface{},
+) error {
+
+	var (
+		topErr    error
+		topErrMux sync.Mutex
+	)
+
 	var wg sync.WaitGroup
 	wg.Add(len(commits))
 	for _, commit := range commits {
 		go func(commit *git.Commit) {
 			defer wg.Done()
-			task := "Post the review request for commit " + commit.SHA
+
+			task := "Post review request for commit " + commit.SHA
 			log.Go(task)
+
 			if err := tool.PostReviewRequest(commit, postOpts); err != nil {
 				errs.LogError(task, err, nil)
 				topErrMux.Lock()
