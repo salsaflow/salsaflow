@@ -2,6 +2,8 @@ package prompt
 
 import "strings"
 
+const CommitTitleMaxLength = 50
+
 func Shorten(line string, maxLen int) string {
 	// In case the line is short enough, we are done.
 	if len(line) <= maxLen {
@@ -20,4 +22,8 @@ func Shorten(line string, maxLen int) string {
 
 	// Return the truncated line with " ..." appended.
 	return truncated + " ..."
+}
+
+func ShortenCommitTitle(title string) string {
+	return Shorten(title, CommitTitleMaxLength)
 }

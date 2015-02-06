@@ -177,20 +177,22 @@ func run(remoteName, pushURL string) error {
 				continue
 			}
 
-			commitMessageTitle := prompt.Shorten(commit.MessageTitle, 50)
+			commitMessageTitle := prompt.ShortenCommitTitle(commit.MessageTitle)
+
+			printErrorLine := func(reason string) {
+				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n",
+					commit.SHA, commitMessageTitle, revRange.To, reason)
+				invalid = true
+			}
 
 			// Check the Change-Id tag.
 			if commit.ChangeIdTag == "" /* && salsaflowCommitsDetected */ {
-				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", commit.SHA, commitMessageTitle,
-					revRange.To, "commit message: Change-Id tag missing")
-				invalid = true
+				printErrorLine("commit message: Change-Id tag missing")
 			}
 
 			// Check the Story-Id tag.
 			if commit.StoryIdTag == "" /* && salsaflowCommitsDetected */ {
-				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n", commit.SHA, commitMessageTitle,
-					revRange.To, "commit message: Story-Id tag missing")
-				invalid = true
+				printErrorLine("commit message: Story-Id tag missing")
 			}
 		}
 	}

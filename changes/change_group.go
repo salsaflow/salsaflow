@@ -155,11 +155,18 @@ func DumpStoryChanges(
 			changeId := change.ChangeIdTag
 
 			// Print the first line.
-			commit := change.Commits[0]
-			commitMessageTitle := prompt.Shorten(commit.MessageTitle, 50)
-			_, err := fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
-				storyId, changeId, commit.SHA, commit.Source, commitMessageTitle)
-			if err != nil {
+			var (
+				commit             = change.Commits[0]
+				commitMessageTitle = prompt.ShortenCommitTitle(commit.MessageTitle)
+			)
+
+			printChange := func(commit *git.Commit) error {
+				_, err := fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
+					storyId, changeId, commit.SHA, commit.Source, commitMessageTitle)
+				return err
+			}
+
+			if err := printChange(commit); err != nil {
 				return err
 			}
 
@@ -171,9 +178,7 @@ func DumpStoryChanges(
 
 			// Print the rest with the chosen columns being empty.
 			for _, commit := range change.Commits[1:] {
-				_, err := fmt.Fprintf(tw, "%v\t%v\t%v\t%v\t%v\n",
-					storyId, changeId, commit.SHA, commit.Source, commitMessageTitle)
-				if err != nil {
+				if err := printChange(commit); err != nil {
 					return err
 				}
 			}

@@ -429,7 +429,7 @@ In other words, there are no stories in the right state for that.
 
 		if commit.StoryIdTag == "" {
 			if !flagAskOnce {
-				commitMessageTitle := prompt.Shorten(commit.MessageTitle, 50)
+				commitMessageTitle := prompt.ShortenCommitTitle(commit.MessageTitle)
 
 				// Ask for the story ID for the current commit.
 				header := fmt.Sprintf(`
@@ -496,7 +496,7 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 	must(fmt.Fprintf(tw, "%vCommit SHA\tCommit Title\n", prefix))
 	must(fmt.Fprintf(tw, "%v==========\t============\n", prefix))
 	for _, commit := range commits {
-		commitMessageTitle := prompt.Shorten(commit.MessageTitle, 50)
+		commitMessageTitle := prompt.ShortenCommitTitle(commit.MessageTitle)
 		must(fmt.Fprintf(tw, "%v%v\t%v\n", prefix, commit.SHA, commitMessageTitle))
 	}
 
