@@ -113,7 +113,8 @@ func run(remoteName, pushURL string) error {
 			hint := fmt.Sprintf(`
 Commit %v does not exist locally.
 This is probably because '%v' is not up to date.
-Please update the reference before pushing.
+Please update the reference from the remote repository,
+perhaps by executing 'git pull'.
 
 `, remoteSha, remoteRef)
 			return errs.NewError(task, err, bytes.NewBufferString(hint))
