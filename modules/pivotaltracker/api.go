@@ -149,10 +149,23 @@ func updateStories(
 	rollbackFunc storyUpdateFunc,
 ) ([]*pivotal.Story, error) {
 
+	// Allow just a single pending request at a time.
+	// This is because PT is lame and crashes otherwise.
+	semCh := make(chan struct{}, 1)
+	down := func() {
+		semCh <- struct{}{}
+	}
+	up := func() {
+		<-semCh
+	}
+
 	// Send all the request at once.
 	retCh := make(chan *storyUpdateResult, len(stories))
 	for _, story := range stories {
 		go func(story *pivotal.Story) {
+			down()
+			defer up()
+
 			// Get the update request.
 			// Returning nil means that no request is sent.
 			updateRequest := updateFunc(story)
@@ -197,6 +210,9 @@ func updateStories(
 			retCh := make(chan *storyUpdateResult)
 			for _, story := range updatedStories {
 				go func(story *pivotal.Story) {
+					down()
+					defer up()
+
 					rollbackRequest := rollbackFunc(story)
 					if rollbackRequest == nil {
 						retCh <- &storyUpdateResult{story, nil}
