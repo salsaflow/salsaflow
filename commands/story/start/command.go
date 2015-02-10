@@ -22,7 +22,7 @@ import (
 )
 
 var Command = &gocli.Command{
-	UsageLine: "start [-no_branch]",
+	UsageLine: "start [-no_branch] [-no_push]",
 	Short:     "start a new story",
 	Long: `
 Start a new issue tracker story.
@@ -34,16 +34,21 @@ is started in the issue tracker.
 Unless -no_branch is specified, the user is asked to insert
 the branch name to be used for the branch holding the story commits.
 The branch of the given name is created on top of the trunk branch
-and checked out.
+and checked out. Then it is pushed unless -no_push is specified.
 	`,
 	Action: run,
 }
 
-var flagNoBranch bool
+var (
+	flagNoBranch bool
+	flagNoPush   bool
+)
 
 func init() {
 	Command.Flags.BoolVar(&flagNoBranch, "no_branch", flagNoBranch,
 		"do not create a new story branch")
+	Command.Flags.BoolVar(&flagNoPush, "no_push", flagNoPush,
+		"do not push the newly created story branch")
 }
 
 func run(cmd *gocli.Command, args []string) {
@@ -250,11 +255,22 @@ Insert an empty string to skip the branch creation step: `)
 		return nil
 	}
 
+	// Checkout the newly created branch.
 	checkoutTask := fmt.Sprintf("Checkout branch '%v'", branchName)
 	log.Run(checkoutTask)
 	if err := git.Checkout(branchName); err != nil {
 		errs.Log(deleteBranch())
 		return nil, errs.NewError(checkoutTask, err, nil)
+	}
+
+	// Push the newly created branch unless -no_push.
+	pushTask := fmt.Sprintf("Push branch '%v' to remote '%v'", branchName, remoteName)
+	if !flagNoPush {
+		log.Run(pushTask)
+		if err := git.Push(remoteName, branchName); err != nil {
+			errs.Log(deleteBranch())
+			return nil, errs.NewError(pushTask, err, nil)
+		}
 	}
 
 	return action.ActionFunc(func() error {
@@ -264,7 +280,30 @@ Insert an empty string to skip the branch creation step: `)
 			return errs.NewError(
 				fmt.Sprintf("Checkout the original branch '%v'", originalBranch), err, nil)
 		}
+
 		// Delete the newly created branch.
-		return deleteBranch()
+		deleteErr := deleteBranch()
+
+		// In case we haven't pushed anything, we are done.
+		if flagNoPush {
+			return deleteErr
+		}
+
+		// Delete the branch from the remote repository.
+		log.Rollback(pushTask)
+		if _, err := git.Run("push", "--delete", remoteName, branchName); err != nil {
+			// In case deleteBranch failed, tell the user now
+			// since we are not going to return that error.
+			if deleteErr != nil {
+				errs.Log(deleteErr)
+			}
+
+			return errs.NewError(
+				fmt.Sprintf("Delete branch '%v' from remote '%v'", branchName, remoteName),
+				err, nil)
+		}
+
+		// Return deleteErr to make sure it propagates up.
+		return deleteErr
 	}), nil
 }
