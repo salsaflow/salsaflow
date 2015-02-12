@@ -2,6 +2,7 @@ package deployCmd
 
 import (
 	// Stdlib
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -288,6 +289,21 @@ func listSortedNewReleaseTags(stableBranch string) ([]string, error) {
 		return nil, errs.NewError(task, err, nil)
 	}
 	deployedTag := strings.TrimSpace(stdout.String())
+
+	// Make sure the master tag is valid.
+	invalid := !strings.HasPrefix(deployedTag, "v")
+	if _, err := version.Parse(deployedTag[1:]); err != nil {
+		invalid = true
+	}
+	if invalid {
+		hint := bytes.NewBufferString(fmt.Sprintf(`
+Make sure branch '%v' is tagged with a correct release tag.
+Every release tag must be in the form of 'vX.Y.Z' where
+X.Y.Z is the relevant project version being released.
+
+`, stableBranch))
+		return nil, errs.NewError(task, fmt.Errorf("invalid release tag: %v", deployedTag), hint)
+	}
 
 	// Get the new tags.
 	//
