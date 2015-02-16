@@ -3,9 +3,16 @@ package bootstrapCmd
 import (
 	"io"
 	"text/template"
+	"time"
 )
 
-const LocalConfigTemplate = `#  Unless stated otherwise, the keys that are commented out
+const LocalConfigTemplate = `# This field keeps the timestamp of when 'repo bootstrap' was executed.
+# This timestamp is being used by the pre-push hook to check only the commits
+# that happened after so that it is easier to migrate existing projects to SF.
+# You can modify the timestamp manually in case there is a need.
+salsaflow_enabled_timestamp: "{{.EnabledTimestamp}}"
+
+#  Unless stated otherwise, the keys that are commented out
 #  are required, so please uncomment them and fill in the values.
 
 issue_tracker: "{{.IssueTrackerKey}}"
@@ -35,6 +42,7 @@ code_review_tool: "{{.CodeReviewToolKey}}"
 `
 
 type LocalContext struct {
+	EnabledTimestamp  time.Time
 	IssueTrackerKey   string
 	CodeReviewToolKey string
 }

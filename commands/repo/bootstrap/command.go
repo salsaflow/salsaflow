@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/config"
@@ -163,6 +164,7 @@ func runMain() error {
 	defer file.Close()
 
 	err = WriteLocalConfigTemplate(file, &LocalContext{
+		EnabledTimestamp:  time.Now(),
 		IssueTrackerKey:   flagIssueTracker.Value(),
 		CodeReviewToolKey: flagCodeReviewTool.Value(),
 	})

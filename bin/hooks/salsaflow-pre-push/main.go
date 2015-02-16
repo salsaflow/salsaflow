@@ -55,6 +55,12 @@ func run(remoteName, pushURL string) error {
 		return err
 	}
 
+	// Load the hook-related SalsaFlow config.
+	enabledTimestamp, err := SalsaFlowEnabledTimestamp()
+	if err != nil {
+		return err
+	}
+
 	// Only check the project remote.
 	if remoteName != gitConfig.RemoteName() {
 		log.Log(
@@ -169,28 +175,38 @@ perhaps by executing 'git pull'.
 				continue
 			}
 
-			// Check whether we should start checking commit messages.
-			if !salsaflowCommitsDetected {
-				switch {
-				// Once we encounter a tag inside of the revision range,
-				// we automatically start checking for tags.
-				case commit.ChangeIdTag != "" || commit.StoryIdTag != "":
-					salsaflowCommitsDetected = true
-
-				// In case the tags are empty, check all ancestors for the relevant tags as well.
-				// In case a tag is encountered in an ancestral commit, we start checking for tags.
-				case !ancestorsChecked:
-					var err error
-					salsaflowCommitsDetected, err = checkAncestors(revRange.From)
-					if err != nil {
-						return errs.NewError(task, err, nil)
-					}
-					ancestorsChecked = true
+			if !enabledTimestamp.IsZero() {
+				// In case the SalsaFlow enabled timestamp is available,
+				// use it to decide whether to check the commit or not.
+				if commit.AuthorDate.Before(enabledTimestamp) {
+					continue
 				}
-			}
+			} else {
+				// In case the timestamp is missing, we traverse the git graph
+				// to see whether there were some commit message tags inserted in the past
+				// and we only return an error if that is the case.
+				if !salsaflowCommitsDetected {
+					switch {
+					// Once we encounter a tag inside of the revision range,
+					// we automatically start checking for tags.
+					case commit.ChangeIdTag != "" || commit.StoryIdTag != "":
+						salsaflowCommitsDetected = true
 
-			if !salsaflowCommitsDetected {
-				continue
+					// In case the tags are empty, check all ancestors for the relevant tags as well.
+					// In case a tag is encountered in an ancestral commit, we start checking for tags.
+					case !ancestorsChecked:
+						var err error
+						salsaflowCommitsDetected, err = checkAncestors(revRange.From)
+						if err != nil {
+							return errs.NewError(task, err, nil)
+						}
+						ancestorsChecked = true
+					}
+				}
+
+				if !salsaflowCommitsDetected {
+					continue
+				}
 			}
 
 			commitMessageTitle := prompt.ShortenCommitTitle(commit.MessageTitle)
