@@ -114,16 +114,18 @@ func run(remoteName, pushURL string) error {
 		// Make sure the reference is up to date.
 		// In this case the reference is not up to date when
 		// the remote hash cannot be found in the local clone.
-		task := fmt.Sprintf("Make sure remote ref '%s' is up to date", remoteRef)
-		if _, err := git.Run("cat-file", "-t", remoteSha); err != nil {
-			hint := fmt.Sprintf(`
+		if remoteSha != zeroHash {
+			task := fmt.Sprintf("Make sure remote ref '%s' is up to date", remoteRef)
+			if _, err := git.Run("cat-file", "-t", remoteSha); err != nil {
+				hint := fmt.Sprintf(`
 Commit %v does not exist locally.
 This is probably because '%v' is not up to date.
 Please update the reference from the remote repository,
 perhaps by executing 'git pull'.
 
 `, remoteSha, remoteRef)
-			return errs.NewError(task, err, bytes.NewBufferString(hint))
+				return errs.NewError(task, err, bytes.NewBufferString(hint))
+			}
 		}
 
 		log.Log(fmt.Sprintf("Checking commits updating reference '%s'", remoteRef))
