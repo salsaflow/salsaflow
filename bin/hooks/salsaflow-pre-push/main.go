@@ -80,7 +80,7 @@ func run(remoteName, pushURL string) error {
 		"refs/heads/" + gitConfig.StableBranchName(),
 	}
 
-	task := "Parse the hook input"
+	parseTask := "Parse the hook input"
 	var revRanges []*revisionRange
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
@@ -89,7 +89,7 @@ func run(remoteName, pushURL string) error {
 			parts = strings.Split(line, " ")
 		)
 		if len(parts) != 4 {
-			return errs.NewError(task, errors.New("invalid input line: "+line), nil)
+			return errs.NewError(parseTask, errors.New("invalid input line: "+line), nil)
 		}
 
 		localRef, localSha, remoteRef, remoteSha := parts[0], parts[1], parts[2], parts[3]
@@ -141,7 +141,7 @@ perhaps by executing 'git pull'.
 		revRanges = append(revRanges, revRange)
 	}
 	if err := scanner.Err(); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(parseTask, err, nil)
 	}
 
 	// Validate the commit messages.
@@ -164,7 +164,6 @@ perhaps by executing 'git pull'.
 		}
 
 		// Check every commit in the range.
-		task = "Validate commit messages"
 		var (
 			salsaflowCommitsDetected bool
 			ancestorsChecked         bool
@@ -232,7 +231,8 @@ perhaps by executing 'git pull'.
 	if invalid {
 		io.WriteString(tw, "\n")
 		tw.Flush()
-		return errs.NewError(task, errors.New("invalid commit messages found"), &output)
+		return errs.NewError(
+			"Validate commit messages", errors.New("invalid commit messages found"), &output)
 	}
 	return nil
 }
