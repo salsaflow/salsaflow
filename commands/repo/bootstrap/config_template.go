@@ -3,7 +3,6 @@ package bootstrapCmd
 import (
 	"io"
 	"text/template"
-	"time"
 )
 
 const LocalConfigTemplate = `# This field keeps the timestamp of when 'repo bootstrap' was executed.
@@ -42,7 +41,7 @@ code_review_tool: "{{.CodeReviewToolKey}}"
 `
 
 type LocalContext struct {
-	EnabledTimestamp  time.Time
+	EnabledTimestamp  Time
 	IssueTrackerKey   string
 	CodeReviewToolKey string
 }

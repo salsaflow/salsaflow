@@ -10,7 +10,7 @@ import (
 )
 
 type LocalConfig struct {
-	EnabledTimestamp string `yaml:"salsaflow_enabled_timestamp"`
+	EnabledTimestamp time.Time `yaml:"salsaflow_enabled_timestamp"`
 }
 
 func SalsaFlowEnabledTimestamp() (time.Time, error) {
@@ -21,10 +21,5 @@ func SalsaFlowEnabledTimestamp() (time.Time, error) {
 		return time.Time{}, errs.NewError(task, err, nil)
 	}
 
-	// Who knows why Time.String() uses a custom format...
-	tc, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", lc.EnabledTimestamp)
-	if err != nil {
-		return time.Time{}, errs.NewError(task, err, nil)
-	}
-	return tc, nil
+	return lc.EnabledTimestamp, nil
 }

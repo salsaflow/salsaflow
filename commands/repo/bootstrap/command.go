@@ -164,7 +164,7 @@ func runMain() error {
 	defer file.Close()
 
 	err = WriteLocalConfigTemplate(file, &LocalContext{
-		EnabledTimestamp:  time.Now(),
+		EnabledTimestamp:  Time(time.Now()),
 		IssueTrackerKey:   flagIssueTracker.Value(),
 		CodeReviewToolKey: flagCodeReviewTool.Value(),
 	})
