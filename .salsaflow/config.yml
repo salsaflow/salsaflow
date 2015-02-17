@@ -1,3 +1,6 @@
+# TIMESTAMP
+salsaflow_enabled_timestamp: "2014-09-02T12:36:11.142902641+01:00"
+
 # ISSUE TRACKER: JIRA
 issue_tracker: "jira"
 jira:
