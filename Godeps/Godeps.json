@@ -1,15 +1,10 @@
 {
 	"ImportPath": "github.com/salsaflow/salsaflow",
-	"GoVersion": "go1.4",
+	"GoVersion": "go1.4.2",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
-		{
-			"ImportPath": "bitbucket.org/kardianos/osext",
-			"Comment": "null-15",
-			"Rev": "44140c5fc69ecf1102c5ef451d73cd98ef59b178"
-		},
 		{
 			"ImportPath": "code.google.com/p/go.text/unicode/norm",
 			"Comment": "null-116",
@@ -30,11 +25,15 @@
 		},
 		{
 			"ImportPath": "github.com/google/go-github/github",
-			"Rev": "845773f8647cad81ce430e0b903e8818d356e317"
+			"Rev": "7ea4ee6d222607c11ea86e99a6f6723beeae785d"
 		},
 		{
 			"ImportPath": "github.com/google/go-querystring/query",
 			"Rev": "d8840cbb2baa915f4836edda4750050a2c0b7aea"
+		},
+		{
+			"ImportPath": "github.com/kardianos/osext",
+			"Rev": "ccfcd0245381f0c94c68f50626665eed3c6b726a"
 		},
 		{
 			"ImportPath": "github.com/salsita/go-pivotaltracker/v5/pivotal",
@@ -50,16 +49,17 @@
 		},
 		{
 			"ImportPath": "golang.org/x/text/transform",
-			"Rev": "c980adc4a823548817b9c47d38c6ca6b7d7d8b6a"
+			"Comment": "null-116",
+			"Rev": "5b2527008a4c8988ca9dc6f010ebfb9dae67150b"
 		},
 		{
 			"ImportPath": "gopkg.in/tchap/gocli.v2",
-			"Comment": "v2.0.0-1-gcef534f",
+			"Comment": "v2.0.0",
 			"Rev": "cef534fa45fb0c03312a58d09093db6e0e0753f5"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
-			"Rev": "d466437aa4adc35830964cffc5b5f262c63ddcb4"
+			"Rev": "50f7813e6b19e58334360ab011dfbaece5b1501f"
 		}
 	]
 }

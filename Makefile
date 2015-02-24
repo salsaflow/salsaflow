@@ -9,10 +9,10 @@ godep-install:
 	godep go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-pre-push
 
 deps.fetch:
-	go get -d -u bitbucket.org/kardianos/osext
 	go get -d -u code.google.com/p/goauth2/oauth
 	go get -d -u github.com/coreos/go-semver/semver
 	go get -d -u github.com/extemporalgenome/slug
+	go get -d -u github.com/kardianos/osext
 	go get -d -u github.com/google/go-github/github
 	go get -d -u github.com/google/go-querystring/query
 	go get -d -u github.com/salsita/go-pivotaltracker/v5/pivotal

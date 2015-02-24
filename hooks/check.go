@@ -17,7 +17,7 @@ import (
 	"github.com/salsaflow/salsaflow/shell"
 
 	// Other
-	"bitbucket.org/kardianos/osext"
+	"github.com/kardianos/osext"
 )
 
 type HookType string
