@@ -49,17 +49,16 @@
 		},
 		{
 			"ImportPath": "golang.org/x/text/transform",
-			"Comment": "null-116",
-			"Rev": "5b2527008a4c8988ca9dc6f010ebfb9dae67150b"
+			"Rev": "07e167dcad9120355d5c150160e868896036bffc"
 		},
 		{
 			"ImportPath": "gopkg.in/tchap/gocli.v2",
-			"Comment": "v2.0.0",
+			"Comment": "v2.0.0-1-gcef534f",
 			"Rev": "cef534fa45fb0c03312a58d09093db6e0e0753f5"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
-			"Rev": "50f7813e6b19e58334360ab011dfbaece5b1501f"
+			"Rev": "49c95bdc21843256fb6c4e0d370a05f24a0bf213"
 		}
 	]
 }
