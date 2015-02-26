@@ -73,7 +73,7 @@ func Upgrade(opts *InstallOptions) error {
 	}
 
 	sort.Sort(rs)
-	release := rs[0]
+	release := rs[len(rs)-1]
 
 	// Make sure the selected release is more recent than this executable.
 	currentVersion, err := semver.NewVersion(metadata.Version)
