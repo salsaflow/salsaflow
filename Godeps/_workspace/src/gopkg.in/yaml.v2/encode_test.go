@@ -10,7 +10,6 @@ import (
 	. "gopkg.in/check.v1"
 	"gopkg.in/yaml.v2"
 	"net"
-	"os"
 )
 
 var marshalIntTest = 123
@@ -298,7 +297,7 @@ var marshalTests = []struct {
 	},
 	{
 		map[string]time.Time{"a": time.Unix(1424801979, 0)},
-		"a: 2015-02-24T18:19:39Z\n",
+		"a: 2015-02-24T15:19:39-03:00\n",
 	},
 
 	// Ensure strings containing ": " are quoted (reported as PR #43, but not reproducible).
@@ -309,8 +308,6 @@ var marshalTests = []struct {
 }
 
 func (s *S) TestMarshal(c *C) {
-	defer os.Setenv("TZ", os.Getenv("TZ"))
-	os.Setenv("TZ", "UTC")
 	for _, item := range marshalTests {
 		data, err := yaml.Marshal(item.value)
 		c.Assert(err, IsNil)
