@@ -82,7 +82,12 @@ func (tool *codeReviewTool) PostReviewRequestForCommit(
 	}
 	args = append(args, commit.SHA)
 
-	task := "Create a Review Board review request for commit " + commit.SHA
+	var task string
+	if update != "" {
+		task = "Update a Review Board review request with commit " + commit.SHA
+	} else {
+		task = "Create a Review Board review request for commit " + commit.SHA
+	}
 	log.Run(task)
 	stdout, stderr, err := shell.Run("rbt", args...)
 	if err != nil {
