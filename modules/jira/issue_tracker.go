@@ -68,6 +68,14 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 	return toCommonStories(issues, tracker.config), nil
 }
 
+func (tracker *issueTracker) ListStoriesByTag(tags []string) (stories []common.Story, err error) {
+	issues, err := listStoriesById(newClient(tracker.config), tags)
+	if err != nil {
+		return nil, err
+	}
+	return toCommonStories(issues, tracker.config), nil
+}
+
 func (tracker *issueTracker) NextRelease(
 	trunkVersion *version.Version,
 	nextTrunkVersion *version.Version,

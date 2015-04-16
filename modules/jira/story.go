@@ -40,6 +40,11 @@ func (story *story) ReadableId() string {
 	return story.Issue.Key
 }
 
+func (story *story) URL() string {
+	u := story.api.BaseURL
+	return fmt.Sprintf("%v://%v/browse/%v", u.Scheme, u.Host, story.Issue.Key)
+}
+
 func (story *story) Tag() string {
 	return story.Issue.Key
 }

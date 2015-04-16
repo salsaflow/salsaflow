@@ -119,13 +119,18 @@ func postRevision(revision string) error {
 		return errs.NewError(task, err, nil)
 	}
 
+	// Assert that things are consistent.
+	if numCommits := len(commits); numCommits != 1 {
+		panic(fmt.Sprintf("len(commits): expected 1, got %v", numCommits))
+	}
+
+	// Post the review requests, in this case it will be only one.
 	if err := postReviewRequests(commits, revision == "HEAD"); err != nil {
 		return err
 	}
 
 	// In case there is no error, tell the user what to do next.
-	printFollowup()
-	return nil
+	return printFollowup()
 }
 
 func postBranch(parentBranch string) error {
@@ -207,8 +212,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 
 	// Just print the regular followup in case the dialog is disabled.
 	if flagNoDialog {
-		printFollowup()
-		return nil
+		return printFollowup()
 	}
 
 	// Ask the user what to do next.
@@ -242,17 +246,35 @@ You are about to post review requests for the following commits:
 
 	// Check the commits.
 	task = "Make sure the commits comply with the rules"
-	commits, err = rewriteCommits(commits, canAmend)
+	newCommits, err := rewriteCommits(commits, canAmend)
 	if err != nil {
 		return errs.NewError(task, err, nil)
+	}
+	if newCommits != nil {
+		commits = newCommits
+
+		log.Log("Current branch rewritten, running push -f to synchronize")
+		task := "Push the current branch (using -f)"
+		_, err := git.Run("push", "-f")
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
 	}
 
 	// Print Snoopy.
 	asciiart.PrintSnoopy()
 
+	// Turn Commits into CommitReviewContexts.
+	task = "Fetch stories for the commits to be posted for review"
+	log.Run(task)
+	ctxs, err := commitsToReviewContexts(commits)
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+
 	// Post the review requests.
 	task = "Post the review requests"
-	if err := sendReviewRequests(commits); err != nil {
+	if err := sendReviewRequests(ctxs); err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
@@ -276,14 +298,14 @@ func rewriteCommits(commits []*git.Commit, canAmend bool) ([]*git.Commit, error)
 	}
 
 	// Again, make sure there are actually some commits to be posted.
-	if len(commits) == 0 {
-		return commits, ErrNoCommits
+	if len(noMergeCommits) == 0 {
+		return nil, ErrNoCommits
 	}
 
 	// In case there is no Story-Id tag missing, we are done.
 	if !storyIdMissing {
 		log.Log("Commit check passed")
-		return commits, nil
+		return nil, nil
 	}
 
 	// In case we cannot add Story-Id tag, we have to return an error.
@@ -307,7 +329,7 @@ available, execute
 and read the DESCRIPTION section.
 
 `
-		return commits, errs.NewError(
+		return nil, errs.NewError(
 			"Make sure the commits can be amended",
 			errors.New("Story-Id tag missing"),
 			bytes.NewBufferString(hint))
@@ -319,18 +341,18 @@ and read the DESCRIPTION section.
 
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
-		return commits, errs.NewError(storiesTask, err, nil)
+		return nil, errs.NewError(storiesTask, err, nil)
 	}
 
 	task := "Fetch the user record from the issue tracker"
 	me, err := tracker.CurrentUser()
 	if err != nil {
-		return commits, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err, nil)
 	}
 
 	stories, err := tracker.StoriesInDevelopment()
 	if err != nil {
-		return commits, errs.NewError(storiesTask, err, nil)
+		return nil, errs.NewError(storiesTask, err, nil)
 	}
 
 	// Show only the stories owned by the current user.
@@ -356,14 +378,14 @@ StoryLoop:
 	// Get the current branch name.
 	currentBranch, err := git.CurrentBranch()
 	if err != nil {
-		return commits, err
+		return nil, err
 	}
 
 	// Get the parent of the first commit in the chain.
 	task = "Get the parent commit of the commit chain to be posted"
 	stdout, err := git.Log("--pretty=%P", "-n", "1", commits[0].SHA)
 	if err != nil {
-		return commits, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err, nil)
 	}
 	parentSHA := strings.Fields(stdout.String())[0]
 
@@ -371,7 +393,7 @@ StoryLoop:
 	task = "Create a temporary branch to rewrite commit messages"
 	tempBranch := "salsaflow/temp-review-post"
 	if err := git.Branch("-f", tempBranch, parentSHA); err != nil {
-		return commits, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err, nil)
 	}
 	defer func() {
 		// Delete the temporary branch on exit.
@@ -384,7 +406,7 @@ StoryLoop:
 	// Checkout the temporary branch.
 	task = "Checkout the temporary branch"
 	if err := git.Checkout(tempBranch); err != nil {
-		return commits, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err, nil)
 	}
 	defer func() {
 		// Checkout the original branch on exit.
@@ -409,11 +431,11 @@ There are no stories that the unassigned commits can be assigned to.
 In other words, there are no stories in the right state for that.
 
 `
-				return commits, errs.NewError(task, err, bytes.NewBufferString(hint))
+				return nil, errs.NewError(task, err, bytes.NewBufferString(hint))
 			case prompt.ErrCanceled:
 				prompt.PanicCancel()
 			default:
-				return commits, err
+				return nil, err
 			}
 		}
 		story = selectedStory
@@ -423,7 +445,7 @@ In other words, there are no stories in the right state for that.
 		// Cherry-pick the commit.
 		task := fmt.Sprintf("Move commit %v onto the temporary branch", commit.SHA)
 		if err := git.CherryPick(commit.SHA); err != nil {
-			return commits, errs.NewError(task, err, nil)
+			return nil, errs.NewError(task, err, nil)
 		}
 
 		if commit.StoryIdTag == "" {
@@ -443,7 +465,7 @@ Please pick up the story to assign the commit to:`, commit.SHA, commitMessageTit
 					if err == prompt.ErrCanceled {
 						panic(err)
 					}
-					return commits, err
+					return nil, err
 				}
 				story = selectedStory
 			}
@@ -458,7 +480,7 @@ Please pick up the story to assign the commit to:`, commit.SHA, commitMessageTit
 			cmd.Stdin = bytes.NewBufferString(commitMessage)
 			cmd.Stderr = stderr
 			if err := cmd.Run(); err != nil {
-				return commits, errs.NewError(task, err, stderr)
+				return nil, errs.NewError(task, err, stderr)
 			}
 		}
 	}
@@ -466,13 +488,13 @@ Please pick up the story to assign the commit to:`, commit.SHA, commitMessageTit
 	// Reset the current branch to point to the new branch.
 	task = "Reset the current branch to point to the temporary branch"
 	if err := git.ResetKeep(currentBranch, tempBranch); err != nil {
-		return commits, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err, nil)
 	}
 
 	// Parse the commits again since the commit hashes have changed.
 	newCommits, err := git.ShowCommitRange(parentSHA + "..")
 	if err != nil {
-		return commits, err
+		return nil, err
 	}
 
 	log.NewLine("")
@@ -502,12 +524,77 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 	must(0, tw.Flush())
 }
 
-func sendReviewRequests(commits []*git.Commit) error {
+func commitsToReviewContexts(commits []*git.Commit) ([]*common.CommitReviewContext, error) {
+	tracker, err := modules.GetIssueTracker()
+	if err != nil {
+		return nil, err
+	}
+
+	// Collect the Story-Id tags.
+	storyTags := make([]string, 0, 1)
+	storiesByTag := make(map[string]common.Story, 1)
+	for _, commit := range commits {
+		tag := commit.StoryIdTag
+
+		// Skip empty tags.
+		if tag == "" {
+			continue
+		}
+
+		// Skip unassigned stories.
+		if _, err := tracker.StoryTagToReadableStoryId(tag); err != nil {
+			continue
+		}
+
+		// Otherwise register the tag, unless already registered.
+		if _, ok := storiesByTag[tag]; ok {
+			continue
+		}
+		// Fill the map with unassignedStories for now.
+		storiesByTag[tag] = &unassignedStory{}
+		storyTags = append(storyTags, tag)
+	}
+
+	// Fetch the stories from the issue tracker.
+	stories, err := tracker.ListStoriesByTag(storyTags)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update the story map, i.e. replace unassignedStories with real stories.
+	for i, story := range stories {
+		storiesByTag[storyTags[i]] = story
+	}
+
+	// Build the final list of review contexts.
+	ctxs := make([]*common.CommitReviewContext, 0, len(commits))
+	for _, commit := range commits {
+		// Use either an unassigned story or a story just fetched.
+		tag := commit.StoryIdTag
+		story, ok := storiesByTag[tag]
+		if !ok {
+			story = &unassignedStory{}
+		}
+
+		// Append a new context.
+		ctxs = append(ctxs, &common.CommitReviewContext{
+			Commit: commit,
+			Story:  story,
+		})
+	}
+
+	// Return the commit review contexts.
+	return ctxs, nil
+}
+
+func sendReviewRequests(ctxs []*common.CommitReviewContext) error {
+	// Instantiate the code review module.
 	tool, err := modules.GetCodeReviewTool()
 	if err != nil {
 		return err
 	}
 
+	// Collect the command line flags into a map.
 	var postOpts = make(map[string]interface{}, 2)
 	if flagFixes != 0 {
 		postOpts["fixes"] = flagFixes
@@ -519,84 +606,49 @@ func sendReviewRequests(commits []*git.Commit) error {
 		postOpts["open"] = true
 	}
 
-	for _, commit := range commits {
-		task := "Post review request for commit " + commit.SHA
-		log.Run(task)
+	// Only post a single commit in case -parent is not being used.
+	// By definition it must be only a single commit anyway.
+	if flagParent == "" {
+		if len(ctxs) != 1 {
+			panic(fmt.Sprintf("len(ctxs): expected 1, got %v", len(ctxs)))
+		}
 
-		if err := tool.PostReviewRequest(commit, postOpts); err != nil {
+		ctx := ctxs[0]
+		task := "Post review request for commit " + ctx.Commit.SHA
+		log.Run(task)
+		if err := tool.PostReviewRequestForCommit(ctx, postOpts); err != nil {
 			return errs.NewError(task, err, nil)
 		}
+		return nil
 	}
-	return nil
-}
 
-func printFollowup() {
-	log.Println(`
-----------
-
-Now, please, take some time to go through all the review requests
-to check and annotate them for the reviewers to make their part easier.
-
-If you find any issues you want to fix (even before publishing),
-do so now, and if you haven't pushed into any shared branch yet,
-amend the relevant commit and use
-
-  $ salsaflow review post -update REVIEW_REQUEST_ID [REVISION]
-
-to update (replace) the associated review request. Do this for every review
-request you want to overwrite.
-
-In case you cannot amend the relevant commit any more, make sure the affected
-review request is published, and use the process for fixing review issues:
-
-  $ salsaflow review post -fixes REVIEW_REQUEST_ID [REVISION]
-
-This will create a new review request that is linked to the one being fixed.
-
-  ###########################################################
-  # IMPORTANT: Your code has not been merged and/or pushed. #
-  ###########################################################
-`)
-}
-
-func parentFollowupDialog(currentBranch, remoteName, trunkBranch string) error {
-	// Decide whether to push the current branch.
-	fmt.Printf(`
-----------
-
-Now we have to decide what to do next.
-
-What shall we do with the current branch (%v)?
-
-  1) do nothing
-  2) push
-  3) push --force
-
-`, currentBranch)
-	index, err := prompt.PromptIndex("Choose [1-3]: ", 1, 3)
+	// Post the review for the whole branch.
+	currentBranch, err := git.CurrentBranch()
 	if err != nil {
 		return err
 	}
-	switch index {
-	case 1:
-	case 2:
-		fmt.Println()
-		task := fmt.Sprintf("Push branch '%v'", currentBranch)
-		log.Run(task)
-		err := git.Push(remoteName, fmt.Sprintf("%v:%v", currentBranch, currentBranch))
-		if err != nil {
-			return errs.NewError(task, err, nil)
-		}
-	case 3:
-		fmt.Println()
-		task := fmt.Sprintf("Push branch '%v' (--force)", currentBranch)
-		log.Run(task)
-		err := git.PushForce(remoteName, fmt.Sprintf("%v:%v", currentBranch, currentBranch))
-		if err != nil {
-			return errs.NewError(task, err, nil)
-		}
+
+	task := fmt.Sprintf("Post review request for branch '%v'", currentBranch)
+	if err := tool.PostReviewRequestForBranch(currentBranch, ctxs, postOpts); err != nil {
+		return errs.NewError(task, err, nil)
 	}
 
+	return nil
+}
+
+func printFollowup() error {
+	task := "Print the followup message"
+	tool, err := modules.GetCodeReviewTool()
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+
+	log.Println("\n----------")
+	log.Println(tool.PostReviewFollowupMessage())
+	return nil
+}
+
+func parentFollowupDialog(currentBranch, remoteName, trunkBranch string) error {
 	// Decide whether to merge the current branch into trunk or not.
 	var trunkModified bool
 	fmt.Printf(`
@@ -607,7 +659,7 @@ You might want to merge the current branch (%v) into trunk, right?
   3) merge into trunk (--no-ff)
 
 `, currentBranch)
-	index, err = prompt.PromptIndex("Choose [1-3]: ", 1, 3)
+	index, err := prompt.PromptIndex("Choose [1-3]: ", 1, 3)
 	if err != nil {
 		return err
 	}
@@ -694,6 +746,10 @@ func (story *unassignedStory) Id() string {
 
 func (story *unassignedStory) ReadableId() string {
 	return git.StoryIdUnassignedTagValue
+}
+
+func (story *unassignedStory) URL() string {
+	panic("Not implemented")
 }
 
 func (story *unassignedStory) Tag() string {

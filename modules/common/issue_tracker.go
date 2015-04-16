@@ -26,6 +26,9 @@ type IssueTracker interface {
 	// StoriesInDevelopment returns the list of stories that are being developed.
 	StoriesInDevelopment() ([]Story, error)
 
+	// ListStoriesByTag returns the stories for the given list of Story-Id tags.
+	ListStoriesByTag(tags []string) ([]Story, error)
+
 	// NextRelease is a factory method for creating release objects
 	// representing the releases that have not been started yet.
 	//
@@ -56,6 +59,9 @@ type Story interface {
 	// ReadableId returns the human-friendly ID of the story.
 	// This ID is used when listing stories to the user.
 	ReadableId() string
+
+	// URL return the URL that can be used to access the story.
+	URL() string
 
 	// Tag returns a string that is then used for the Story-Id tag.
 	// The tag is supposed to identify the story, but it might be
