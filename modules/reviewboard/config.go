@@ -10,8 +10,6 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 )
 
-const Id = "review_board"
-
 // Local configuration -------------------------------------------------------
 
 type LocalConfig struct {

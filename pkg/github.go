@@ -1,8 +1,8 @@
 package pkg
 
 import (
-	"code.google.com/p/goauth2/oauth"
 	"github.com/google/go-github/github"
+	ghutil "github.com/salsaflow/salsaflow/github"
 )
 
 func newGitHubClient() (*github.Client, error) {
@@ -11,8 +11,5 @@ func newGitHubClient() (*github.Client, error) {
 		return nil, err
 	}
 
-	transport := &oauth.Transport{
-		Token: &oauth.Token{AccessToken: config.GitHubToken()},
-	}
-	return github.NewClient(transport.Client()), nil
+	return ghutil.NewClient(config.GitHubToken()), nil
 }

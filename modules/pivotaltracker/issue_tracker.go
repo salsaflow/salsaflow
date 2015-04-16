@@ -71,6 +71,27 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 	return toCommonStories(ptStories, tracker.config), nil
 }
 
+func (tracker *issueTracker) ListStoriesByTag(tags []string) ([]common.Story, error) {
+	ids := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		id, err := tracker.StoryTagToReadableStoryId(tag)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	var (
+		client    = pivotal.NewClient(tracker.config.UserToken())
+		projectId = tracker.config.ProjectId()
+	)
+	ptStories, err := listStoriesById(client, projectId, ids)
+	if err != nil {
+		return nil, err
+	}
+	return toCommonStories(ptStories, tracker.config), nil
+}
+
 func (tracker *issueTracker) NextRelease(
 	trunkVersion *version.Version,
 	nextTrunkVersion *version.Version,

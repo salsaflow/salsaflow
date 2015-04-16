@@ -58,19 +58,14 @@ func listStoriesById(
 	ids []string,
 ) ([]*pivotal.Story, error) {
 
+	if len(ids) == 0 {
+		return []*pivotal.Story{}, nil
+	}
+
 	var filter bytes.Buffer
-	for _, id := range ids {
-		if filter.Len() != 0 {
-			if _, err := filter.WriteString(" OR "); err != nil {
-				return nil, err
-			}
-		}
-		if _, err := filter.WriteString("id:"); err != nil {
-			return nil, err
-		}
-		if _, err := filter.WriteString(id); err != nil {
-			return nil, err
-		}
+	fmt.Fprintf(&filter, "id:%v", ids[0])
+	for _, id := range ids[1:] {
+		fmt.Fprintf(&filter, "OR id:%v", id)
 	}
 	return searchStories(client, projectId, filter.String())
 }

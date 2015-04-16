@@ -27,6 +27,11 @@ func (story *story) ReadableId() string {
 	return strconv.Itoa(story.Story.Id)
 }
 
+func (story *story) URL() string {
+	return fmt.Sprintf("https://www.pivotaltracker.com/projects/%v/stories/%v",
+		story.Story.ProjectId, story.Story.Id)
+}
+
 func (story *story) Tag() string {
 	return fmt.Sprintf("%v/stories/%v", story.Story.ProjectId, story.Story.Id)
 }

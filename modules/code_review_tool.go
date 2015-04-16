@@ -10,6 +10,7 @@ import (
 	"github.com/salsaflow/salsaflow/modules/common"
 
 	// Internal: modules
+	github "github.com/salsaflow/salsaflow/modules/github/codereview"
 	"github.com/salsaflow/salsaflow/modules/reviewboard"
 )
 
@@ -18,6 +19,7 @@ import (
 type CodeReviewToolFactory func() (common.CodeReviewTool, error)
 
 var codeReviewToolFactories = map[string]CodeReviewToolFactory{
+	github.Id:      github.Factory,
 	reviewboard.Id: reviewboard.Factory,
 }
 
