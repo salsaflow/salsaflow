@@ -65,7 +65,7 @@ func listStoriesById(
 	var filter bytes.Buffer
 	fmt.Fprintf(&filter, "id:%v", ids[0])
 	for _, id := range ids[1:] {
-		fmt.Fprintf(&filter, "OR id:%v", id)
+		fmt.Fprintf(&filter, " OR id:%v", id)
 	}
 	return searchStories(client, projectId, filter.String())
 }
