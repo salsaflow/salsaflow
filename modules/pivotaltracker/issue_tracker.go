@@ -3,6 +3,7 @@ package pivotaltracker
 import (
 	// Stdlib
 	"fmt"
+	"strconv"
 	"strings"
 
 	// Internal
@@ -72,6 +73,7 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 }
 
 func (tracker *issueTracker) ListStoriesByTag(tags []string) ([]common.Story, error) {
+	// Convert tags to ids.
 	ids := make([]string, 0, len(tags))
 	for _, tag := range tags {
 		id, err := tracker.StoryTagToReadableStoryId(tag)
@@ -81,15 +83,34 @@ func (tracker *issueTracker) ListStoriesByTag(tags []string) ([]common.Story, er
 		ids = append(ids, id)
 	}
 
+	// Fetch the relevant stories.
 	var (
 		client    = pivotal.NewClient(tracker.config.UserToken())
 		projectId = tracker.config.ProjectId()
 	)
-	ptStories, err := listStoriesById(client, projectId, ids)
+	stories, err := listStoriesById(client, projectId, ids)
 	if err != nil {
 		return nil, err
 	}
-	return toCommonStories(ptStories, tracker.config), nil
+
+	// Make sure the stories are returned in the same order as the tags were passed in.
+	storiesById := make(map[string]*pivotal.Story, len(stories))
+	for _, story := range stories {
+		storiesById[strconv.Itoa(story.Id)] = story
+	}
+
+	// Using ids here, because the order is the same.
+	orderedStories := make([]*pivotal.Story, 0, len(ids))
+	for _, id := range ids {
+		story, ok := storiesById[id]
+		if !ok {
+			panic("bug(story not found in the story map)")
+		}
+		orderedStories = append(orderedStories, story)
+	}
+
+	// Convert to []common.Story and return.
+	return toCommonStories(orderedStories, tracker.config), nil
 }
 
 func (tracker *issueTracker) NextRelease(
