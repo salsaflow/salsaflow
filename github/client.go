@@ -14,6 +14,7 @@ type tokenSource struct {
 	token string
 }
 
+// Token implements oauth2.TokenSource interface.
 func (ts *tokenSource) Token() (*oauth2.Token, error) {
 	return &oauth2.Token{AccessToken: ts.token}, nil
 }
