@@ -148,9 +148,9 @@ review request is published, and use the process for fixing review issues:
 
 This will create a new review request that is linked to the one being fixed.
 
-  ##########################################################
-  # IMPORTANT: Your code has not been merged anywhere yet. #
-  ##########################################################
+  ########################################################################
+  # IMPORTANT: Your code has not been merged and/or pushed anywhere yet. #
+  ########################################################################
 `
 }
 

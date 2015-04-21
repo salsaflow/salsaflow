@@ -253,11 +253,17 @@ You are about to post review requests for the following commits:
 	if newCommits != nil {
 		commits = newCommits
 
-		log.Log("Current branch rewritten, running push -f to synchronize")
-		task := "Push the current branch (using -f)"
-		_, err := git.Run("push", "-f")
-		if err != nil {
-			return errs.NewError(task, err, nil)
+		// Push the current branch using force in case we are in the parent mode.
+		// We never push when the HEAD mode is being used, because that often happens
+		// on trunk, and even though the probability is very small, we don't want to
+		// mess up with trunk with force pushes.
+		if flagParent != "" {
+			log.Log("Current branch rewritten, running push -f to synchronize")
+			task := "Push the current branch (using -f)"
+			_, err := git.Run("push", "-f")
+			if err != nil {
+				return errs.NewError(task, err, nil)
+			}
 		}
 	}
 
