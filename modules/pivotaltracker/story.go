@@ -108,3 +108,7 @@ func (story *story) Start() *errs.Error {
 func (s *story) LessThan(otherStory common.Story) bool {
 	return s.CreatedAt.Before(*otherStory.(*story).CreatedAt)
 }
+
+func (s *story) IssueTrackerName() string {
+	return "Pivotal Tracker"
+}

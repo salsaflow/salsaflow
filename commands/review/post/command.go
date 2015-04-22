@@ -786,3 +786,7 @@ func (story *unassignedStory) Start() *errs.Error {
 func (story *unassignedStory) LessThan(other common.Story) bool {
 	panic("Not implemented")
 }
+
+func (story *unassignedStory) IssueTrackerName() string {
+	panic("Not implemented")
+}

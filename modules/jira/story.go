@@ -93,3 +93,7 @@ func (s *story) LessThan(commonStory common.Story) bool {
 	otherStory := commonStory.(*story)
 	return s.seq < otherStory.seq
 }
+
+func (s *story) IssueTrackerName() string {
+	return "JIRA"
+}

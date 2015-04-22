@@ -88,6 +88,10 @@ type Story interface {
 	// LessThan is being used for sorting stories for output.
 	// Stories are printed in the order they are sorted by this function.
 	LessThan(Story) bool
+
+	// IssueTrackerName returns a string representing the issue tracker
+	// that this story is coming from.
+	IssueTrackerName() string
 }
 
 type NextRelease interface {

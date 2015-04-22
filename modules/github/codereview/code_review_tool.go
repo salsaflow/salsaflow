@@ -329,8 +329,10 @@ func postReviewRequest(
 
 		// Generate the issue body.
 		var issueBody bytes.Buffer
-		fmt.Fprintf(&issueBody, "Story being reviewed: [%v](%v)", story.ReadableId(), story.URL())
-		fmt.Fprintf(&issueBody, "\n\nThe associated commits are following:")
+		fmt.Fprintf(&issueBody, "Story being reviewed: [%v](%v)\n\n", story.ReadableId(), story.URL())
+		fmt.Fprintf(&issueBody, "SF-Issue-Tracker: %v\n", story.IssueTrackerName())
+		fmt.Fprintf(&issueBody, "SF-Story-Key: %v\n\n", story.Tag())
+		fmt.Fprintf(&issueBody, "The associated commits are following:")
 		for _, ctx := range ctxs {
 			commit := ctx.Commit
 			if commit.SHA == "" {
