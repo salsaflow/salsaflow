@@ -1,20 +1,10 @@
 {
 	"ImportPath": "github.com/salsaflow/salsaflow",
-	"GoVersion": "go1.4",
+	"GoVersion": "go1.4.2",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
-		{
-			"ImportPath": "bitbucket.org/kardianos/osext",
-			"Comment": "null-15",
-			"Rev": "44140c5fc69ecf1102c5ef451d73cd98ef59b178"
-		},
-		{
-			"ImportPath": "code.google.com/p/go.text/unicode/norm",
-			"Comment": "null-116",
-			"Rev": "5b2527008a4c8988ca9dc6f010ebfb9dae67150b"
-		},
 		{
 			"ImportPath": "code.google.com/p/goauth2/oauth",
 			"Comment": "weekly-56",
@@ -22,23 +12,27 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
-			"Rev": "6fe83ccda8fb9b7549c9ab4ba47f47858bc950aa"
+			"Rev": "568e959cd89871e61434c1143528d9162da89ef2"
 		},
 		{
 			"ImportPath": "github.com/extemporalgenome/slug",
-			"Rev": "de70af6e24d0e6bdd6eaef276d2e9910e68a1397"
+			"Rev": "0320c85e32e0015b090f08a5d1324d5ab6094f07"
 		},
 		{
 			"ImportPath": "github.com/google/go-github/github",
-			"Rev": "845773f8647cad81ce430e0b903e8818d356e317"
+			"Rev": "0aaa85be4f3087c6dd815a69e291775d4e83f9ea"
 		},
 		{
 			"ImportPath": "github.com/google/go-querystring/query",
-			"Rev": "d8840cbb2baa915f4836edda4750050a2c0b7aea"
+			"Rev": "547ef5ac979778feb2f760cdb5f4eae1a2207b86"
+		},
+		{
+			"ImportPath": "github.com/kardianos/osext",
+			"Rev": "8fef92e41e22a70e700a96b29f066cda30ea24ef"
 		},
 		{
 			"ImportPath": "github.com/salsita/go-pivotaltracker/v5/pivotal",
-			"Rev": "c0e57cde6d04b3c7ccb49a1b23c0606ffcba3b98"
+			"Rev": "295a0a2e0ac5870c6fc8aa7b00d4957e3912410b"
 		},
 		{
 			"ImportPath": "github.com/salsita/go-sprintly/sprintly",
@@ -46,11 +40,15 @@
 		},
 		{
 			"ImportPath": "github.com/toqueteos/webbrowser",
-			"Rev": "4a77f4aa7da542c319bced7a5065b5d2b4f7041b"
+			"Rev": "deae73f90f5a4fdc611c46625197f6166c9f3316"
 		},
 		{
 			"ImportPath": "golang.org/x/text/transform",
-			"Rev": "c980adc4a823548817b9c47d38c6ca6b7d7d8b6a"
+			"Rev": "af4c2d73d0954e6f7ed1bd89afe33c9d347d9be5"
+		},
+		{
+			"ImportPath": "golang.org/x/text/unicode/norm",
+			"Rev": "af4c2d73d0954e6f7ed1bd89afe33c9d347d9be5"
 		},
 		{
 			"ImportPath": "gopkg.in/tchap/gocli.v2",
@@ -59,7 +57,7 @@
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
-			"Rev": "d466437aa4adc35830964cffc5b5f262c63ddcb4"
+			"Rev": "49c95bdc21843256fb6c4e0d370a05f24a0bf213"
 		}
 	]
 }
