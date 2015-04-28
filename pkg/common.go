@@ -16,8 +16,8 @@ import (
 	"github.com/salsaflow/salsaflow/log"
 
 	// Other
-	"bitbucket.org/kardianos/osext"
 	"github.com/google/go-github/github"
+	"github.com/kardianos/osext"
 )
 
 var ErrAborted = errors.New("aborted by the user")
@@ -35,7 +35,7 @@ func doInstall(client *github.Client, owner, repo string, assets []github.Releas
 	)
 	for _, asset := range assets {
 		if *asset.Name == assetName {
-			assetURL = *asset.BrowserDownloadUrl
+			assetURL = *asset.BrowserDownloadURL
 		}
 	}
 	if assetURL == "" {
