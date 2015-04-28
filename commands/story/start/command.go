@@ -259,7 +259,9 @@ Insert an empty string to skip the branch creation step: `)
 	checkoutTask := fmt.Sprintf("Checkout branch '%v'", branchName)
 	log.Run(checkoutTask)
 	if err := git.Checkout(branchName); err != nil {
-		errs.Log(deleteBranch())
+		if err := deleteBranch(); err != nil {
+			errs.Log(err)
+		}
 		return nil, errs.NewError(checkoutTask, err, nil)
 	}
 
@@ -268,7 +270,9 @@ Insert an empty string to skip the branch creation step: `)
 	if !flagNoPush {
 		log.Run(pushTask)
 		if err := git.Push(remoteName, branchName); err != nil {
-			errs.Log(deleteBranch())
+			if err := deleteBranch(); err != nil {
+				errs.Log(err)
+			}
 			return nil, errs.NewError(pushTask, err, nil)
 		}
 	}
