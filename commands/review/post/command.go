@@ -253,16 +253,27 @@ You are about to post review requests for the following commits:
 	if newCommits != nil {
 		commits = newCommits
 
-		// Push the current branch using force in case we are in the parent mode.
-		// We never push when the HEAD mode is being used, because that often happens
-		// on trunk, and even though the probability is very small, we don't want to
-		// mess up with trunk with force pushes.
+		// Push the branch in case we are in the parent mode.
+		// Use force in case we are not on any SF core branch.
 		if flagParent != "" {
-			log.Log("Current branch rewritten, running push -f to synchronize")
-			task := "Push the current branch (using -f)"
-			_, err := git.Run("push", "-f")
+			current, err := git.CurrentBranch()
 			if err != nil {
-				return errs.NewError(task, err, nil)
+				return err
+			}
+
+			args := make([]string, 0, 1)
+			msg := "Current branch rewritten, pushing to synchronize"
+			isCore, err := git.IsCoreBranch(current)
+			if err != nil {
+				return err
+			}
+			if isCore {
+				args = append(args, "-f")
+				msg += " (using force)"
+			}
+			log.Log(msg)
+			if _, err = git.RunCommand("push", args...); err != nil {
+				return errs.NewError("Push the current branch", err, nil)
 			}
 		}
 	}
