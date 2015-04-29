@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
@@ -68,6 +69,37 @@ func listStoriesById(
 		fmt.Fprintf(&filter, " OR id:%v", id)
 	}
 	return searchStories(client, projectId, filter.String())
+}
+
+func listStoriesByIdOrdered(
+	client *pivotal.Client,
+	projectId int,
+	ids []string,
+) ([]*pivotal.Story, error) {
+
+	// Fetch the stories.
+	stories, err := listStoriesById(client, projectId, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	// Order them.
+	idMap := make(map[string]*pivotal.Story, len(ids))
+	for _, story := range stories {
+		idMap[strconv.Itoa(story.Id)] = story
+	}
+
+	ordered := make([]*pivotal.Story, 0, len(ids))
+	for _, id := range ids {
+		if story, ok := idMap[id]; ok {
+			ordered = append(ordered, story)
+			continue
+		}
+
+		panic("unreachable code reached")
+	}
+
+	return ordered, nil
 }
 
 func addLabelFunc(label string) storyUpdateFunc {

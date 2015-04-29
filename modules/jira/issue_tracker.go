@@ -70,24 +70,9 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 
 func (tracker *issueTracker) ListStoriesByTag(tags []string) (stories []common.Story, err error) {
 	// Fetch issues by ID. Apparently, the tags are the same as issue keys for JIRA.
-	issues, err := listStoriesById(newClient(tracker.config), tags)
+	issues, err := listStoriesByIdOrdered(newClient(tracker.config), tags)
 	if err != nil {
 		return nil, err
-	}
-
-	// Make sure the issues are returned in the same order as the tags were passed in.
-	issuesByKey := make(map[string]*client.Issue, len(issues))
-	for _, issue := range issues {
-		issuesByKey[issue.Key] = issue
-	}
-
-	orderedIssues := make([]*client.Issue, 0, len(tags))
-	for _, tag := range tags {
-		issue, ok := issuesByKey[tag]
-		if !ok {
-			panic("bug(issue not found in the issue map)")
-		}
-		orderedIssues = append(orderedIssues, issue)
 	}
 
 	// Convert to []common.Story and return.

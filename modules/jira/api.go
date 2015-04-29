@@ -251,6 +251,39 @@ func listStoriesById(api *client.Client, ids []string) ([]*client.Issue, error) 
 	return nil, err
 }
 
+func listStoriesByIdOrdered(api *client.Client, ids []string) ([]*client.Issue, error) {
+	// Fetch the issues.
+	issues, err := listStoriesById(api, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	// Order them.
+	idMap := make(map[string]*client.Issue, len(ids))
+	keyMap := make(map[string]*client.Issue, len(ids))
+	for _, issue := range issues {
+		idMap[issue.Id] = issue
+		keyMap[issue.Key] = issue
+	}
+
+	ordered := make([]*client.Issue, 0, len(ids))
+	for _, id := range ids {
+		if issue, ok := idMap[id]; ok {
+			ordered = append(ordered, issue)
+			continue
+		}
+
+		if issue, ok := keyMap[id]; ok {
+			ordered = append(ordered, issue)
+			continue
+		}
+
+		panic("unreachable code reached")
+	}
+
+	return ordered, nil
+}
+
 func issuesQuery(ids []string) (queryString string) {
 	var query bytes.Buffer
 	for _, id := range ids {
