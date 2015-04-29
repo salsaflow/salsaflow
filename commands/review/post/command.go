@@ -246,12 +246,15 @@ You are about to post review requests for the following commits:
 
 	// Check the commits.
 	task = "Make sure the commits comply with the rules"
-	newCommits, err := rewriteCommits(commits, canAmend)
+	storyIdMissing, err := isStoryIdMissing(commits)
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	if newCommits != nil {
-		commits = newCommits
+	if storyIdMissing {
+		commits, err = rewriteCommits(commits, canAmend)
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
 
 		// Push the branch in case we are in the parent mode.
 		// Use force in case we are not on any SF core branch.
@@ -276,12 +279,14 @@ You are about to post review requests for the following commits:
 				return errs.NewError("Push the current branch", err, nil)
 			}
 		}
+	} else {
+		log.Log("Commit check passed")
 	}
 
 	// Print Snoopy.
 	asciiart.PrintSnoopy()
 
-	// Turn Commits into CommitReviewContexts.
+	// Turn Commits into ReviewContexts.
 	task = "Fetch stories for the commits to be posted for review"
 	log.Run(task)
 	ctxs, err := commitsToReviewContexts(commits)
@@ -298,17 +303,37 @@ You are about to post review requests for the following commits:
 	return nil
 }
 
+func isStoryIdMissing(commits []*git.Commit) (bool, error) {
+	for _, commit := range commits {
+		if commit.Merge != "" {
+			continue
+		}
+
+		ok, err := isCommitAssociated(commit)
+		if err != nil {
+			return false, err
+		}
+		if !ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func isCommitAssociated(commit *git.Commit) (bool, error) {
+	tracker, err := modules.GetIssueTracker()
+	if err != nil {
+		return false, err
+	}
+
+	_, err = tracker.StoryTagToReadableStoryId(commit.StoryIdTag)
+	return err == nil, nil
+}
+
 func rewriteCommits(commits []*git.Commit, canAmend bool) ([]*git.Commit, error) {
 	// Make sure we are not posting any merge commits.
-	// Also check whether we need to fetch the stories or not.
-	var (
-		noMergeCommits []*git.Commit
-		storyIdMissing bool
-	)
+	var noMergeCommits []*git.Commit
 	for _, commit := range commits {
-		if commit.StoryIdTag == "" {
-			storyIdMissing = true
-		}
 		if commit.Merge == "" {
 			noMergeCommits = append(noMergeCommits, commit)
 		}
@@ -317,12 +342,6 @@ func rewriteCommits(commits []*git.Commit, canAmend bool) ([]*git.Commit, error)
 	// Again, make sure there are actually some commits to be posted.
 	if len(noMergeCommits) == 0 {
 		return nil, ErrNoCommits
-	}
-
-	// In case there is no Story-Id tag missing, we are done.
-	if !storyIdMissing {
-		log.Log("Commit check passed")
-		return nil, nil
 	}
 
 	// In case we cannot add Story-Id tag, we have to return an error.
@@ -541,7 +560,7 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 	must(0, tw.Flush())
 }
 
-func commitsToReviewContexts(commits []*git.Commit) ([]*common.CommitReviewContext, error) {
+func commitsToReviewContexts(commits []*git.Commit) ([]*common.ReviewContext, error) {
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
 		return nil, err
@@ -584,7 +603,7 @@ func commitsToReviewContexts(commits []*git.Commit) ([]*common.CommitReviewConte
 	}
 
 	// Build the final list of review contexts.
-	ctxs := make([]*common.CommitReviewContext, 0, len(commits))
+	ctxs := make([]*common.ReviewContext, 0, len(commits))
 	for _, commit := range commits {
 		// Use either an unassigned story or a story just fetched.
 		tag := commit.StoryIdTag
@@ -594,7 +613,7 @@ func commitsToReviewContexts(commits []*git.Commit) ([]*common.CommitReviewConte
 		}
 
 		// Append a new context.
-		ctxs = append(ctxs, &common.CommitReviewContext{
+		ctxs = append(ctxs, &common.ReviewContext{
 			Commit: commit,
 			Story:  story,
 		})
@@ -604,7 +623,7 @@ func commitsToReviewContexts(commits []*git.Commit) ([]*common.CommitReviewConte
 	return ctxs, nil
 }
 
-func sendReviewRequests(ctxs []*common.CommitReviewContext) error {
+func sendReviewRequests(ctxs []*common.ReviewContext) error {
 	// Instantiate the code review module.
 	tool, err := modules.GetCodeReviewTool()
 	if err != nil {
@@ -630,10 +649,9 @@ func sendReviewRequests(ctxs []*common.CommitReviewContext) error {
 			panic(fmt.Sprintf("len(ctxs): expected 1, got %v", len(ctxs)))
 		}
 
-		ctx := ctxs[0]
-		task := "Post review request for commit " + ctx.Commit.SHA
+		task := "Post review request for commit " + ctxs[0].Commit.SHA
 		log.Run(task)
-		if err := tool.PostReviewRequestForCommit(ctx, postOpts); err != nil {
+		if err := tool.PostReviewRequests(ctxs, postOpts); err != nil {
 			return errs.NewError(task, err, nil)
 		}
 		return nil
@@ -646,7 +664,7 @@ func sendReviewRequests(ctxs []*common.CommitReviewContext) error {
 	}
 
 	task := fmt.Sprintf("Post review request for branch '%v'", currentBranch)
-	if err := tool.PostReviewRequestForBranch(currentBranch, ctxs, postOpts); err != nil {
+	if err := tool.PostReviewRequests(ctxs, postOpts); err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
@@ -798,6 +816,6 @@ func (story *unassignedStory) LessThan(other common.Story) bool {
 	panic("Not implemented")
 }
 
-func (story *unassignedStory) IssueTrackerName() string {
+func (story *unassignedStory) IssueTracker() common.IssueTracker {
 	panic("Not implemented")
 }

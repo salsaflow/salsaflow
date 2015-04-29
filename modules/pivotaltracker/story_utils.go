@@ -11,10 +11,10 @@ import (
 	"github.com/salsita/go-pivotaltracker/v5/pivotal"
 )
 
-func toCommonStories(stories []*pivotal.Story, config Config) []common.Story {
+func toCommonStories(stories []*pivotal.Story, tracker *issueTracker) []common.Story {
 	commonStories := make([]common.Story, len(stories))
 	for i := range stories {
-		commonStories[i] = &story{stories[i], config}
+		commonStories[i] = &story{stories[i], tracker}
 	}
 	return commonStories
 }

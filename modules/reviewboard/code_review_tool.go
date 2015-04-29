@@ -28,8 +28,53 @@ func Factory() (common.CodeReviewTool, error) {
 	return &codeReviewTool{}, nil
 }
 
-func (tool *codeReviewTool) PostReviewRequestForCommit(
-	ctx *common.CommitReviewContext,
+func (tool *codeReviewTool) PostReviewRequests(
+	ctxs []*common.ReviewContext,
+	opts map[string]interface{},
+) (err error) {
+
+	// Use PostReviewRequestForCommit for every commit on the branch.
+	// Try to post a review request for every commit and keep printing the errors.
+	// Return a common error in case there is any partial error encountered.
+	for _, ctx := range ctxs {
+		if ex := postReviewRequestForCommit(ctx, opts); ex != nil {
+			log.NewLine("")
+			errs.Log(ex)
+			err = errors.New("failed to post a review request")
+		}
+	}
+	return
+}
+
+func (tool *codeReviewTool) PostReviewFollowupMessage() string {
+	return `
+Now, please, take some time to go through all the review requests
+to check and annotate them for the reviewers to make their part easier.
+
+If you find any issues you want to fix (even before publishing),
+do so now, and if you haven't pushed into any shared branch yet,
+amend the relevant commit and use
+
+  $ salsaflow review post -update REVIEW_REQUEST_ID [REVISION]
+
+to update (replace) the associated review request. Do this for every review
+request you want to overwrite.
+
+In case you cannot amend the relevant commit any more, make sure the affected
+review request is published, and use the process for fixing review issues:
+
+  $ salsaflow review post -fixes REVIEW_REQUEST_ID [REVISION]
+
+This will create a new review request that is linked to the one being fixed.
+
+  ########################################################################
+  # IMPORTANT: Your code has not been merged and/or pushed anywhere yet. #
+  ########################################################################
+`
+}
+
+func postReviewRequestForCommit(
+	ctx *common.ReviewContext,
 	opts map[string]interface{},
 ) error {
 
@@ -106,52 +151,6 @@ func (tool *codeReviewTool) PostReviewRequestForCommit(
 	fmt.Print(stdout)
 	logger.Unlock()
 	return nil
-}
-
-func (tool *codeReviewTool) PostReviewRequestForBranch(
-	branch string,
-	ctxs []*common.CommitReviewContext,
-	opts map[string]interface{},
-) (err error) {
-
-	// Use PostReviewRequestForCommit for every commit on the branch.
-	// Try to post a review request for every commit and keep printing the errors.
-	// Return a common error in case there is any partial error encountered.
-	for _, ctx := range ctxs {
-		if ex := tool.PostReviewRequestForCommit(ctx, opts); ex != nil {
-			log.NewLine("")
-			errs.Log(ex)
-			err = errors.New("failed to post a review request")
-		}
-	}
-	return
-}
-
-func (tool *codeReviewTool) PostReviewFollowupMessage() string {
-	return `
-Now, please, take some time to go through all the review requests
-to check and annotate them for the reviewers to make their part easier.
-
-If you find any issues you want to fix (even before publishing),
-do so now, and if you haven't pushed into any shared branch yet,
-amend the relevant commit and use
-
-  $ salsaflow review post -update REVIEW_REQUEST_ID [REVISION]
-
-to update (replace) the associated review request. Do this for every review
-request you want to overwrite.
-
-In case you cannot amend the relevant commit any more, make sure the affected
-review request is published, and use the process for fixing review issues:
-
-  $ salsaflow review post -fixes REVIEW_REQUEST_ID [REVISION]
-
-This will create a new review request that is linked to the one being fixed.
-
-  ########################################################################
-  # IMPORTANT: Your code has not been merged and/or pushed anywhere yet. #
-  ########################################################################
-`
 }
 
 func formatOptInteger(value interface{}) string {

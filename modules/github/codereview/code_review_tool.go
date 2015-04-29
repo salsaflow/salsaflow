@@ -29,17 +29,8 @@ func Factory() (common.CodeReviewTool, error) {
 	return &codeReviewTool{}, nil
 }
 
-func (tool *codeReviewTool) PostReviewRequestForCommit(
-	ctx *common.CommitReviewContext,
-	opts map[string]interface{},
-) error {
-
-	return tool.PostReviewRequestForBranch("", []*common.CommitReviewContext{ctx}, opts)
-}
-
-func (tool *codeReviewTool) PostReviewRequestForBranch(
-	branch string,
-	ctxs []*common.CommitReviewContext,
+func (tool *codeReviewTool) PostReviewRequests(
+	ctxs []*common.ReviewContext,
 	opts map[string]interface{},
 ) (err error) {
 
@@ -59,8 +50,8 @@ func (tool *codeReviewTool) PostReviewRequestForBranch(
 	client := ghutil.NewClient(config.Token())
 
 	// Group commits by story ID.
-	ctxsByStoryId := make(map[string][]*common.CommitReviewContext, 1)
-	ctxsUnassigned := make([]*common.CommitReviewContext, 0, 1)
+	ctxsByStoryId := make(map[string][]*common.ReviewContext, 1)
+	ctxsUnassigned := make([]*common.ReviewContext, 0, 1)
 	for _, ctx := range ctxs {
 		story := ctx.Story
 		if story != nil && story.Tag() != git.StoryIdUnassignedTagValue {
@@ -69,7 +60,7 @@ func (tool *codeReviewTool) PostReviewRequestForBranch(
 			if ok {
 				cts = append(cts, ctx)
 			} else {
-				cts = []*common.CommitReviewContext{ctx}
+				cts = []*common.ReviewContext{ctx}
 			}
 			ctxsByStoryId[sid] = cts
 		} else {
@@ -80,7 +71,7 @@ func (tool *codeReviewTool) PostReviewRequestForBranch(
 	// Collect the issue numbers updated to post comments at the end.
 	var (
 		issueNumsAffected = make(map[int]struct{}, 1)
-		issuesEdited      = make(map[int][]*common.CommitReviewContext, 1)
+		issuesEdited      = make(map[int][]*common.ReviewContext, 1)
 	)
 
 	// Go through the commits and post the review requests.
@@ -299,7 +290,7 @@ func postReviewRequest(
 	config Config,
 	owner string,
 	repo string,
-	ctxs []*common.CommitReviewContext,
+	ctxs []*common.ReviewContext,
 ) (issue *github.Issue, edited bool, err error) {
 
 	client := ghutil.NewClient(config.Token())
@@ -330,7 +321,7 @@ func postReviewRequest(
 		// Generate the issue body.
 		var issueBody bytes.Buffer
 		fmt.Fprintf(&issueBody, "Story being reviewed: [%v](%v)\n\n", story.ReadableId(), story.URL())
-		fmt.Fprintf(&issueBody, "SF-Issue-Tracker: %v\n", story.IssueTrackerName())
+		fmt.Fprintf(&issueBody, "SF-Issue-Tracker: %v\n", story.IssueTracker().ServiceName())
 		fmt.Fprintf(&issueBody, "SF-Story-Key: %v\n\n", story.Tag())
 		fmt.Fprintf(&issueBody, "The associated commits are following:")
 		for _, ctx := range ctxs {

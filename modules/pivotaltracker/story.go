@@ -15,7 +15,7 @@ import (
 
 type story struct {
 	*pivotal.Story
-	config Config
+	tracker *issueTracker
 }
 
 func (story *story) Id() string {
@@ -77,8 +77,9 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 	}
 
 	var (
-		client    = pivotal.NewClient(story.config.UserToken())
-		projectId = story.config.ProjectId()
+		config    = story.tracker.config
+		client    = pivotal.NewClient(config.UserToken())
+		projectId = config.ProjectId()
 	)
 	updateRequest := &pivotal.Story{OwnerIds: ownerIds}
 	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
@@ -93,8 +94,9 @@ func (story *story) Start() *errs.Error {
 	task := fmt.Sprintf("Start Pivotal Tracker story %v", story.Story.Id)
 
 	var (
-		client    = pivotal.NewClient(story.config.UserToken())
-		projectId = story.config.ProjectId()
+		config    = story.tracker.config
+		client    = pivotal.NewClient(config.UserToken())
+		projectId = config.ProjectId()
 	)
 	updateRequest := &pivotal.Story{State: pivotal.StoryStateStarted}
 	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
@@ -109,6 +111,6 @@ func (s *story) LessThan(otherStory common.Story) bool {
 	return s.CreatedAt.Before(*otherStory.(*story).CreatedAt)
 }
 
-func (s *story) IssueTrackerName() string {
-	return "Pivotal Tracker"
+func (s *story) IssueTracker() common.IssueTracker {
+	return s.tracker
 }

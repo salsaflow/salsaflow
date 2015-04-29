@@ -16,6 +16,9 @@ var ErrReleaseNotFound = errors.New("release not found")
 
 type IssueTracker interface {
 
+	// ServiceName returns the name of the service this interface represents.
+	ServiceName() string
+
 	// CurrentUser returns the issue tracker account details of the current user.
 	// The account ID is taken from the global SalsaFlow configuration file.
 	CurrentUser() (User, error)
@@ -89,9 +92,9 @@ type Story interface {
 	// Stories are printed in the order they are sorted by this function.
 	LessThan(Story) bool
 
-	// IssueTrackerName returns a string representing the issue tracker
-	// that this story is coming from.
-	IssueTrackerName() string
+	// IssueTracker can be used to get the issue tracker instance
+	// that this story is associated with.
+	IssueTracker() IssueTracker
 }
 
 type NextRelease interface {

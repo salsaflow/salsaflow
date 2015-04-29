@@ -15,6 +15,8 @@ import (
 	"github.com/toqueteos/webbrowser"
 )
 
+const ServiceName = "JIRA"
+
 type issueTracker struct {
 	config       Config
 	versionCache map[string]*client.Version
@@ -26,6 +28,10 @@ func Factory() (common.IssueTracker, error) {
 		return nil, err
 	}
 	return &issueTracker{config, nil}, nil
+}
+
+func (tracker *issueTracker) ServiceName() string {
+	return ServiceName
 }
 
 func (tracker *issueTracker) CurrentUser() (common.User, error) {
@@ -49,7 +55,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		return nil, err
 	}
 
-	return toCommonStories(issues, tracker.config), nil
+	return toCommonStories(issues, tracker), nil
 }
 
 func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
@@ -65,7 +71,7 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 		return nil, err
 	}
 
-	return toCommonStories(issues, tracker.config), nil
+	return toCommonStories(issues, tracker), nil
 }
 
 func (tracker *issueTracker) ListStoriesByTag(tags []string) (stories []common.Story, err error) {
@@ -76,7 +82,7 @@ func (tracker *issueTracker) ListStoriesByTag(tags []string) (stories []common.S
 	}
 
 	// Convert to []common.Story and return.
-	return toCommonStories(issues, tracker.config), nil
+	return toCommonStories(issues, tracker), nil
 }
 
 func (tracker *issueTracker) NextRelease(
@@ -135,11 +141,10 @@ func (tracker *issueTracker) getVersionResource(ver *version.Version) (*client.V
 	return nil, nil
 }
 
-func toCommonStories(issues []*client.Issue, config Config) []common.Story {
-	api := newClient(config)
+func toCommonStories(issues []*client.Issue, tracker *issueTracker) []common.Story {
 	stories := make([]common.Story, len(issues))
 	for i := range issues {
-		s, err := newStory(api, issues[i])
+		s, err := newStory(issues[i], tracker)
 		if err != nil {
 			panic(err)
 		}

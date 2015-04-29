@@ -62,7 +62,7 @@ func (release *runningRelease) Version() *version.Version {
 }
 
 func (release *runningRelease) Stories() ([]common.Story, error) {
-	return toCommonStories(release.issues, release.tracker.config), nil
+	return toCommonStories(release.issues, release.tracker), nil
 }
 
 func (release *runningRelease) EnsureStageable() error {

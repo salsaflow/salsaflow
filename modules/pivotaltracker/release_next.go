@@ -101,7 +101,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// In case there are some unpointed stories, stop the release.
 	if len(pmStories) != 0 {
 		fmt.Println("\nThe following stories are still yet to be pointed:\n")
-		err := prompt.ListStories(toCommonStories(pmStories, config), os.Stdout)
+		err := prompt.ListStories(toCommonStories(pmStories, release.tracker), os.Stdout)
 		if err != nil {
 			return false, err
 		}
@@ -112,7 +112,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// Print the stories to be added to the release.
 	if len(additional) != 0 {
 		fmt.Println("\nThe following stories are going to be added to the release:\n")
-		err := prompt.ListStories(toCommonStories(additional, config), os.Stdout)
+		err := prompt.ListStories(toCommonStories(additional, release.tracker), os.Stdout)
 		if err != nil {
 			return false, err
 		}
