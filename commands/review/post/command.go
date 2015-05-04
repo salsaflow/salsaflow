@@ -267,7 +267,7 @@ You are about to post review requests for the following commits:
 			if err != nil {
 				return err
 			}
-			if isCore {
+			if !isCore {
 				args = append(args, "-f")
 				msg += " (using force)"
 			}
