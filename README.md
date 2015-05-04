@@ -285,6 +285,34 @@ where
 Please make sure that `RBTools` package version `0.6.x` is installed.
 This module relies on the `rbt` command heavily.
 
+#### GitHub ####
+
+To activate this module, put the following config into the **local** configuration file:
+
+```yaml
+code_review_tool: "github"
+```
+
+You can also optionally add
+
+```yaml
+github:
+  review_issue_label: "review-label-goes-here"
+```
+
+to overwrite the default review label, which is `review`.
+
+The **global** configuration file must then contain the following additional config:
+
+```yaml
+github:
+  token: "secret-token-goes-here"
+```
+
+where
+
+* `token` is your personal GitHub API token that can be used to create issues.
+
 ## Original Authors ##
 
 * [tchap](https://github.com/tchap) (for [Salsita](https://github.com/salsita))
