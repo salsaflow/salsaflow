@@ -22,13 +22,13 @@ import (
 type runningRelease struct {
 	version *version.Version
 	stories []*pivotal.Story
-	config  Config
+	tracker *issueTracker
 }
 
-func newRunningRelease(releaseVersion *version.Version, config Config) (*runningRelease, error) {
+func newRunningRelease(releaseVersion *version.Version, tracker *issueTracker) (*runningRelease, error) {
 	return &runningRelease{
 		version: releaseVersion,
-		config:  config,
+		tracker: tracker,
 	}, nil
 }
 
@@ -42,8 +42,9 @@ func (release *runningRelease) Stories() ([]common.Story, error) {
 		task := "Fetch data from Pivotal Tracker"
 		log.Run(task)
 		var (
-			client       = pivotal.NewClient(release.config.UserToken())
-			projectId    = release.config.ProjectId()
+			config       = release.tracker.config
+			client       = pivotal.NewClient(config.UserToken())
+			projectId    = config.ProjectId()
 			releaseLabel = getReleaseLabel(release.version)
 		)
 		stories, err := searchStories(client, projectId, "label:%v", releaseLabel)
@@ -54,7 +55,7 @@ func (release *runningRelease) Stories() ([]common.Story, error) {
 	}
 
 	// Return the cached stories.
-	return toCommonStories(release.stories, release.config), nil
+	return toCommonStories(release.stories, release.tracker), nil
 }
 
 func (release *runningRelease) EnsureStageable() error {
@@ -121,8 +122,9 @@ func (release *runningRelease) Stage() (action.Action, error) {
 
 	// Update the stories.
 	var (
-		client    = pivotal.NewClient(release.config.UserToken())
-		projectId = release.config.ProjectId()
+		config    = release.tracker.config
+		client    = pivotal.NewClient(config.UserToken())
+		projectId = config.ProjectId()
 	)
 	updatedStories, err := updateStories(client, projectId, stories, updateFunc, rollbackFunc)
 	if err != nil {

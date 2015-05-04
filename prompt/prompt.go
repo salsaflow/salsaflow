@@ -118,14 +118,48 @@ func PromptStory(msg string, stories []common.Story) (common.Story, error) {
 
 	// Prompt the user to select a story to assign the commit with.
 	index, err := PromptIndex(
-		"Choose a story by inserting its index. Or just press Enter to abort: ", 0, len(stories)-1)
+		"Choose a story by inserting its index. Or just press Enter to abort: ", 1, len(stories))
 	if err != nil {
 		if err == ErrCanceled {
 			return nil, ErrCanceled
 		}
 		return nil, errs.NewError(task, err, nil)
 	}
-	return stories[index], nil
+	return stories[index-1], nil
+}
+
+func PromptStoryAllowNone(msg string, stories []common.Story) (common.Story, error) {
+	var task = "Prompt the user to select a story"
+
+	// Make sure there are actually some stories to be printed.
+	if len(stories) == 0 {
+		return nil, ErrNoStories
+	}
+
+	// Print the intro message.
+	fmt.Println(msg)
+	fmt.Println()
+
+	// Present the stories to the user.
+	if err := ListStories(stories, os.Stdout); err != nil {
+		return nil, err
+	}
+	fmt.Println()
+
+	// Prompt the user to select a story to assign the commit with.
+	index, err := PromptIndex(`Choose a story by inserting its index.
+You can also insert '0' not to choose any story
+or you can press Enter to abort: `, 0, len(stories))
+	if err != nil {
+		if err == ErrCanceled {
+			return nil, ErrCanceled
+		}
+		return nil, errs.NewError(task, err, nil)
+	}
+	if index == 0 {
+		return nil, nil
+	}
+	return stories[index-1], nil
 }
 
 type writeError struct {
@@ -154,7 +188,7 @@ func ListStories(stories []common.Story, w io.Writer) (err error) {
 	must(io.WriteString(tw, "  =====\t========\t===========\n"))
 	for i, story := range stories {
 		must(fmt.Fprintf(
-			tw, "  %v\t%v\t%v\n", i, story.ReadableId(),
+			tw, "  %v\t%v\t%v\n", i+1, story.ReadableId(),
 			Shorten(story.Title(), maxStoryTitleColumnWidth)))
 	}
 	must(0, tw.Flush())

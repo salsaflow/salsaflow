@@ -14,6 +14,8 @@ import (
 	"github.com/toqueteos/webbrowser"
 )
 
+const ServiceName = "Pivotal Tracker"
+
 type issueTracker struct {
 	config Config
 }
@@ -24,6 +26,10 @@ func Factory() (common.IssueTracker, error) {
 		return nil, err
 	}
 	return &issueTracker{config}, nil
+}
+
+func (tracker *issueTracker) ServiceName() string {
+	return ServiceName
 }
 
 func (tracker *issueTracker) CurrentUser() (common.User, error) {
@@ -54,7 +60,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 
 	ptStories = storiesMatchingByLabel(estimatedStories, tracker.config.IncludeStoryLabelFilter())
 
-	return toCommonStories(ptStories, tracker.config), nil
+	return toCommonStories(ptStories, tracker), nil
 }
 
 func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
@@ -68,7 +74,7 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 	if err != nil {
 		return nil, err
 	}
-	return toCommonStories(ptStories, tracker.config), nil
+	return toCommonStories(ptStories, tracker), nil
 }
 
 func (tracker *issueTracker) ListStoriesByTag(tags []string) ([]common.Story, error) {
@@ -93,7 +99,7 @@ func (tracker *issueTracker) ListStoriesByTag(tags []string) ([]common.Story, er
 	}
 
 	// Convert to []common.Story and return.
-	return toCommonStories(stories, tracker.config), nil
+	return toCommonStories(stories, tracker), nil
 }
 
 func (tracker *issueTracker) NextRelease(
@@ -108,7 +114,7 @@ func (tracker *issueTracker) RunningRelease(
 	releaseVersion *version.Version,
 ) (common.RunningRelease, error) {
 
-	return newRunningRelease(releaseVersion, tracker.config)
+	return newRunningRelease(releaseVersion, tracker)
 }
 
 func (tracker *issueTracker) OpenStory(storyId string) error {

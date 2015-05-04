@@ -104,7 +104,7 @@ IssueLoop:
 	// Present the issues to the user.
 	if len(issues) != 0 {
 		fmt.Println("\nThe following issues are going to be added to the release:\n")
-		err := prompt.ListStories(toCommonStories(issues, release.tracker.config), os.Stdout)
+		err := prompt.ListStories(toCommonStories(issues, release.tracker), os.Stdout)
 		if err != nil {
 			return false, err
 		}

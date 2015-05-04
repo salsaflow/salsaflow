@@ -246,12 +246,15 @@ You are about to post review requests for the following commits:
 
 	// Check the commits.
 	task = "Make sure the commits comply with the rules"
-	newCommits, err := rewriteCommits(commits, canAmend)
+	storyIdMissing, err := isStoryIdMissing(commits)
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	if newCommits != nil {
-		commits = newCommits
+	if storyIdMissing {
+		commits, err = rewriteCommits(commits, canAmend)
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
 
 		// Push the branch in case we are in the parent mode.
 		// Use force in case we are not on any SF core branch.
@@ -276,12 +279,14 @@ You are about to post review requests for the following commits:
 				return errs.NewError("Push the current branch", err, nil)
 			}
 		}
+	} else {
+		log.Log("Commit check passed")
 	}
 
 	// Print Snoopy.
 	asciiart.PrintSnoopy()
 
-	// Turn Commits into CommitReviewContexts.
+	// Turn Commits into ReviewContexts.
 	task = "Fetch stories for the commits to be posted for review"
 	log.Run(task)
 	ctxs, err := commitsToReviewContexts(commits)
@@ -298,17 +303,37 @@ You are about to post review requests for the following commits:
 	return nil
 }
 
+func isStoryIdMissing(commits []*git.Commit) (bool, error) {
+	for _, commit := range commits {
+		if commit.Merge != "" {
+			continue
+		}
+
+		ok, err := isCommitAssociated(commit)
+		if err != nil {
+			return false, err
+		}
+		if !ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func isCommitAssociated(commit *git.Commit) (bool, error) {
+	tracker, err := modules.GetIssueTracker()
+	if err != nil {
+		return false, err
+	}
+
+	_, err = tracker.StoryTagToReadableStoryId(commit.StoryIdTag)
+	return err == nil, nil
+}
+
 func rewriteCommits(commits []*git.Commit, canAmend bool) ([]*git.Commit, error) {
 	// Make sure we are not posting any merge commits.
-	// Also check whether we need to fetch the stories or not.
-	var (
-		noMergeCommits []*git.Commit
-		storyIdMissing bool
-	)
+	var noMergeCommits []*git.Commit
 	for _, commit := range commits {
-		if commit.StoryIdTag == "" {
-			storyIdMissing = true
-		}
 		if commit.Merge == "" {
 			noMergeCommits = append(noMergeCommits, commit)
 		}
@@ -317,12 +342,6 @@ func rewriteCommits(commits []*git.Commit, canAmend bool) ([]*git.Commit, error)
 	// Again, make sure there are actually some commits to be posted.
 	if len(noMergeCommits) == 0 {
 		return nil, ErrNoCommits
-	}
-
-	// In case there is no Story-Id tag missing, we are done.
-	if !storyIdMissing {
-		log.Log("Commit check passed")
-		return nil, nil
 	}
 
 	// In case we cannot add Story-Id tag, we have to return an error.
@@ -385,10 +404,6 @@ StoryLoop:
 	}
 	stories = myStories
 
-	// Append the unassigned pseudo-story to make it possible to
-	// set the Story-Id tag to "unassigned".
-	stories = append([]common.Story{&unassignedStory{}}, stories...)
-
 	// Tell the user what is happening.
 	log.Run("Prepare a temporary branch to rewrite commit messages")
 
@@ -438,8 +453,9 @@ StoryLoop:
 	if flagAskOnce {
 		header := `
 Some of the commits listed above are not assigned to any story.
-Please pick up the story that these commits will be assigned to:`
-		selectedStory, err := prompt.PromptStory(header, stories)
+Please pick up the story that these commits will be assigned to.
+You can also insert '0' to mark the commits as unassigned:`
+		selectedStory, err := prompt.PromptStoryAllowNone(header, stories)
 		if err != nil {
 			switch err {
 			case prompt.ErrNoStories:
@@ -476,8 +492,9 @@ The following commit is not assigned to any story:
   commit hash:  %v
   commit title: %v
 
-Please pick up the story to assign the commit to:`, commit.SHA, commitMessageTitle)
-				selectedStory, err := prompt.PromptStory(header, stories)
+Please pick up the story to assign the commit to.
+Inserting '0' will mark the commit as unassigned:`, commit.SHA, commitMessageTitle)
+				selectedStory, err := prompt.PromptStoryAllowNone(header, stories)
 				if err != nil {
 					if err == prompt.ErrCanceled {
 						panic(err)
@@ -487,8 +504,14 @@ Please pick up the story to assign the commit to:`, commit.SHA, commitMessageTit
 				story = selectedStory
 			}
 
+			// Use the unassigned tag value in case no story is selected.
+			storyTag := git.StoryIdUnassignedTagValue
+			if story != nil {
+				storyTag = story.Tag()
+			}
+
 			// Extend the commit message to include Story-Id.
-			commitMessage := fmt.Sprintf("%v\nStory-Id: %v\n", commit.Message, story.Tag())
+			commitMessage := fmt.Sprintf("%v\nStory-Id: %v\n", commit.Message, storyTag)
 
 			// Amend the cherry-picked commit to include the new commit message.
 			task = "Amend the commit message for " + commit.SHA
@@ -541,15 +564,17 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 	must(0, tw.Flush())
 }
 
-func commitsToReviewContexts(commits []*git.Commit) ([]*common.CommitReviewContext, error) {
+func commitsToReviewContexts(commits []*git.Commit) ([]*common.ReviewContext, error) {
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
 		return nil, err
 	}
 
 	// Collect the Story-Id tags.
-	storyTags := make([]string, 0, 1)
-	storiesByTag := make(map[string]common.Story, 1)
+	var (
+		storyTagSet  = make(map[string]struct{}, 1)
+		storyTagList = make([]string, 0, 1)
+	)
 	for _, commit := range commits {
 		tag := commit.StoryIdTag
 
@@ -564,39 +589,33 @@ func commitsToReviewContexts(commits []*git.Commit) ([]*common.CommitReviewConte
 		}
 
 		// Otherwise register the tag, unless already registered.
-		if _, ok := storiesByTag[tag]; ok {
+		if _, ok := storyTagSet[tag]; ok {
 			continue
 		}
-		// Fill the map with unassignedStories for now.
-		storiesByTag[tag] = &unassignedStory{}
-		storyTags = append(storyTags, tag)
+		storyTagSet[tag] = struct{}{}
+		storyTagList = append(storyTagList, tag)
 	}
 
 	// Fetch the stories from the issue tracker.
-	stories, err := tracker.ListStoriesByTag(storyTags)
+	stories, err := tracker.ListStoriesByTag(storyTagList)
 	if err != nil {
 		return nil, err
 	}
 
-	// Update the story map, i.e. replace unassignedStories with real stories.
+	// Build the story map.
+	storiesByTag := make(map[string]common.Story, 1)
 	for i, story := range stories {
-		storiesByTag[storyTags[i]] = story
+		storiesByTag[storyTagList[i]] = story
 	}
 
 	// Build the final list of review contexts.
-	ctxs := make([]*common.CommitReviewContext, 0, len(commits))
+	ctxs := make([]*common.ReviewContext, 0, len(commits))
 	for _, commit := range commits {
-		// Use either an unassigned story or a story just fetched.
-		tag := commit.StoryIdTag
-		story, ok := storiesByTag[tag]
-		if !ok {
-			story = &unassignedStory{}
-		}
-
-		// Append a new context.
-		ctxs = append(ctxs, &common.CommitReviewContext{
+		// Story can be set to nil here in case the story is unassigned.
+		// In that case there will be, obviously, no story object in the map.
+		ctxs = append(ctxs, &common.ReviewContext{
 			Commit: commit,
-			Story:  story,
+			Story:  storiesByTag[commit.StoryIdTag],
 		})
 	}
 
@@ -604,7 +623,7 @@ func commitsToReviewContexts(commits []*git.Commit) ([]*common.CommitReviewConte
 	return ctxs, nil
 }
 
-func sendReviewRequests(ctxs []*common.CommitReviewContext) error {
+func sendReviewRequests(ctxs []*common.ReviewContext) error {
 	// Instantiate the code review module.
 	tool, err := modules.GetCodeReviewTool()
 	if err != nil {
@@ -630,10 +649,9 @@ func sendReviewRequests(ctxs []*common.CommitReviewContext) error {
 			panic(fmt.Sprintf("len(ctxs): expected 1, got %v", len(ctxs)))
 		}
 
-		ctx := ctxs[0]
-		task := "Post review request for commit " + ctx.Commit.SHA
+		task := "Post review request for commit " + ctxs[0].Commit.SHA
 		log.Run(task)
-		if err := tool.PostReviewRequestForCommit(ctx, postOpts); err != nil {
+		if err := tool.PostReviewRequests(ctxs, postOpts); err != nil {
 			return errs.NewError(task, err, nil)
 		}
 		return nil
@@ -646,7 +664,7 @@ func sendReviewRequests(ctxs []*common.CommitReviewContext) error {
 	}
 
 	task := fmt.Sprintf("Post review request for branch '%v'", currentBranch)
-	if err := tool.PostReviewRequestForBranch(currentBranch, ctxs, postOpts); err != nil {
+	if err := tool.PostReviewRequests(ctxs, postOpts); err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
@@ -751,53 +769,4 @@ func merge(commit, branch string, flags ...string) error {
 		return errs.NewError(task, err, nil)
 	}
 	return nil
-}
-
-// unassignedStory is being used to insert the option of choosing
-// "unassigned" while selecting the Story-Id tag value.
-type unassignedStory struct{}
-
-func (story *unassignedStory) Id() string {
-	panic("Not implemented")
-}
-
-func (story *unassignedStory) ReadableId() string {
-	return git.StoryIdUnassignedTagValue
-}
-
-func (story *unassignedStory) URL() string {
-	panic("Not implemented")
-}
-
-func (story *unassignedStory) Tag() string {
-	return git.StoryIdUnassignedTagValue
-}
-
-func (story *unassignedStory) Title() string {
-	return fmt.Sprintf(
-		"Choose this to set the Story-Id tag to '%v'", git.StoryIdUnassignedTagValue)
-}
-
-func (story *unassignedStory) Assignees() []common.User {
-	panic("Not implemented")
-}
-
-func (story *unassignedStory) AddAssignee(user common.User) *errs.Error {
-	panic("Not implemented")
-}
-
-func (story *unassignedStory) SetAssignees(users []common.User) *errs.Error {
-	panic("Not implemented")
-}
-
-func (story *unassignedStory) Start() *errs.Error {
-	panic("Not implemented")
-}
-
-func (story *unassignedStory) LessThan(other common.Story) bool {
-	panic("Not implemented")
-}
-
-func (story *unassignedStory) IssueTrackerName() string {
-	panic("Not implemented")
 }

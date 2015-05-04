@@ -14,11 +14,11 @@ import (
 
 type story struct {
 	*client.Issue
-	seq int
-	api *client.Client
+	seq     int
+	tracker *issueTracker
 }
 
-func newStory(api *client.Client, issue *client.Issue) (*story, error) {
+func newStory(issue *client.Issue, tracker *issueTracker) (*story, error) {
 	parts := strings.SplitAfterN(issue.Key, "-", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid issue key: %v", issue.Key)
@@ -29,7 +29,7 @@ func newStory(api *client.Client, issue *client.Issue) (*story, error) {
 		return nil, fmt.Errorf("invalid issue key: %v", issue.Key)
 	}
 
-	return &story{issue, seq, api}, nil
+	return &story{issue, seq, tracker}, nil
 }
 
 func (story *story) Id() string {
@@ -41,7 +41,7 @@ func (story *story) ReadableId() string {
 }
 
 func (story *story) URL() string {
-	u := story.api.BaseURL
+	u := newClient(story.tracker.config).BaseURL
 	return fmt.Sprintf("%v://%v/browse/%v", u.Scheme, u.Host, story.Issue.Key)
 }
 
@@ -65,6 +65,8 @@ func (story *story) AddAssignee(user common.User) *errs.Error {
 }
 
 func (story *story) SetAssignees(users []common.User) *errs.Error {
+	api := newClient(story.tracker.config)
+
 	var data struct {
 		Fields struct {
 			Assignee struct {
@@ -74,7 +76,7 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 	}
 	name := users[0].Id()
 	data.Fields.Assignee.Name = name
-	_, err := story.api.Issues.Update(story.Id(), data)
+	_, err := api.Issues.Update(story.Id(), data)
 	if err != nil {
 		return errs.NewError(fmt.Sprintf("Set assignees for story %v", story.Issue.Key), err, nil)
 	}
@@ -82,7 +84,9 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 }
 
 func (story *story) Start() *errs.Error {
-	_, err := story.api.Issues.PerformTransition(story.Issue.Id, transitionIdStartImplementing)
+	api := newClient(story.tracker.config)
+
+	_, err := api.Issues.PerformTransition(story.Issue.Id, transitionIdStartImplementing)
 	if err != nil {
 		return errs.NewError(fmt.Sprintf("Start story %v", story.Issue.Key), err, nil)
 	}
@@ -94,6 +98,6 @@ func (s *story) LessThan(commonStory common.Story) bool {
 	return s.seq < otherStory.seq
 }
 
-func (s *story) IssueTrackerName() string {
-	return "JIRA"
+func (s *story) IssueTracker() common.IssueTracker {
+	return s.tracker
 }
