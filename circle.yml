@@ -27,6 +27,11 @@ dependencies:
           GOPATH: "$HOME/workspace:$GOPATH"
           GOROOT: "$HOME/cache/gonative/go"
           PATH:   "$HOME/cache/gonative/go/bin:$PATH"
+    - "cd \"$WORKSPACE/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/bin/hooks/salsaflow-post-checkout\" && gox -osarch=\"windows/amd64 linux/amd64 darwin/amd64\"":
+        environment:
+          GOPATH: "$HOME/workspace:$GOPATH"
+          GOROOT: "$HOME/cache/gonative/go"
+          PATH:   "$HOME/cache/gonative/go/bin:$PATH"
     - "cd \"$WORKSPACE/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/bin/hooks/salsaflow-pre-push\" && gox -osarch=\"windows/amd64 linux/amd64 darwin/amd64\"":
         environment:
           GOPATH: "$HOME/workspace:$GOPATH"

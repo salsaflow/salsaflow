@@ -139,6 +139,12 @@ You need Git version 1.9.0 or newer.
 		return errs.NewError(task, err, nil)
 	}
 
+	task = "Check the current git post-checkout hook"
+	log.Run(task)
+	if err := hooks.CheckAndUpsert(hooks.HookTypePostCheckout); err != nil {
+		return errs.NewError(task, err, nil)
+	}
+
 	task = "Check the current git pre-push hook"
 	log.Run(task)
 	if err := hooks.CheckAndUpsert(hooks.HookTypePrePush); err != nil {

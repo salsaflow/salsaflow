@@ -23,7 +23,7 @@ for os in linux windows darwin; do
 	cp "$SOURCES/salsaflow_${os_suffix}${exe_suffix}" \
 	   "$DST/$base/salsaflow${exe_suffix}"
 
-	for hook in commit-msg pre-push; do
+	for hook in commit-msg pre-push post-checkout; do
 		cp "$SOURCES/bin/hooks/salsaflow-${hook}/salsaflow-${hook}_${os_suffix}${exe_suffix}" \
 		   "$DST/$base/salsaflow-${hook}${exe_suffix}"
 	done
