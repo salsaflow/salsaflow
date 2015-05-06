@@ -16,6 +16,8 @@ import (
 	"github.com/salsaflow/salsaflow/git/gitutil"
 )
 
+const ZeroHash = "0000000000000000000000000000000000000000"
+
 func Add(args ...string) error {
 	_, err := RunCommand("add", args...)
 	return err

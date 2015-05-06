@@ -23,8 +23,9 @@ import (
 type HookType string
 
 const (
-	HookTypeCommitMsg HookType = "commit-msg"
-	HookTypePrePush            = "pre-push"
+	HookTypeCommitMsg    HookType = "commit-msg"
+	HookTypePostCheckout HookType = "post-checkout"
+	HookTypePrePush      HookType = "pre-push"
 )
 
 const hookPrefix = "salsaflow-"

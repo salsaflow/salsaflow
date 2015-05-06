@@ -20,8 +20,6 @@ import (
 	"github.com/salsaflow/salsaflow/prompt"
 )
 
-const zeroHash = "0000000000000000000000000000000000000000"
-
 func main() {
 	// Set up the identification command line flag.
 	hooks.IdentifyYourself()
@@ -95,7 +93,7 @@ func run(remoteName, pushURL string) error {
 		localRef, localSha, remoteRef, remoteSha := parts[0], parts[1], parts[2], parts[3]
 
 		// Skip the refs that are being deleted.
-		if localSha == zeroHash {
+		if localSha == git.ZeroHash {
 			continue
 		}
 
@@ -114,7 +112,7 @@ func run(remoteName, pushURL string) error {
 		// Make sure the reference is up to date.
 		// In this case the reference is not up to date when
 		// the remote hash cannot be found in the local clone.
-		if remoteSha != zeroHash {
+		if remoteSha != git.ZeroHash {
 			task := fmt.Sprintf("Make sure remote ref '%s' is up to date", remoteRef)
 			if _, err := git.Run("cat-file", "-t", remoteSha); err != nil {
 				hint := fmt.Sprintf(`
@@ -132,7 +130,7 @@ perhaps by executing 'git pull'.
 
 		// Append the revision range for this input line.
 		var revRange *revisionRange
-		if remoteSha == zeroHash {
+		if remoteSha == git.ZeroHash {
 			// In case we are pushing a new branch, check commits up to trunk.
 			// There is probably no better guess that we can do in general.
 			revRange = &revisionRange{gitConfig.TrunkBranchName(), localRef}

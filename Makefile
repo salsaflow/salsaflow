@@ -1,16 +1,19 @@
 install: format
 	go install github.com/salsaflow/salsaflow
 	go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-commit-msg
+	go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-post-checkout
 	go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-pre-push
 
 godep-install:
 	godep go install github.com/salsaflow/salsaflow
 	godep go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-commit-msg
+	godep go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-post-checkout
 	godep go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-pre-push
 
 deps.fetch:
 	go get -d -u github.com/coreos/go-semver/semver
 	go get -d -u github.com/extemporalgenome/slug
+	go get -d -u github.com/fatih/color
 	go get -d -u github.com/kardianos/osext
 	go get -d -u github.com/google/go-github/github
 	go get -d -u github.com/google/go-querystring/query

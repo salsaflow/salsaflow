@@ -6,37 +6,40 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "code.google.com/p/go.text/unicode/norm",
-			"Comment": "null-116",
-			"Rev": "5b2527008a4c8988ca9dc6f010ebfb9dae67150b"
-		},
-		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
 			"Rev": "568e959cd89871e61434c1143528d9162da89ef2"
 		},
 		{
 			"ImportPath": "github.com/extemporalgenome/slug",
-			"Rev": "de70af6e24d0e6bdd6eaef276d2e9910e68a1397"
+			"Rev": "0320c85e32e0015b090f08a5d1324d5ab6094f07"
+		},
+		{
+			"ImportPath": "github.com/fatih/color",
+			"Rev": "b8f08a5598ffe40b0e3f45d483d3cfe3c1dc4964"
 		},
 		{
 			"ImportPath": "github.com/google/go-github/github",
-			"Rev": "2431923100d4989611dcc339f1ff8d280bd9c84c"
+			"Rev": "6f7d3a5ad94d7a8c1cf7cb93d1364d0369ea8bbd"
 		},
 		{
 			"ImportPath": "github.com/google/go-querystring/query",
-			"Rev": "d8840cbb2baa915f4836edda4750050a2c0b7aea"
+			"Rev": "547ef5ac979778feb2f760cdb5f4eae1a2207b86"
 		},
 		{
 			"ImportPath": "github.com/kardianos/osext",
-			"Rev": "efacde03154693404c65e7aa7d461ac9014acd0c"
+			"Rev": "8fef92e41e22a70e700a96b29f066cda30ea24ef"
 		},
 		{
 			"ImportPath": "github.com/salsita/go-pivotaltracker/v5/pivotal",
-			"Rev": "c0e57cde6d04b3c7ccb49a1b23c0606ffcba3b98"
+			"Rev": "295a0a2e0ac5870c6fc8aa7b00d4957e3912410b"
 		},
 		{
 			"ImportPath": "github.com/salsita/go-sprintly/sprintly",
 			"Rev": "6cd9d7493c8234dfae4c09f3572a958f188022b6"
+		},
+		{
+			"ImportPath": "github.com/shiena/ansicolor",
+			"Rev": "8368d3b31cf6f2c2464c7a91675342c9a0ac6658"
 		},
 		{
 			"ImportPath": "github.com/toqueteos/webbrowser",
@@ -44,24 +47,28 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "6460565bec1e8891e29ff478184c71b9e443ac36"
+			"Rev": "a8c61998a557a37435f719980da368469c10bfed"
 		},
 		{
 			"ImportPath": "golang.org/x/oauth2",
-			"Rev": "ce5ea7da934b76b1066c527632359e2b8f65db97"
+			"Rev": "ec6d5d770f531108a6464462b2201b74fcd09314"
 		},
 		{
 			"ImportPath": "golang.org/x/text/transform",
-			"Rev": "d48eb58d199dc14dfaafefabf361feff840ee06c"
+			"Rev": "6c3b324efd553c7d76e4da4ed671de76c6bbc791"
+		},
+		{
+			"ImportPath": "golang.org/x/text/unicode/norm",
+			"Rev": "6c3b324efd553c7d76e4da4ed671de76c6bbc791"
 		},
 		{
 			"ImportPath": "gopkg.in/tchap/gocli.v2",
-			"Comment": "v2.0.0",
+			"Comment": "v2.0.0-1-gcef534f",
 			"Rev": "cef534fa45fb0c03312a58d09093db6e0e0753f5"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
-			"Rev": "50f7813e6b19e58334360ab011dfbaece5b1501f"
+			"Rev": "49c95bdc21843256fb6c4e0d370a05f24a0bf213"
 		}
 	]
 }
