@@ -96,6 +96,20 @@ type Person struct {
 	Kind     string `json:"kind,omitempty"`
 }
 
+type Comment struct {
+	Id                  int        `json:"id,omitempty"`
+	StoryId             int        `json:"story_id,omitempty"`
+	EpicId              int        `json:"epic_id,omitempty"`
+	PersonId            int        `json:"person_id,omitempty"`
+	Text                string     `json:"text,omitempty"`
+	FileAttachmentIds   []int      `json:"file_attachment_ids,omitempty"`
+	GoogleAttachmentIds []int      `json:"google_attachment_ids,omitempty"`
+	CommitType          string     `json:"commit_type,omitempty"`
+	CommitIdentifier    string     `json:"commit_identifier,omitempty"`
+	CreatedAt           *time.Time `json:"created_at,omitempty"`
+	UpdatedAt           *time.Time `json:"updated_at,omitempty"`
+}
+
 type StoryService struct {
 	client *Client
 }
@@ -201,4 +215,25 @@ func (service *StoryService) ListOwners(projectId, storyId int) ([]*Person, *htt
 	}
 
 	return owners, resp, err
+}
+
+func (service *StoryService) AddComment(
+	projectId int,
+	storyId int,
+	comment *Comment,
+) (*Comment, *http.Response, error) {
+
+	u := fmt.Sprintf("projects/%v/stories/%v/comments", projectId, storyId)
+	req, err := service.client.NewRequest("POST", u, comment)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var newComment Comment
+	resp, err := service.client.Do(req, &newComment)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return &newComment, resp, err
 }

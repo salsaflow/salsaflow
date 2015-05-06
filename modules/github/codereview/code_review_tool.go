@@ -445,10 +445,11 @@ func createIssue(
 
 	log.Run(task)
 	client := ghutil.NewClient(config.Token())
+	labels := []string{config.ReviewLabel()}
 	issue, _, err = client.Issues.Create(owner, repo, &github.IssueRequest{
 		Title:  github.String(issueTitle),
 		Body:   github.String(issueBody),
-		Labels: []string{config.ReviewLabel()},
+		Labels: &labels,
 	})
 	if err != nil {
 		return nil, errs.NewError(task, err, nil)
