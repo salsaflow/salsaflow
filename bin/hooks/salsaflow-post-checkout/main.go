@@ -10,12 +10,17 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/hooks"
 
 	// Vendor
 	"github.com/fatih/color"
 )
 
 func main() {
+	// Register the magical -salsaflow.version flag.
+	hooks.IdentifyYourself()
+
+	// Run the hook logic itself.
 	if err := hook(); err != nil {
 		errs.Fatal(err)
 	}
