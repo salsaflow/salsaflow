@@ -9,9 +9,7 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/hooks"
-
-	// Vendor
-	"github.com/fatih/color"
+	"github.com/salsaflow/salsaflow/prompt"
 )
 
 func main() {
@@ -55,6 +53,25 @@ func hook() error {
 		return err
 	}
 
+	// Drop commits that happened before SalsaFlow bootstrap.
+	enabledTimestamp, err := hooks.SalsaFlowEnabledTimestamp()
+	if err != nil {
+		return err
+	}
+	// Only perform the filtering in case the timestamp is set.
+	if enabledTimestamp.IsZero() {
+		return printConfigWarning()
+	}
+
+	salsaFlowCommits := make([]*git.Commit, 0, len(commits))
+	for _, commit := range commits {
+		if commit.AuthorDate.Before(enabledTimestamp) {
+			continue
+		}
+		salsaFlowCommits = append(salsaFlowCommits, commit)
+	}
+	commits = salsaFlowCommits
+
 	// Collect the commits with missing Story-Id tag.
 	missing := make([]*git.Commit, 0, len(commits))
 	for _, commit := range commits {
@@ -73,8 +90,7 @@ func hook() error {
 	}
 
 	// Print the warning.
-	printWarning(missing)
-	return nil
+	return printWarning(missing)
 }
 
 func isCoreBranchHash(hash string) (bool, error) {
@@ -90,17 +106,30 @@ func isCoreBranchHash(hash string) (bool, error) {
 	return false, nil
 }
 
-func printWarning(commits []*git.Commit) {
-	// Let's be colorful!
-	redBold := color.New(color.FgRed).Add(color.Bold)
-	redBold.Println("\nWarning: There are some commits missing the Story-Id tag.")
-
-	red := color.New(color.FgRed)
-	red.Println("Make sure this is really what you want before proceeding further.\n")
-
-	yellow := color.New(color.FgYellow).SprintFunc()
-	for _, commit := range commits {
-		fmt.Printf("  %v %v\n", yellow(commit.SHA), commit.MessageTitle)
+func printWarning(commits []*git.Commit) error {
+	console, err := prompt.OpenConsole(os.O_WRONLY)
+	if err != nil {
+		return err
 	}
-	fmt.Println()
+	defer console.Close()
+
+	fmt.Fprintln(console)
+	hooks.PrintUnassignedWarning(console, commits)
+	fmt.Fprintln(console)
+
+	return nil
+}
+
+func printConfigWarning() error {
+	console, err := prompt.OpenConsole(os.O_WRONLY)
+	if err != nil {
+		return err
+	}
+	defer console.Close()
+
+	fmt.Fprintln(console)
+	hooks.PrintSalsaFlowEnabledTimestampWarning(console)
+	fmt.Fprintln(console)
+
+	return nil
 }

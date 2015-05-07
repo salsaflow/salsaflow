@@ -24,7 +24,7 @@ func main() {
 	hooks.IdentifyYourself()
 
 	// Tell the user what is happening.
-	fmt.Println("---> Running the SalsaFlow commit-msg hook")
+	fmt.Println("---> Running SalsaFlow commit-msg hook")
 
 	// The hook is always invoked as `commit-msg <message-filename>`.
 	if len(os.Args) != 2 {

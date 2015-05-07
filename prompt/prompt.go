@@ -39,14 +39,31 @@ func (i *OutOfBoundsError) Error() string {
 }
 
 func Confirm(question string) (bool, error) {
+	// Opening the console for O_RDWR doesn't work on Windows,
+	// hence we one the device twice with a different flag set.
+	// This works everywhere.
+	task := "Open console for reading"
+	stdin, err := OpenConsole(os.O_RDONLY)
+	if err != nil {
+		return false, errs.NewError(task, err, nil)
+	}
+	defer stdin.Close()
+
+	task = "Open console for writing"
+	stdout, err := OpenConsole(os.O_WRONLY)
+	if err != nil {
+		return false, errs.NewError(task, err, nil)
+	}
+	defer stdout.Close()
+
 	printQuestion := func() {
-		fmt.Print(question)
-		fmt.Print(" [y/N]: ")
+		fmt.Fprint(stdout, question)
+		fmt.Fprint(stdout, " [y/N]: ")
 	}
 	printQuestion()
 
 	var line string
-	scanner := bufio.NewScanner(os.Stdin)
+	scanner := bufio.NewScanner(stdin)
 	for scanner.Scan() {
 		line = strings.ToLower(scanner.Text())
 		switch line {
@@ -68,8 +85,14 @@ func Confirm(question string) (bool, error) {
 }
 
 func Prompt(msg string) (string, error) {
+	stdin, err := OpenConsole(os.O_RDONLY)
+	if err != nil {
+		return "", err
+	}
+	defer stdin.Close()
+
 	fmt.Print(msg)
-	scanner := bufio.NewScanner(os.Stdin)
+	scanner := bufio.NewScanner(stdin)
 	scanner.Scan()
 	if err := scanner.Err(); err != nil {
 		return "", err
@@ -182,4 +205,8 @@ func ListStories(stories []common.Story, w io.Writer) (err error) {
 	must(0, tw.Flush())
 
 	return nil
+}
+
+func OpenConsole(flag int) (io.ReadWriteCloser, error) {
+	return os.OpenFile(ConsoleDevice, flag, 0600)
 }

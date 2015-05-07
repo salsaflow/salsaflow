@@ -6,10 +6,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
-	"text/tabwriter"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/asciiart"
@@ -25,7 +23,7 @@ func main() {
 	hooks.IdentifyYourself()
 
 	// Tell the user what is happening.
-	fmt.Println("---> Running the SalsaFlow pre-push hook")
+	fmt.Println("---> Running SalsaFlow pre-push hook")
 
 	// The hook is always invoked as `pre-push <remote-name> <push-url>`.
 	if len(os.Args) != 3 {
@@ -35,10 +33,16 @@ func main() {
 
 	// Run the main function.
 	if err := run(os.Args[1], os.Args[2]); err != nil {
-		errs.Log(err)
+		if err != prompt.ErrCanceled {
+			fmt.Println()
+			errs.Log(err)
+		}
 		asciiart.PrintGrimReaper("PUSH ABORTED")
 		os.Exit(1)
 	}
+
+	// Insert an empty line before git push output.
+	fmt.Println()
 }
 
 type revisionRange struct {
@@ -54,9 +58,15 @@ func run(remoteName, pushURL string) error {
 	}
 
 	// Load the hook-related SalsaFlow config.
-	enabledTimestamp, err := SalsaFlowEnabledTimestamp()
+	enabledTimestamp, err := hooks.SalsaFlowEnabledTimestamp()
 	if err != nil {
 		return err
+	}
+	if enabledTimestamp.IsZero() {
+		if err = printConfigWarning(); err != nil {
+			return err
+		}
+		return errors.New("SalsaFlow enabled timestamp not set")
 	}
 
 	// Only check the project remote.
@@ -126,8 +136,6 @@ perhaps by executing 'git pull'.
 			}
 		}
 
-		log.Log(fmt.Sprintf("Checking commits updating reference '%s'", remoteRef))
-
 		// Append the revision range for this input line.
 		var revRange *revisionRange
 		if remoteSha == git.ZeroHash {
@@ -144,16 +152,8 @@ perhaps by executing 'git pull'.
 		return errs.NewError(parseTask, err, nil)
 	}
 
-	// Validate the commit messages.
-	var (
-		invalid bool
-		output  bytes.Buffer
-		tw      = tabwriter.NewWriter(&output, 0, 8, 4, '\t', 0)
-	)
-
-	io.WriteString(tw, "\n")
-	io.WriteString(tw, "Commit SHA\tCommit Title\tCommit Source\tError\n")
-	io.WriteString(tw, "==========\t============\t=============\t=====\n")
+	// Check the missing Story-Id tags.
+	var missing []*git.Commit
 
 	for _, revRange := range revRanges {
 		// Get the commit objects for the relevant range.
@@ -164,90 +164,72 @@ perhaps by executing 'git pull'.
 		}
 
 		// Check every commit in the range.
-		var (
-			salsaflowCommitsDetected bool
-			ancestorsChecked         bool
-		)
 		for _, commit := range commits {
 			// Do not check merge commits.
 			if commit.Merge != "" {
 				continue
 			}
 
-			if !enabledTimestamp.IsZero() {
-				// In case the SalsaFlow enabled timestamp is available,
-				// use it to decide whether to check the commit or not.
-				if commit.AuthorDate.Before(enabledTimestamp) {
-					continue
-				}
-			} else {
-				// In case the timestamp is missing, we traverse the git graph
-				// to see whether there were some commit message tags inserted in the past
-				// and we only return an error if that is the case.
-				if !salsaflowCommitsDetected {
-					switch {
-					// Once we encounter a tag inside of the revision range,
-					// we automatically start checking for tags.
-					case commit.ChangeIdTag != "" || commit.StoryIdTag != "":
-						salsaflowCommitsDetected = true
-
-					// In case the tags are empty, check all ancestors for the relevant tags as well.
-					// In case a tag is encountered in an ancestral commit, we start checking for tags.
-					case !ancestorsChecked:
-						var err error
-						salsaflowCommitsDetected, err = checkAncestors(revRange.From)
-						if err != nil {
-							return errs.NewError(task, err, nil)
-						}
-						ancestorsChecked = true
-					}
-				}
-
-				if !salsaflowCommitsDetected {
-					continue
-				}
-			}
-
-			commitMessageTitle := prompt.ShortenCommitTitle(commit.MessageTitle)
-
-			printErrorLine := func(reason string) {
-				fmt.Fprintf(tw, "%v\t%v\t%v\t%v\n",
-					commit.SHA, commitMessageTitle, revRange.To, reason)
-				invalid = true
-			}
-
-			// Check the Change-Id tag.
-			if commit.ChangeIdTag == "" /* && salsaflowCommitsDetected */ {
-				printErrorLine("commit message: Change-Id tag missing")
+			// Do not check commits that happened before SalsaFlow.
+			if commit.AuthorDate.Before(enabledTimestamp) {
+				continue
 			}
 
 			// Check the Story-Id tag.
-			if commit.StoryIdTag == "" /* && salsaflowCommitsDetected */ {
-				printErrorLine("commit message: Story-Id tag missing")
+			if commit.StoryIdTag == "" {
+				missing = append(missing, commit)
 			}
 		}
 	}
 
-	if invalid {
-		io.WriteString(tw, "\n")
-		tw.Flush()
-		return errs.NewError(
-			"Validate commit messages", errors.New("invalid commit messages found"), &output)
-	}
-	return nil
-}
+	// Prompt for confirmation in case that is needed.
+	if len(missing) != 0 {
+		// Fill in the commit sources.
+		if err := git.FixCommitSources(missing); err != nil {
+			return err
+		}
 
-func checkAncestors(ref string) (salsaflowCommitsDetected bool, err error) {
-	commits, err := git.ShowCommitRange(ref)
-	if err != nil {
-		return false, err
-	}
-
-	for _, commit := range commits {
-		if commit.ChangeIdTag != "" || commit.StoryIdTag != "" {
-			salsaflowCommitsDetected = true
+		// Prompt the user for confirmation.
+		task := "Prompt the user for confirmation"
+		confirmed, err := promptUserForConfirmation(missing)
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
+		if !confirmed {
+			return prompt.ErrCanceled
 		}
 	}
 
-	return
+	return nil
+}
+
+func promptUserForConfirmation(commits []*git.Commit) (bool, error) {
+	// Open the console.
+	console, err := prompt.OpenConsole(os.O_WRONLY)
+	if err != nil {
+		return false, err
+	}
+	defer console.Close()
+
+	// Print the list of commits missing the Story-Id tag.
+	fmt.Fprintln(console)
+	hooks.PrintUnassignedWarning(console, commits)
+	fmt.Fprintln(console)
+
+	// Prompt the user for confirmation.
+	return prompt.Confirm("Are you sure you want to push these commits?")
+}
+
+func printConfigWarning() error {
+	console, err := prompt.OpenConsole(os.O_WRONLY)
+	if err != nil {
+		return err
+	}
+	defer console.Close()
+
+	fmt.Fprintln(console)
+	hooks.PrintSalsaFlowEnabledTimestampWarning(console)
+	fmt.Fprintln(console)
+
+	return nil
 }

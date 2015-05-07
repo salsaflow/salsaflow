@@ -19,6 +19,7 @@ deps.fetch:
 	go get -d -u github.com/google/go-querystring/query
 	go get -d -u github.com/salsita/go-pivotaltracker/v5/pivotal
 	go get -d -u github.com/salsita/go-sprintly/sprintly
+	go get -d -u github.com/shiena/ansicolor
 	go get -d -u github.com/toqueteos/webbrowser
 	go get -d -u golang.org/x/oauth2
 	go get -d -u gopkg.in/tchap/gocli.v2
