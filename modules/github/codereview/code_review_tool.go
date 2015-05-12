@@ -233,7 +233,10 @@ func createAssignedReviewRequest(
 	}
 
 	// Open the issue if requested.
-	return openIssueIfRequested(issue, opts)
+	if _, open := opts["open"]; open {
+		return openIssue(issue)
+	}
+	return nil
 }
 
 // postUnassignedReviewRequest can be used to post the given commit for review.
@@ -309,8 +312,11 @@ func createUnassignedReviewRequest(
 		return errs.NewError(task, err, nil)
 	}
 
-	// Open the newly created issue if requested.
-	return openIssueIfRequested(issue, opts)
+	// Open the issue if requested.
+	if _, open := opts["open"]; open {
+		return openIssue(issue)
+	}
+	return nil
 }
 
 // extendUnassignedReviewRequest can be used to upload fixes for
@@ -392,7 +398,10 @@ func extendReviewRequest(
 	}
 
 	// Open the issue if requested.
-	return openIssueIfRequested(newIssue, opts)
+	if _, open := opts["open"]; open {
+		return openIssue(newIssue)
+	}
+	return nil
 }
 
 func addReviewComment(
@@ -421,16 +430,11 @@ func addReviewComment(
 	return nil
 }
 
-func openIssueIfRequested(issue *github.Issue, opts map[string]interface{}) error {
-	// Open the issue in case opts["open"] is set.
-	if _, open := opts["open"]; open {
-		task := fmt.Sprintf("Open issue #%v in the browser", *issue.Number)
-		if err := webbrowser.Open(*issue.HTMLURL); err != nil {
-			return errs.NewError(task, err, nil)
-		}
-		return nil
+func openIssue(issue *github.Issue) error {
+	task := fmt.Sprintf("Open issue #%v in the browser", *issue.Number)
+	if err := webbrowser.Open(*issue.HTMLURL); err != nil {
+		return errs.NewError(task, err, nil)
 	}
-	// Otherwise just return nil.
 	return nil
 }
 
