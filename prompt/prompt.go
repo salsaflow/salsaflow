@@ -99,36 +99,14 @@ func PromptIndex(msg string, min, max int) (int, error) {
 }
 
 func PromptStory(msg string, stories []common.Story) (common.Story, error) {
-	var task = "Prompt the user to select a story"
-
-	// Make sure there are actually some stories to be printed.
-	if len(stories) == 0 {
-		return nil, ErrNoStories
-	}
-
-	// Print the intro message.
-	fmt.Println(msg)
-	fmt.Println()
-
-	// Present the stories to the user.
-	if err := ListStories(stories, os.Stdout); err != nil {
-		return nil, err
-	}
-	fmt.Println()
-
-	// Prompt the user to select a story to assign the commit with.
-	index, err := PromptIndex(
-		"Choose a story by inserting its index. Or just press Enter to abort: ", 1, len(stories))
-	if err != nil {
-		if err == ErrCanceled {
-			return nil, ErrCanceled
-		}
-		return nil, errs.NewError(task, err, nil)
-	}
-	return stories[index-1], nil
+	return promptForStory(msg, stories, false)
 }
 
 func PromptStoryAllowNone(msg string, stories []common.Story) (common.Story, error) {
+	return promptForStory(msg, stories, true)
+}
+
+func promptForStory(msg string, stories []common.Story, allowNone bool) (common.Story, error) {
 	var task = "Prompt the user to select a story"
 
 	// Make sure there are actually some stories to be printed.
@@ -147,15 +125,25 @@ func PromptStoryAllowNone(msg string, stories []common.Story) (common.Story, err
 	fmt.Println()
 
 	// Prompt the user to select a story to assign the commit with.
-	index, err := PromptIndex(`Choose a story by inserting its index.
+	var (
+		index int
+		err   error
+	)
+	if allowNone {
+		index, err = PromptIndex(`Choose a story by inserting its index.
 You can also insert '0' not to choose any story
 or you can press Enter to abort: `, 0, len(stories))
+	} else {
+		index, err = PromptIndex(
+			"Choose a story by inserting its index. Or just press Enter to abort: ", 1, len(stories))
+	}
 	if err != nil {
 		if err == ErrCanceled {
 			return nil, ErrCanceled
 		}
 		return nil, errs.NewError(task, err, nil)
 	}
+	// No need to check allowNone since index can be 0 only if allowNone.
 	if index == 0 {
 		return nil, nil
 	}
