@@ -112,6 +112,9 @@ func run(cmd *gocli.Command, args []string) {
 }
 
 func postRevision(revision string) error {
+	// "HEAD" is used to post the tip of the current branch.
+	headMode := revision == "HEAD"
+
 	// Get the commit to be posted
 	task := "Get the commit to be posted for code review"
 	commits, err := git.ShowCommits(revision)
@@ -125,7 +128,7 @@ func postRevision(revision string) error {
 	}
 
 	// Post the review requests, in this case it will be only one.
-	if err := postReviewRequests(commits, revision == "HEAD"); err != nil {
+	if err := postReviewRequests(commits, headMode); err != nil {
 		return err
 	}
 
@@ -256,9 +259,10 @@ You are about to post review requests for the following commits:
 			return errs.NewError(task, err, nil)
 		}
 
-		// Push the branch in case we are in the parent mode.
+		// Push the branch in case we are on a branch tip.
+		// We are on a branch tip when canAmend is true.
 		// Use force in case we are not on any SF core branch.
-		if flagParent != "" {
+		if canAmend {
 			current, err := git.CurrentBranch()
 			if err != nil {
 				return err
