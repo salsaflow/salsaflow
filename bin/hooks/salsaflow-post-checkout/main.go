@@ -74,10 +74,13 @@ func hook() error {
 }
 
 func isCoreBranch(ref string) (bool, error) {
-	// Get the ref names using 'git log'.
-	// This prints the ref names in the following format:
+	// Since the hook is passed the commit hashes, we need to get the actual
+	// ref names for the hash to be able to check whether any core branch is affected.
 	//
-	//   (ref1, ref2, ..., refN)
+	// So, let's get the ref names using 'git log'.
+	// This prints the ref names for the given hash in the following format:
+	//
+	//   (refName1, refName2, ..., refNameN)
 	//
 	outputBuffer, err := git.Log("-1", "--pretty=format:%d", ref)
 	if err != nil {
@@ -93,8 +96,10 @@ func isCoreBranch(ref string) (bool, error) {
 	refNames := strings.Split(match[1], ", ")
 
 	// Iterate over the ref names and return the result.
-	for _, ref := range refNames {
-		isCore, err := git.IsCoreBranch(ref)
+	// The commit is considered a core branch tip when any of the associated
+	// ref names equals to a core branch names.
+	for _, refName := range refNames {
+		isCore, err := git.IsCoreBranch(refName)
 		if err != nil {
 			return false, err
 		}
