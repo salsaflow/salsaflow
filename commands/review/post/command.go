@@ -604,8 +604,8 @@ func commitsToReviewContexts(commits []*git.Commit) ([]*common.ReviewContext, er
 
 	// Build the story map.
 	storiesByTag := make(map[string]common.Story, 1)
-	for i, story := range stories {
-		storiesByTag[storyTagList[i]] = story
+	for _, story := range stories {
+		storiesByTag[story.Tag()] = story
 	}
 
 	// Build the final list of review contexts.
