@@ -4,8 +4,6 @@ import (
 	// Stdlib
 	"fmt"
 	"os"
-	"regexp"
-	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
@@ -42,7 +40,7 @@ func hook() error {
 	}
 
 	// Return unless the new HEAD is a core branch.
-	isCore, err := isCoreBranch(newRef)
+	isCore, err := isCoreBranchHash(newRef)
 	if err != nil {
 		return err
 	}
@@ -73,37 +71,13 @@ func hook() error {
 	return nil
 }
 
-func isCoreBranch(ref string) (bool, error) {
-	// Since the hook is passed the commit hashes, we need to get the actual
-	// ref names for the hash to be able to check whether any core branch is affected.
-	//
-	// So, let's get the ref names using 'git log'.
-	// This prints the ref names for the given hash in the following format:
-	//
-	//   (refName1, refName2, ..., refNameN)
-	//
-	outputBuffer, err := git.Log("-1", "--pretty=format:%d", ref)
+func isCoreBranchHash(hash string) (bool, error) {
+	hashes, err := git.CoreBranchHashes()
 	if err != nil {
 		return false, err
 	}
-	output := outputBuffer.String()
-
-	// Parse the output.
-	match := regexp.MustCompile("^[ ]*[(]([^)]+)[)][ ]*$").FindStringSubmatch(output)
-	if len(match) != 2 {
-		return false, fmt.Errorf("failed to parse git log: %v", output)
-	}
-	refNames := strings.Split(match[1], ", ")
-
-	// Iterate over the ref names and return the result.
-	// The commit is considered a core branch tip when any of the associated
-	// ref names equals to a core branch names.
-	for _, refName := range refNames {
-		isCore, err := git.IsCoreBranch(refName)
-		if err != nil {
-			return false, err
-		}
-		if isCore {
+	for _, h := range hashes {
+		if h == hash {
 			return true, nil
 		}
 	}

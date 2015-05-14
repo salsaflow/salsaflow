@@ -327,23 +327,6 @@ func CurrentBranch() (branch string, err error) {
 	return string(bytes.TrimSpace(stdout.Bytes())), nil
 }
 
-func IsCoreBranch(branch string) (bool, error) {
-	config, err := LoadConfig()
-	if err != nil {
-		return false, err
-	}
-
-	coreBranches := map[string]struct{}{
-		config.TrunkBranchName():   struct{}{},
-		config.ReleaseBranchName(): struct{}{},
-		config.StagingBranchName(): struct{}{},
-		config.StableBranchName():  struct{}{},
-	}
-
-	_, isCore := coreBranches[branch]
-	return isCore, nil
-}
-
 func GetConfigString(key string) (value string, err error) {
 	task := fmt.Sprintf("Run 'git config %v'", key)
 	stdout, stderr, err := shell.Run("git", "config", key)
