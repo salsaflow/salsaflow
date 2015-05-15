@@ -58,6 +58,12 @@ func hook() error {
 	// Collect the commits with missing Story-Id tag.
 	missing := make([]*git.Commit, 0, len(commits))
 	for _, commit := range commits {
+		// Skip merge commits.
+		if commit.Merge != "" {
+			continue
+		}
+
+		// Add the commit in case Story-Id tag is not set.
 		if commit.StoryIdTag == "" {
 			missing = append(missing, commit)
 		}
