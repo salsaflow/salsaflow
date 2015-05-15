@@ -218,6 +218,9 @@ func checkCommits(
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
+	if len(stories) == 0 {
+		return nil
+	}
 
 	groups, err := changes.StoryChanges(stories)
 	if err != nil {
