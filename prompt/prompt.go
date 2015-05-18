@@ -133,7 +133,7 @@ func promptForStory(msg string, stories []common.Story, allowNone bool) (common.
 	var task = "Prompt the user to select a story"
 
 	// Make sure there are actually some stories to be printed.
-	if len(stories) == 0 {
+	if len(stories) == 0 && !allowNone {
 		return nil, ErrNoStories
 	}
 
