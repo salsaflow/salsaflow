@@ -36,14 +36,14 @@ func executeInitHooks() error {
 
 var ErrInitialised = errors.New("repository already initialised")
 
-func Init() error {
+func Init(force bool) error {
 	// Check whether the repository has been initialised yet.
 	task := "Check whether the repository has been initialised"
 	versionString, err := git.GetConfigString("salsaflow.initialised")
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	if versionString == metadata.Version {
+	if versionString == metadata.Version && !force {
 		return errs.NewError(task, ErrInitialised, nil)
 	}
 
@@ -135,19 +135,19 @@ You need Git version 1.9.0 or newer.
 	// Verify our git hooks are installed and used.
 	task = "Check the current git commit-msg hook"
 	log.Run(task)
-	if err := hooks.CheckAndUpsert(hooks.HookTypeCommitMsg); err != nil {
+	if err := hooks.CheckAndUpsert(hooks.HookTypeCommitMsg, force); err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
 	task = "Check the current git post-checkout hook"
 	log.Run(task)
-	if err := hooks.CheckAndUpsert(hooks.HookTypePostCheckout); err != nil {
+	if err := hooks.CheckAndUpsert(hooks.HookTypePostCheckout, force); err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
 	task = "Check the current git pre-push hook"
 	log.Run(task)
-	if err := hooks.CheckAndUpsert(hooks.HookTypePrePush); err != nil {
+	if err := hooks.CheckAndUpsert(hooks.HookTypePrePush, force); err != nil {
 		return errs.NewError(task, err, nil)
 	}
 

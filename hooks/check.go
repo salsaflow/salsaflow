@@ -40,7 +40,9 @@ func getHookFileName(typ HookType) string {
 }
 
 // Check whether SalsaFlow git hook is used. Prompts user to install our hook if it isn't.
-func CheckAndUpsert(typ HookType) error {
+//
+// When the force argument is set to true, the hook is replaced when though the version matches.
+func CheckAndUpsert(typ HookType, force bool) error {
 	// Declade some variables so that we can use goto.
 	var confirmed bool
 
@@ -51,11 +53,13 @@ func CheckAndUpsert(typ HookType) error {
 	}
 
 	hookPath := filepath.Join(repoRoot, ".git", "hooks", string(typ))
+
+	// Try to get the hook version.
 	stdout, _, _ := shell.Run(hookPath, "-"+versionFlag)
 
-	// In case the versions match, we are done here.
+	// In case the versions match, we are done here (unless force).
 	installedVersion, err := version.Parse(strings.TrimSpace(stdout.String()))
-	if err == nil && installedVersion.String() == metadata.Version {
+	if !force && installedVersion != nil && installedVersion.String() == metadata.Version {
 		return nil
 	}
 
@@ -73,10 +77,13 @@ func CheckAndUpsert(typ HookType) error {
 	// we don't have to ask the user, we can just install the hook.
 	task = fmt.Sprintf("Check whether there is a git %v hook already installed", typ)
 	if _, err := os.Stat(hookPath); err != nil {
-		if os.IsNotExist(err) || installedVersion != nil {
+		if os.IsNotExist(err) {
 			goto CopyHook
 		}
 		return errs.NewError(task, err, nil)
+	}
+	if installedVersion != nil || force {
+		goto CopyHook
 	}
 
 	// Prompt the user to confirm the SalsaFlow git commit-task hook.

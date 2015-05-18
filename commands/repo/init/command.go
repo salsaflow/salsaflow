@@ -23,13 +23,19 @@ var Command = &gocli.Command{
 	Action: run,
 }
 
+var flagForce bool
+
+func init() {
+	Command.Flags.BoolVar(&flagForce, "force", flagForce, "force repo init process")
+}
+
 func run(cmd *gocli.Command, args []string) {
 	if len(args) != 0 {
 		cmd.Usage()
 		os.Exit(2)
 	}
 
-	if err := app.Init(); err != nil {
+	if err := app.Init(flagForce); err != nil {
 		if ex, ok := err.(*errs.Error); ok && ex.RootCause() == repo.ErrInitialised {
 			log.Log("The repository has been already initialised")
 			return

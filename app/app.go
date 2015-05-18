@@ -23,12 +23,12 @@ func RegisterGlobalFlags(flags *flag.FlagSet) {
 	flags.Var(LogFlag, "log", "set logging verbosity; {trace|debug|verbose|info|off}")
 }
 
-func Init() error {
+func Init(force bool) error {
 	// Set up logging.
 	log.SetV(log.MustStringToLevel(LogFlag.Value()))
 
 	// Make sure the repo is initialised.
-	if err := repo.Init(); err != nil {
+	if err := repo.Init(force); err != nil {
 		return err
 	}
 
@@ -36,7 +36,7 @@ func Init() error {
 }
 
 func InitOrDie() {
-	if err := Init(); err != nil {
+	if err := Init(false); err != nil {
 		if ex, ok := err.(*errs.Error); !ok || ex.RootCause() != repo.ErrInitialised {
 			errs.Fatal(err)
 		}
