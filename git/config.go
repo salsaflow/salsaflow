@@ -12,7 +12,7 @@ const (
 
 	DefaultTrunkBranchName   = "develop"
 	DefaultReleaseBranchName = "release"
-	DefaultStageBranchName   = "client"
+	DefaultStageBranchName   = "stage"
 	DefaultStableBranchName  = "master"
 )
 
