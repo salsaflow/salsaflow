@@ -6,6 +6,7 @@ import (
 	"os"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/commands/review/post/constants"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/hooks"
@@ -43,6 +44,19 @@ func hook() error {
 		return err
 	}
 	if !isCore {
+		return nil
+	}
+
+	// Return also in case we are doing something with a temporary branch.
+	isNewRefTemp, err := isTempBranchHash(newRef)
+	if err != nil {
+		return err
+	}
+	isPrevRefTemp, err := isTempBranchHash(prevRef)
+	if err != nil {
+		return err
+	}
+	if isNewRefTemp || isPrevRefTemp {
 		return nil
 	}
 
@@ -104,6 +118,25 @@ func isCoreBranchHash(hash string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func isTempBranchHash(hash string) (bool, error) {
+	// Check whether the temp branch actually exists.
+	// Obviously we want to return false when there is no such branch.
+	exists, err := git.LocalBranchExists(constants.TempBranchName)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		return false, nil
+	}
+
+	// In case the temp branch exists, compare the hashes.
+	tempHash, err := git.BranchHexsha(constants.TempBranchName)
+	if err != nil {
+		return false, err
+	}
+	return tempHash == hash, nil
 }
 
 func printWarning(commits []*git.Commit) error {

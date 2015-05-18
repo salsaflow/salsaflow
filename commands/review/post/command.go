@@ -14,6 +14,7 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/app"
 	"github.com/salsaflow/salsaflow/asciiart"
+	"github.com/salsaflow/salsaflow/commands/review/post/constants"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/log"
@@ -427,21 +428,20 @@ StoryLoop:
 
 	// Prepare a temporary branch that will be used to amend commit messages.
 	task = "Create a temporary branch to rewrite commit messages"
-	tempBranch := "salsaflow/temp-review-post"
-	if err := git.Branch("-f", tempBranch, parentSHA); err != nil {
+	if err := git.Branch("-f", constants.TempBranchName, parentSHA); err != nil {
 		return nil, errs.NewError(task, err, nil)
 	}
 	defer func() {
 		// Delete the temporary branch on exit.
 		task := "Delete the temporary branch"
-		if err := git.Branch("-D", tempBranch); err != nil {
+		if err := git.Branch("-D", constants.TempBranchName); err != nil {
 			errs.LogError(task, err, nil)
 		}
 	}()
 
 	// Checkout the temporary branch.
 	task = "Checkout the temporary branch"
-	if err := git.Checkout(tempBranch); err != nil {
+	if err := git.Checkout(constants.TempBranchName); err != nil {
 		return nil, errs.NewError(task, err, nil)
 	}
 	defer func() {
@@ -531,7 +531,7 @@ Inserting '0' will mark the commit as unassigned:`, commit.SHA, commitMessageTit
 
 	// Reset the current branch to point to the new branch.
 	task = "Reset the current branch to point to the temporary branch"
-	if err := git.ResetKeep(currentBranch, tempBranch); err != nil {
+	if err := git.ResetKeep(currentBranch, constants.TempBranchName); err != nil {
 		return nil, errs.NewError(task, err, nil)
 	}
 

@@ -252,6 +252,10 @@ func Hexsha(ref string) (hexsha string, err error) {
 	return strings.Split(stdout.String(), " ")[0], nil
 }
 
+func BranchHexsha(branch string) (hexsha string, err error) {
+	return Hexsha("refs/heads/" + branch)
+}
+
 func EnsureBranchSynchronized(branch, remote string) error {
 	exists, err := RemoteBranchExists(branch, remote)
 	if err != nil {
