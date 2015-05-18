@@ -15,6 +15,7 @@ import (
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/prompt"
 	"github.com/salsaflow/salsaflow/shell"
+	"github.com/salsaflow/salsaflow/version"
 
 	// Other
 	"github.com/kardianos/osext"
@@ -53,7 +54,8 @@ func CheckAndUpsert(typ HookType) error {
 	stdout, _, _ := shell.Run(hookPath, "-"+versionFlag)
 
 	// In case the versions match, we are done here.
-	if strings.TrimSpace(stdout.String()) == metadata.Version {
+	installedVersion, err := version.Parse(strings.TrimSpace(stdout.String()))
+	if err == nil && installedVersion.String() == metadata.Version {
 		return nil
 	}
 
@@ -67,10 +69,11 @@ func CheckAndUpsert(typ HookType) error {
 	hookBin := filepath.Join(binDir, getHookFileName(typ))
 
 	// Check whether there is a hook already present in the repository.
-	// If there is no hook, we don't have to ask the user, we can just install the hook.
+	// If there is no hook or there is a SalsaFlow hook returning a different version string,
+	// we don't have to ask the user, we can just install the hook.
 	task = fmt.Sprintf("Check whether there is a git %v hook already installed", typ)
 	if _, err := os.Stat(hookPath); err != nil {
-		if os.IsNotExist(err) {
+		if os.IsNotExist(err) || installedVersion != nil {
 			goto CopyHook
 		}
 		return errs.NewError(task, err, nil)
