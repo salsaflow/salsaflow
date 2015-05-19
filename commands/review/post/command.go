@@ -250,11 +250,7 @@ You are about to post review requests for the following commits:
 
 	// Check the commits.
 	task = "Make sure the commits comply with the rules"
-	storyIdMissing, err := isStoryIdMissing(commits)
-	if err != nil {
-		return errs.NewError(task, err, nil)
-	}
-	if storyIdMissing {
+	if isStoryIdMissing(commits) {
 		commits, err = rewriteCommits(commits, canAmend)
 		if err != nil {
 			return errs.NewError(task, err, nil)
@@ -308,31 +304,17 @@ You are about to post review requests for the following commits:
 	return nil
 }
 
-func isStoryIdMissing(commits []*git.Commit) (bool, error) {
+func isStoryIdMissing(commits []*git.Commit) bool {
 	for _, commit := range commits {
 		if commit.Merge != "" {
 			continue
 		}
-
-		ok, err := isCommitAssociated(commit)
-		if err != nil {
-			return false, err
+		if commit.StoryIdTag != "" {
+			continue
 		}
-		if !ok {
-			return true, nil
-		}
+		return true
 	}
-	return false, nil
-}
-
-func isCommitAssociated(commit *git.Commit) (bool, error) {
-	tracker, err := modules.GetIssueTracker()
-	if err != nil {
-		return false, err
-	}
-
-	_, err = tracker.StoryTagToReadableStoryId(commit.StoryIdTag)
-	return err == nil, nil
+	return false
 }
 
 func rewriteCommits(commits []*git.Commit, canAmend bool) ([]*git.Commit, error) {
