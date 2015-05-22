@@ -52,10 +52,10 @@ func CheckAndUpsert(typ HookType, force bool) error {
 		return err
 	}
 
-	hookPath := filepath.Join(repoRoot, ".git", "hooks", string(typ))
+	hookDestPath := filepath.Join(repoRoot, ".git", "hooks", string(typ))
 
 	// Try to get the hook version.
-	stdout, _, _ := shell.Run(hookPath, "-"+versionFlag)
+	stdout, _, _ := shell.Run(hookDestPath, "-"+versionFlag)
 
 	// In case the versions match, we are done here (unless force).
 	installedVersion, err := version.Parse(strings.TrimSpace(stdout.String()))
@@ -70,20 +70,20 @@ func CheckAndUpsert(typ HookType, force bool) error {
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	hookBin := filepath.Join(binDir, getHookFileName(typ))
+	hookExecutable := filepath.Join(binDir, getHookFileName(typ))
 
 	// Check whether there is a hook already present in the repository.
 	// If there is no hook or there is a SalsaFlow hook returning a different version string,
 	// we don't have to ask the user, we can just install the hook.
 	task = fmt.Sprintf("Check whether there is a git %v hook already installed", typ)
-	if _, err := os.Stat(hookPath); err != nil {
+	if _, err := os.Stat(hookDestPath); err != nil {
 		if os.IsNotExist(err) {
-			goto CopyHook
+			return copyHook(typ, hookExecutable, hookDestPath)
 		}
 		return errs.NewError(task, err, nil)
 	}
 	if installedVersion != nil || force {
-		goto CopyHook
+		return copyHook(typ, hookExecutable, hookDestPath)
 	}
 
 	// Prompt the user to confirm the SalsaFlow git commit-task hook.
@@ -106,18 +106,20 @@ Please make sure the executable located at
 
 runs as your `+string(typ)+` hook and run me again!
 
-`, hookBin)
+`, hookExecutable)
 		return errs.NewError(task, fmt.Errorf("SalsaFlow git %v hook not detected", typ), nil)
 	}
 
-CopyHook:
-	// Install the SalsaFlow git hook by copying the hook executable
-	// from the expected absolute path to the git config hook directory.
-	task = fmt.Sprintf("Install the SalsaFlow git %v hook", typ)
-	if err := CopyFile(hookBin, hookPath); err != nil {
+	return copyHook(typ, hookExecutable, hookDestPath)
+}
+
+// copyHook installs the SalsaFlow git hook by copying the hook executable
+// from the expected absolute path to the git config hook directory.
+func copyHook(typ HookType, hookExecutable, hookDestPath string) error {
+	task := fmt.Sprintf("Install the SalsaFlow git %v hook", typ)
+	if err := CopyFile(hookExecutable, hookDestPath); err != nil {
 		return errs.NewError(task, err, nil)
 	}
 	log.Log(fmt.Sprintf("SalsaFlow git %v hook installed", typ))
-
 	return nil
 }
