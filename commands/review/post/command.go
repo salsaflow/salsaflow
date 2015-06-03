@@ -255,18 +255,33 @@ You are about to post review requests for the following commits:
 		if err != nil {
 			return errs.NewError(task, err, nil)
 		}
+	} else {
+		log.Log("Commit check passed")
+	}
 
-		// Push the branch in case we are on a branch tip.
-		// We are on a branch tip when canAmend is true.
-		// Use force in case we are not on any SF core branch.
-		if canAmend {
-			current, err := git.CurrentBranch()
-			if err != nil {
-				return err
-			}
+	// Push the branch in case we are on a branch tip.
+	// We are on a branch tip when canAmend is true.
+	// Use force in case we are not on any SF core branch.
+	if canAmend {
+		// Get the current branch name.
+		current, err := git.CurrentBranch()
+		if err != nil {
+			return err
+		}
 
+		// Push only if the branch is not in sync.
+		gitConfig, err := git.LoadConfig()
+		if err != nil {
+			return err
+		}
+
+		upToDate, err := git.IsBranchSynchronized(current, gitConfig.RemoteName())
+		if err != nil {
+			return err
+		}
+		if !upToDate {
 			args := make([]string, 0, 1)
-			msg := "Current branch rewritten, pushing to synchronize"
+			msg := "Pushing the current branch to synchronize"
 			isCore, err := git.IsCoreBranch(current)
 			if err != nil {
 				return err
@@ -280,8 +295,6 @@ You are about to post review requests for the following commits:
 				return errs.NewError("Push the current branch", err, nil)
 			}
 		}
-	} else {
-		log.Log("Commit check passed")
 	}
 
 	// Print Snoopy.

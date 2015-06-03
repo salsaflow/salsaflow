@@ -256,13 +256,13 @@ func BranchHexsha(branch string) (hexsha string, err error) {
 	return Hexsha("refs/heads/" + branch)
 }
 
-func EnsureBranchSynchronized(branch, remote string) error {
+func IsBranchSynchronized(branch, remote string) (bool, error) {
 	exists, err := RemoteBranchExists(branch, remote)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if !exists {
-		return nil
+		return true, nil
 	}
 
 	var (
@@ -271,14 +271,22 @@ func EnsureBranchSynchronized(branch, remote string) error {
 	)
 	localHexsha, err := Hexsha(localRef)
 	if err != nil {
-		return err
+		return false, err
 	}
 	remoteHexsha, err := Hexsha(remoteRef)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	if localHexsha != remoteHexsha {
+	return localHexsha == remoteHexsha, nil
+}
+
+func EnsureBranchSynchronized(branch, remote string) error {
+	upToDate, err := IsBranchSynchronized(branch, remote)
+	if err != nil {
+		return err
+	}
+	if !upToDate {
 		return fmt.Errorf("branch '%v' is not up to date", branch)
 	}
 	return nil
