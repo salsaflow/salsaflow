@@ -12,9 +12,9 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/version"
 
-	// Other
-	"github.com/coreos/go-semver/semver"
+	// Vendor
 	"github.com/google/go-github/github"
 )
 
@@ -57,7 +57,7 @@ func Upgrade(opts *InstallOptions) error {
 			continue
 		}
 		// We expect the tag to be "v" + semver version string.
-		version, err := semver.NewVersion((*release.TagName)[1:])
+		version, err := version.Parse((*release.TagName)[1:])
 		if err != nil {
 			log.Warn(fmt.Sprintf("Tag format invalid for '%v', skipping...", release.TagName))
 			continue
@@ -76,11 +76,11 @@ func Upgrade(opts *InstallOptions) error {
 	release := rs[len(rs)-1]
 
 	// Make sure the selected release is more recent than this executable.
-	currentVersion, err := semver.NewVersion(metadata.Version)
+	currentVersion, err := version.Parse(metadata.Version)
 	if err != nil {
 		panic(err)
 	}
-	if release.version.String() == metadata.Version || release.version.LessThan(*currentVersion) {
+	if release.version.String() == metadata.Version || release.version.LT(currentVersion.Version) {
 		log.Log("SalsaFlow is up to date")
 		asciiart.PrintThumbsUp()
 		fmt.Println()
@@ -105,7 +105,7 @@ func Upgrade(opts *InstallOptions) error {
 }
 
 type githubRelease struct {
-	version  *semver.Version
+	version  *version.Version
 	resource *github.RepositoryRelease
 }
 
@@ -116,7 +116,7 @@ func (rs releaseSlice) Len() int {
 }
 
 func (rs releaseSlice) Less(i, j int) bool {
-	return rs[i].version.LessThan(*(rs[j].version))
+	return rs[i].version.LT(rs[j].version.Version)
 }
 
 func (rs releaseSlice) Swap(i, j int) {
