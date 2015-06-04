@@ -4,14 +4,13 @@ import (
 	// Stdlib
 	"bufio"
 	"fmt"
+	"sort"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/modules/common"
-
-	// Other
-	"github.com/coreos/go-semver/semver"
+	"github.com/salsaflow/salsaflow/version"
 )
 
 // ListNewTrunkCommits returns the list of commits that are new since the last release.
@@ -91,7 +90,7 @@ func ListTags() (tags []string, err error) {
 	}
 
 	// Parse the output to get sortable versions.
-	var vers []*semver.Version
+	var vers []*version.Version
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -99,7 +98,7 @@ func ListTags() (tags []string, err error) {
 			continue
 		}
 		line = line[1:] // strip "v"
-		ver, _ := semver.NewVersion(line)
+		ver, _ := version.Parse(line)
 		vers = append(vers, ver)
 	}
 	if err := scanner.Err(); err != nil {
@@ -107,7 +106,7 @@ func ListTags() (tags []string, err error) {
 	}
 
 	// Sort the versions.
-	semver.Sort(vers)
+	sort.Sort(version.Versions(vers))
 
 	// Convert versions back to tag names and return.
 	tgs := make([]string, 0, len(vers))

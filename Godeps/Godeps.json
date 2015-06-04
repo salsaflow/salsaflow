@@ -6,8 +6,9 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "github.com/coreos/go-semver/semver",
-			"Rev": "568e959cd89871e61434c1143528d9162da89ef2"
+			"ImportPath": "github.com/blang/semver",
+			"Comment": "v3.0.0",
+			"Rev": "2f3112b6f8f18f9df8743cc75ed51da08094ef6a"
 		},
 		{
 			"ImportPath": "github.com/extemporalgenome/slug",

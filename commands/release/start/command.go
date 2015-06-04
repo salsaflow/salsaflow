@@ -14,8 +14,7 @@ import (
 	"github.com/salsaflow/salsaflow/modules"
 	"github.com/salsaflow/salsaflow/version"
 
-	// Other
-	"github.com/coreos/go-semver/semver"
+	// Vendor
 	"gopkg.in/tchap/gocli.v2"
 )
 
@@ -107,17 +106,11 @@ func runMain() (err error) {
 	var nextTrunkVersion *version.Version
 	if !flagNextTrunk.Zero() {
 		// Make sure the new version is actually incrementing the current one.
-		current, err := semver.NewVersion(trunkVersion.String())
-		if err != nil {
-			panic(err)
-		}
-
-		next, err := semver.NewVersion(flagNextTrunk.String())
-		if err != nil {
-			panic(err)
-		}
-
-		if !current.LessThan(*next) {
+		var (
+			current = trunkVersion
+			next    = flagNextTrunk
+		)
+		if current.GE(next.Version) {
 			return fmt.Errorf("future version string not an increment: %v <= %v", next, current)
 		}
 

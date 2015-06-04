@@ -11,7 +11,7 @@ godep-install:
 	godep go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-pre-push
 
 deps.fetch:
-	go get -d -u github.com/coreos/go-semver/semver
+	go get -d -u github.com/blang/semver
 	go get -d -u github.com/extemporalgenome/slug
 	go get -d -u github.com/fatih/color
 	go get -d -u github.com/kardianos/osext
