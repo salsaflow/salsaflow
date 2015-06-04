@@ -13,7 +13,9 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
-	"github.com/salsaflow/salsaflow/modules/jira/client"
+
+	// Vendor
+	"github.com/salsita/go-jira/v2/jira"
 )
 
 // API client instantiation ----------------------------------------------------
@@ -29,10 +31,10 @@ func (rt *BasicAuthRoundTripper) RoundTrip(req *http.Request) (*http.Response, e
 	return rt.next.RoundTrip(req)
 }
 
-func newClient(config Config) *client.Client {
+func newClient(config Config) *jira.Client {
 	relativeURL, _ := url.Parse("rest/api/2/")
 	serverURL := config.ServerURL().ResolveReference(relativeURL)
-	return client.New(serverURL, &http.Client{
+	return jira.NewClient(serverURL, &http.Client{
 		Transport: &BasicAuthRoundTripper{
 			username: config.Username(),
 			password: config.Password(),
@@ -44,27 +46,27 @@ func newClient(config Config) *client.Client {
 
 // issueUpdateFunc represents a function that takes an existing story and
 // changes it somehow using an API call. It then returns any error encountered.
-type issueUpdateFunc func(*client.Client, *client.Issue) error
+type issueUpdateFunc func(*jira.Client, *jira.Issue) error
 
 // issueUpdateResult represents what was returned by an issueUpdateFunc.
 // It contains the original issue object and the error returned by the update function.
 type issueUpdateResult struct {
-	issue *client.Issue
+	issue *jira.Issue
 	err   error
 }
 
 // updateIssues calls updateFunc on every issue in the list, concurrently.
 // It then collects all the results and returns the cumulative result.
 func updateIssues(
-	api *client.Client,
-	issues []*client.Issue,
+	api *jira.Client,
+	issues []*jira.Issue,
 	updateFunc issueUpdateFunc,
 	rollbackFunc issueUpdateFunc,
 ) error {
 	// Send all the requests at once.
 	retCh := make(chan *issueUpdateResult, len(issues))
 	for _, issue := range issues {
-		go func(is *client.Issue) {
+		go func(is *jira.Issue) {
 			err := updateFunc(api, is)
 			retCh <- &issueUpdateResult{is, err}
 		}(issue)
@@ -73,7 +75,7 @@ func updateIssues(
 	// Wait for the requests to complete.
 	var (
 		stderr        = bytes.NewBufferString("\nUpdate Errors\n-------------\n")
-		updatedIssues = make([]*client.Issue, 0, len(issues))
+		updatedIssues = make([]*jira.Issue, 0, len(issues))
 		err           error
 	)
 	for i := 0; i < cap(retCh); i++ {
@@ -91,7 +93,7 @@ func updateIssues(
 			// Spawn the rollback goroutines.
 			retCh := make(chan *issueUpdateResult)
 			for _, issue := range updatedIssues {
-				go func(is *client.Issue) {
+				go func(is *jira.Issue) {
 					err := rollbackFunc(api, is)
 					retCh <- &issueUpdateResult{is, err}
 				}(issue)
@@ -119,13 +121,13 @@ func updateIssues(
 
 // Versions --------------------------------------------------------------------
 
-func assignIssuesToVersion(api *client.Client, issues []*client.Issue, versionId string) error {
+func assignIssuesToVersion(api *jira.Client, issues []*jira.Issue, versionId string) error {
 	// The payload is the same for all the issue updates.
-	addRequest := client.M{
-		"update": client.M{
-			"fixVersions": client.L{
-				client.M{
-					"add": &client.Version{
+	addRequest := jira.M{
+		"update": jira.M{
+			"fixVersions": jira.L{
+				jira.M{
+					"add": &jira.Version{
 						Id: versionId,
 					},
 				},
@@ -134,11 +136,11 @@ func assignIssuesToVersion(api *client.Client, issues []*client.Issue, versionId
 	}
 
 	// Rollback request is used when we want to delete the version again.
-	removeRequest := client.M{
-		"update": client.M{
-			"fixVersions": client.L{
-				client.M{
-					"remove": &client.Version{
+	removeRequest := jira.M{
+		"update": jira.M{
+			"fixVersions": jira.L{
+				jira.M{
+					"remove": &jira.Version{
 						Id: versionId,
 					},
 				},
@@ -148,17 +150,17 @@ func assignIssuesToVersion(api *client.Client, issues []*client.Issue, versionId
 
 	// Update all the issues concurrently and return the result.
 	return updateIssues(api, issues,
-		func(api *client.Client, issue *client.Issue) error {
+		func(api *jira.Client, issue *jira.Issue) error {
 			_, err := api.Issues.Update(issue.Id, addRequest)
 			return err
 		},
-		func(api *client.Client, issue *client.Issue) error {
+		func(api *jira.Client, issue *jira.Issue) error {
 			_, err := api.Issues.Update(issue.Id, removeRequest)
 			return err
 		})
 }
 
-func issuesByVersion(api *client.Client, projectKey, versionName string) ([]*client.Issue, error) {
+func issuesByVersion(api *jira.Client, projectKey, versionName string) ([]*jira.Issue, error) {
 	query := fmt.Sprintf("project = %v AND fixVersion = \"%v\"", projectKey, versionName)
 	return search(api, query)
 }
@@ -166,21 +168,21 @@ func issuesByVersion(api *client.Client, projectKey, versionName string) ([]*cli
 // Transitions -----------------------------------------------------------------
 
 func performBulkTransition(
-	api *client.Client,
-	issues []*client.Issue,
+	api *jira.Client,
+	issues []*jira.Issue,
 	transitionId string,
 	rollbackTransitionId string,
 ) error {
 	var rollbackFunc issueUpdateFunc
 	if rollbackTransitionId != "" {
-		rollbackFunc = func(api *client.Client, issue *client.Issue) error {
+		rollbackFunc = func(api *jira.Client, issue *jira.Issue) error {
 			_, err := api.Issues.PerformTransition(issue.Id, rollbackTransitionId)
 			return err
 		}
 	}
 
 	return updateIssues(api, issues,
-		func(api *client.Client, issue *client.Issue) error {
+		func(api *jira.Client, issue *jira.Issue) error {
 			_, err := api.Issues.PerformTransition(issue.Id, transitionId)
 			return err
 		},
@@ -189,14 +191,14 @@ func performBulkTransition(
 
 // Various userful helper functions --------------------------------------------
 
-func search(api *client.Client, query string) ([]*client.Issue, error) {
-	issues, _, err := api.Issues.Search(&client.SearchOptions{
+func search(api *jira.Client, query string) ([]*jira.Issue, error) {
+	issues, _, err := api.Issues.Search(&jira.SearchOptions{
 		JQL: query,
 	})
 	return issues, err
 }
 
-func listStoriesById(api *client.Client, ids []string) ([]*client.Issue, error) {
+func listStoriesById(api *jira.Client, ids []string) ([]*jira.Issue, error) {
 	// In case the list of IDs is empty, just return an empty slice.
 	if len(ids) == 0 {
 		return nil, nil
@@ -211,7 +213,7 @@ func listStoriesById(api *client.Client, ids []string) ([]*client.Issue, error) 
 	// JIRA returns 400 Bad Request when some of the issues are not found.
 	// To handle this error, we parse the error messages (not too robust)
 	// and we try to send the request again without the IDs that were not found.
-	if err, ok := err.(*client.ErrAPI); ok {
+	if err, ok := err.(*jira.ErrAPI); ok {
 		invalidIdRegexp := regexp.MustCompile(
 			"A value with ID '([^']+)' does not exist for the field 'id'.")
 
@@ -251,7 +253,7 @@ func listStoriesById(api *client.Client, ids []string) ([]*client.Issue, error) 
 	return nil, err
 }
 
-func listStoriesByIdOrdered(api *client.Client, ids []string) ([]*client.Issue, error) {
+func listStoriesByIdOrdered(api *jira.Client, ids []string) ([]*jira.Issue, error) {
 	// Fetch the issues.
 	issues, err := listStoriesById(api, ids)
 	if err != nil {
@@ -259,14 +261,14 @@ func listStoriesByIdOrdered(api *client.Client, ids []string) ([]*client.Issue, 
 	}
 
 	// Order them.
-	idMap := make(map[string]*client.Issue, len(ids))
-	keyMap := make(map[string]*client.Issue, len(ids))
+	idMap := make(map[string]*jira.Issue, len(ids))
+	keyMap := make(map[string]*jira.Issue, len(ids))
 	for _, issue := range issues {
 		idMap[issue.Id] = issue
 		keyMap[issue.Key] = issue
 	}
 
-	ordered := make([]*client.Issue, 0, len(ids))
+	ordered := make([]*jira.Issue, 0, len(ids))
 	for _, id := range ids {
 		if issue, ok := idMap[id]; ok {
 			ordered = append(ordered, issue)

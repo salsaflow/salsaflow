@@ -1,9 +1,9 @@
 package jira
 
-import "github.com/salsaflow/salsaflow/modules/jira/client"
+import "github.com/salsita/go-jira/v2/jira"
 
 type user struct {
-	*client.User
+	*jira.User
 }
 
 func (u *user) Id() string {

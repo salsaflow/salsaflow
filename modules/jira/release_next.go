@@ -10,18 +10,20 @@ import (
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
-	"github.com/salsaflow/salsaflow/modules/jira/client"
 	"github.com/salsaflow/salsaflow/prompt"
 	"github.com/salsaflow/salsaflow/releases"
 	"github.com/salsaflow/salsaflow/version"
+
+	// Vendor
+	"github.com/salsita/go-jira/v2/jira"
 )
 
 type nextRelease struct {
 	tracker              *issueTracker
 	trunkVersion         *version.Version
-	trunkVersionResource *client.Version
+	trunkVersionResource *jira.Version
 	nextTrunkVersion     *version.Version
-	additionalIssues     []*client.Issue
+	additionalIssues     []*jira.Issue
 }
 
 func newNextRelease(
@@ -84,7 +86,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	}
 
 	// Drop the issues that were already assigned to the right version.
-	filteredIssues := make([]*client.Issue, 0, len(issues))
+	filteredIssues := make([]*jira.Issue, 0, len(issues))
 IssueLoop:
 	for _, issue := range issues {
 		// Add only the parent tasks, i.e. skip sub-tasks.
@@ -134,7 +136,7 @@ func (release *nextRelease) Start() (action.Action, error) {
 	createTask := fmt.Sprintf("Create JIRA version for the future release (%v)", tag)
 	log.Run(createTask)
 
-	versionResource, _, err := api.Versions.Create(&client.Version{
+	versionResource, _, err := api.Versions.Create(&jira.Version{
 		Name:    tag,
 		Project: release.tracker.config.ProjectKey(),
 	})

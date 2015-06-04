@@ -13,14 +13,16 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules/common"
-	"github.com/salsaflow/salsaflow/modules/jira/client"
 	"github.com/salsaflow/salsaflow/version"
+
+	// Vendor
+	"github.com/salsita/go-jira/v2/jira"
 )
 
 type runningRelease struct {
 	tracker        *issueTracker
 	releaseVersion *version.Version
-	issues         []*client.Issue
+	issues         []*jira.Issue
 }
 
 func newRunningRelease(
@@ -104,7 +106,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	log.Run(stageTask)
 
 	// Make sure we only try to stage the issues that are in Tested.
-	var issuesToStage []*client.Issue
+	var issuesToStage []*jira.Issue
 	for _, issue := range release.issues {
 		if issue.Fields.Status.Id == stateIdTested {
 			issuesToStage = append(issuesToStage, issue)
@@ -129,7 +131,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 
 func (release *runningRelease) Releasable() (bool, error) {
 	// Drop accepted issues.
-	var notAccepted []*client.Issue
+	var notAccepted []*jira.Issue
 IssueLoop:
 	for _, issue := range release.issues {
 		for _, id := range acceptedStateIds {
@@ -152,7 +154,7 @@ func (release *runningRelease) Release() error {
 		newClient(release.tracker.config), release.issues, transitionIdRelease, "")
 }
 
-func ensureStageableIssue(issue *client.Issue) error {
+func ensureStageableIssue(issue *jira.Issue) error {
 	// Check subtasks recursively.
 	for _, subtask := range issue.Fields.Subtasks {
 		if err := ensureStageableIssue(subtask); err != nil {

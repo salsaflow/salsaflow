@@ -9,16 +9,18 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/modules/common"
-	"github.com/salsaflow/salsaflow/modules/jira/client"
+
+	// Vendor
+	"github.com/salsita/go-jira/v2/jira"
 )
 
 type story struct {
-	*client.Issue
+	*jira.Issue
 	seq     int
 	tracker *issueTracker
 }
 
-func newStory(issue *client.Issue, tracker *issueTracker) (*story, error) {
+func newStory(issue *jira.Issue, tracker *issueTracker) (*story, error) {
 	parts := strings.SplitAfterN(issue.Key, "-", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid issue key: %v", issue.Key)
