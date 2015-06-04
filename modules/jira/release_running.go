@@ -32,27 +32,14 @@ func newRunningRelease(
 
 	// Fetch relevant issues from JIRA.
 	var (
-		key = tracker.config.ProjectKey()
-		tag = releaseVersion.ReleaseTagString()
+		key          = tracker.config.ProjectKey()
+		releaseLabel = releaseVersion.ReleaseTagString()
+		task         = fmt.Sprintf("Fetch issues labeled with '%v'", releaseLabel)
 	)
-
-	task := fmt.Sprintf("Fetch issues from JIRA for version '%v'", tag)
-
-	// Make sure the relevant JIRA version exists.
-	// This is necessary to do since JIRA returns 400 Bad Request when
-	// JQL with 'fixVersion = "non-existing version"' is sent.
-	res, err := tracker.getVersionResource(releaseVersion)
+	log.Run(task)
+	issues, err := issuesByLabel(newClient(tracker.config), key, releaseLabel)
 	if err != nil {
 		return nil, errs.NewError(task, err, nil)
-	}
-	if res == nil {
-		return nil, errs.NewError(task, common.ErrReleaseNotFound, nil)
-	}
-
-	// Now we can fetch the issues since we know the version exists.
-	issues, err := issuesByVersion(newClient(tracker.config), key, tag)
-	if err != nil {
-		return nil, err
 	}
 
 	// Return a new release instance.
@@ -69,7 +56,7 @@ func (release *runningRelease) Stories() ([]common.Story, error) {
 
 func (release *runningRelease) EnsureStageable() error {
 	var task = fmt.Sprintf(
-		"Make sure JIRA version '%v' is stageable", release.releaseVersion.ReleaseTagString())
+		"Make sure release '%v' can be staged", release.releaseVersion.ReleaseTagString())
 	log.Run(task)
 
 	var details bytes.Buffer
@@ -80,7 +67,7 @@ func (release *runningRelease) EnsureStageable() error {
 
 	var (
 		err             error
-		errNotStageable = errors.New("release not stageable")
+		errNotStageable = errors.New("release cannot be staged")
 	)
 	for _, issue := range release.issues {
 		if ex := ensureStageableIssue(issue); ex != nil {
@@ -101,7 +88,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	var (
 		api       = newClient(release.tracker.config)
 		tag       = release.releaseVersion.ReleaseTagString()
-		stageTask = fmt.Sprintf("Stage JIRA version '%v'", tag)
+		stageTask = fmt.Sprintf("Stage JIRA release '%v'", tag)
 	)
 	log.Run(stageTask)
 
@@ -121,7 +108,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 
 	return action.ActionFunc(func() error {
 		log.Rollback(stageTask)
-		unstageTask := fmt.Sprintf("Unstage JIRA version %v", tag)
+		unstageTask := fmt.Sprintf("Unstage JIRA release %v", tag)
 		if err := performBulkTransition(api, issuesToStage, transitionIdUnstage, ""); err != nil {
 			return errs.NewError(unstageTask, err, nil)
 		}

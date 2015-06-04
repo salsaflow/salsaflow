@@ -119,49 +119,52 @@ func updateIssues(
 	return nil
 }
 
-// Versions --------------------------------------------------------------------
+// Labels ----------------------------------------------------------------------
 
-func assignIssuesToVersion(api *jira.Client, issues []*jira.Issue, versionId string) error {
-	// The payload is the same for all the issue updates.
+func newAddLabelFunc(label string) issueUpdateFunc {
 	addRequest := jira.M{
 		"update": jira.M{
-			"fixVersions": jira.L{
+			"labels": jira.L{
 				jira.M{
-					"add": &jira.Version{
-						Id: versionId,
-					},
+					"add": label,
 				},
 			},
 		},
 	}
 
-	// Rollback request is used when we want to delete the version again.
-	removeRequest := jira.M{
-		"update": jira.M{
-			"fixVersions": jira.L{
-				jira.M{
-					"remove": &jira.Version{
-						Id: versionId,
-					},
-				},
-			},
-		},
+	return func(api *jira.Client, issue *jira.Issue) error {
+		_, err := api.Issues.Update(issue.Id, addRequest)
+		return err
 	}
-
-	// Update all the issues concurrently and return the result.
-	return updateIssues(api, issues,
-		func(api *jira.Client, issue *jira.Issue) error {
-			_, err := api.Issues.Update(issue.Id, addRequest)
-			return err
-		},
-		func(api *jira.Client, issue *jira.Issue) error {
-			_, err := api.Issues.Update(issue.Id, removeRequest)
-			return err
-		})
 }
 
-func issuesByVersion(api *jira.Client, projectKey, versionName string) ([]*jira.Issue, error) {
-	query := fmt.Sprintf("project = %v AND fixVersion = \"%v\"", projectKey, versionName)
+func newRemoveLabelFunc(label string) issueUpdateFunc {
+	addRequest := jira.M{
+		"update": jira.M{
+			"labels": jira.L{
+				jira.M{
+					"remove": label,
+				},
+			},
+		},
+	}
+
+	return func(api *jira.Client, issue *jira.Issue) error {
+		_, err := api.Issues.Update(issue.Id, addRequest)
+		return err
+	}
+}
+
+func addLabel(api *jira.Client, issues []*jira.Issue, label string) error {
+	return updateIssues(api, issues, newAddLabelFunc(label), newRemoveLabelFunc(label))
+}
+
+func removeLabel(api *jira.Client, issues []*jira.Issue, label string) error {
+	return updateIssues(api, issues, newRemoveLabelFunc(label), newAddLabelFunc(label))
+}
+
+func issuesByLabel(api *jira.Client, projectKey, label string) ([]*jira.Issue, error) {
+	query := fmt.Sprintf("project = %v AND labels = \"%v\"", projectKey, label)
 	return search(api, query)
 }
 

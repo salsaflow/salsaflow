@@ -11,8 +11,8 @@ import (
 	"github.com/salsaflow/salsaflow/version"
 
 	// Vendor
-	"github.com/toqueteos/webbrowser"
 	"github.com/salsita/go-jira/v2/jira"
+	"github.com/toqueteos/webbrowser"
 )
 
 const ServiceName = "JIRA"
