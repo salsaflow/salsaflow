@@ -2,7 +2,6 @@ package jira
 
 import (
 	// Stdlib
-	"bytes"
 	"fmt"
 	"os"
 
@@ -10,18 +9,19 @@ import (
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
-	"github.com/salsaflow/salsaflow/modules/jira/client"
 	"github.com/salsaflow/salsaflow/prompt"
 	"github.com/salsaflow/salsaflow/releases"
 	"github.com/salsaflow/salsaflow/version"
+
+	// Vendor
+	"github.com/salsita/go-jira/v2/jira"
 )
 
 type nextRelease struct {
-	tracker              *issueTracker
-	trunkVersion         *version.Version
-	trunkVersionResource *client.Version
-	nextTrunkVersion     *version.Version
-	additionalIssues     []*client.Issue
+	tracker          *issueTracker
+	trunkVersion     *version.Version
+	nextTrunkVersion *version.Version
+	additionalIssues []*jira.Issue
 }
 
 func newNextRelease(
@@ -30,37 +30,11 @@ func newNextRelease(
 	nextTrunkVersion *version.Version,
 ) (*nextRelease, error) {
 
-	task := fmt.Sprintf("Make sure JIRA version exists for release %v", trunkVersion)
-	log.Run(task)
-	projectKey := tracker.config.ProjectKey()
-	versions, _, err := newClient(tracker.config).Projects.ListVersions(projectKey)
-	if err != nil {
-		return nil, errs.NewError(task, err, nil)
-	}
-
-	tag := trunkVersion.ReleaseTagString()
-	for _, v := range versions {
-		if v.Name == tag {
-			// The associated JIRA version exists, we can return a new tracker instance.
-			return &nextRelease{
-				tracker:              tracker,
-				trunkVersion:         trunkVersion,
-				nextTrunkVersion:     nextTrunkVersion,
-				trunkVersionResource: v,
-			}, nil
-		}
-	}
-
-	// The associated JIRA version was not found, return an error.
-	hint := bytes.NewBufferString(`
-Make sure the relevant JIRA version exists.
-
-It is necessary to create the version manually just once
-when the project is starting. SalsaFlow will handle
-all subsequent JIRA versions for you.
-
-`)
-	return nil, errs.NewError(task, fmt.Errorf("JIRA version not found for release %v", tag), hint)
+	return &nextRelease{
+		tracker:          tracker,
+		trunkVersion:     trunkVersion,
+		nextTrunkVersion: nextTrunkVersion,
+	}, nil
 }
 
 func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
@@ -84,7 +58,8 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	}
 
 	// Drop the issues that were already assigned to the right version.
-	filteredIssues := make([]*client.Issue, 0, len(issues))
+	releaseLabel := release.trunkVersion.ReleaseTagString()
+	filteredIssues := make([]*jira.Issue, 0, len(issues))
 IssueLoop:
 	for _, issue := range issues {
 		// Add only the parent tasks, i.e. skip sub-tasks.
@@ -92,8 +67,8 @@ IssueLoop:
 			continue
 		}
 		// Add only the issues that have not been assigned to the release yet.
-		for _, v := range issue.Fields.FixVersions {
-			if v.Id == release.trunkVersionResource.Id {
+		for _, label := range issue.Fields.Labels {
+			if label == releaseLabel {
 				continue IssueLoop
 			}
 		}
@@ -121,48 +96,17 @@ IssueLoop:
 }
 
 func (release *nextRelease) Start() (action.Action, error) {
-	// We already know that the JIRA version for the release being started exists.
-	// That is checked in newNextRelease. What is left is to create a JIRA version
-	// for the future release, i.e. the version associated with the version string
-	// as committed on the trunk branch.
-
-	// Create the JIRA version for the future release.
-	var (
-		api = newClient(release.tracker.config)
-		tag = release.nextTrunkVersion.ReleaseTagString()
-	)
-	createTask := fmt.Sprintf("Create JIRA version for the future release (%v)", tag)
-	log.Run(createTask)
-
-	versionResource, _, err := api.Versions.Create(&client.Version{
-		Name:    tag,
-		Project: release.tracker.config.ProjectKey(),
-	})
-	if err != nil {
-		return nil, errs.NewError(createTask, err, nil)
-	}
-
-	rollbackFunc := func() error {
-		// On rollback, delete the relevant JIRA version.
-		log.Rollback(createTask)
-		if _, err := api.Versions.Delete(versionResource.Id); err != nil {
-			return errs.NewError("Delete JIRA version "+tag, err, nil)
-		}
-		return nil
-	}
-
-	// Set the Fix for Version field for the chosen issues.
-	task := fmt.Sprintf(
-		"Assign additional issues to the current JIRA version (%v)",
-		release.trunkVersion.ReleaseTagString())
+	// Add the release label to the stories that were assigned automatically.
+	releaseLabel := release.trunkVersion.ReleaseTagString()
+	task := fmt.Sprintf("Label the newly added issues with the release label (%v)", releaseLabel)
 	log.Run(task)
-	err = assignIssuesToVersion(api, release.additionalIssues, release.trunkVersionResource.Id)
-	if err != nil {
-		if ex := rollbackFunc(); ex != nil {
-			errs.Log(ex)
-		}
+
+	api := newClient(release.tracker.config)
+	if err := addLabel(api, release.additionalIssues, releaseLabel); err != nil {
 		return nil, errs.NewError(task, err, nil)
 	}
 
-	return action.ActionFunc(rollbackFunc), nil
+	return action.ActionFunc(func() error {
+		return removeLabel(api, release.additionalIssues, releaseLabel)
+	}), nil
 }

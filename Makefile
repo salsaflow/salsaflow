@@ -17,6 +17,7 @@ deps.fetch:
 	go get -d -u github.com/kardianos/osext
 	go get -d -u github.com/google/go-github/github
 	go get -d -u github.com/google/go-querystring/query
+	go get -d -u github.com/salsita/go-jira/v2/jira
 	go get -d -u github.com/salsita/go-pivotaltracker/v5/pivotal
 	go get -d -u github.com/salsita/go-sprintly/sprintly
 	go get -d -u github.com/shiena/ansicolor

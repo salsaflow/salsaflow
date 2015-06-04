@@ -13,14 +13,16 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules/common"
-	"github.com/salsaflow/salsaflow/modules/jira/client"
 	"github.com/salsaflow/salsaflow/version"
+
+	// Vendor
+	"github.com/salsita/go-jira/v2/jira"
 )
 
 type runningRelease struct {
 	tracker        *issueTracker
 	releaseVersion *version.Version
-	issues         []*client.Issue
+	issues         []*jira.Issue
 }
 
 func newRunningRelease(
@@ -30,27 +32,14 @@ func newRunningRelease(
 
 	// Fetch relevant issues from JIRA.
 	var (
-		key = tracker.config.ProjectKey()
-		tag = releaseVersion.ReleaseTagString()
+		key          = tracker.config.ProjectKey()
+		releaseLabel = releaseVersion.ReleaseTagString()
+		task         = fmt.Sprintf("Fetch issues labeled with '%v'", releaseLabel)
 	)
-
-	task := fmt.Sprintf("Fetch issues from JIRA for version '%v'", tag)
-
-	// Make sure the relevant JIRA version exists.
-	// This is necessary to do since JIRA returns 400 Bad Request when
-	// JQL with 'fixVersion = "non-existing version"' is sent.
-	res, err := tracker.getVersionResource(releaseVersion)
+	log.Run(task)
+	issues, err := issuesByLabel(newClient(tracker.config), key, releaseLabel)
 	if err != nil {
 		return nil, errs.NewError(task, err, nil)
-	}
-	if res == nil {
-		return nil, errs.NewError(task, common.ErrReleaseNotFound, nil)
-	}
-
-	// Now we can fetch the issues since we know the version exists.
-	issues, err := issuesByVersion(newClient(tracker.config), key, tag)
-	if err != nil {
-		return nil, err
 	}
 
 	// Return a new release instance.
@@ -67,7 +56,7 @@ func (release *runningRelease) Stories() ([]common.Story, error) {
 
 func (release *runningRelease) EnsureStageable() error {
 	var task = fmt.Sprintf(
-		"Make sure JIRA version '%v' is stageable", release.releaseVersion.ReleaseTagString())
+		"Make sure release '%v' can be staged", release.releaseVersion.ReleaseTagString())
 	log.Run(task)
 
 	var details bytes.Buffer
@@ -78,7 +67,7 @@ func (release *runningRelease) EnsureStageable() error {
 
 	var (
 		err             error
-		errNotStageable = errors.New("release not stageable")
+		errNotStageable = errors.New("release cannot be staged")
 	)
 	for _, issue := range release.issues {
 		if ex := ensureStageableIssue(issue); ex != nil {
@@ -99,12 +88,12 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	var (
 		api       = newClient(release.tracker.config)
 		tag       = release.releaseVersion.ReleaseTagString()
-		stageTask = fmt.Sprintf("Stage JIRA version '%v'", tag)
+		stageTask = fmt.Sprintf("Stage JIRA release '%v'", tag)
 	)
 	log.Run(stageTask)
 
 	// Make sure we only try to stage the issues that are in Tested.
-	var issuesToStage []*client.Issue
+	var issuesToStage []*jira.Issue
 	for _, issue := range release.issues {
 		if issue.Fields.Status.Id == stateIdTested {
 			issuesToStage = append(issuesToStage, issue)
@@ -119,7 +108,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 
 	return action.ActionFunc(func() error {
 		log.Rollback(stageTask)
-		unstageTask := fmt.Sprintf("Unstage JIRA version %v", tag)
+		unstageTask := fmt.Sprintf("Unstage JIRA release %v", tag)
 		if err := performBulkTransition(api, issuesToStage, transitionIdUnstage, ""); err != nil {
 			return errs.NewError(unstageTask, err, nil)
 		}
@@ -129,7 +118,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 
 func (release *runningRelease) Releasable() (bool, error) {
 	// Drop accepted issues.
-	var notAccepted []*client.Issue
+	var notAccepted []*jira.Issue
 IssueLoop:
 	for _, issue := range release.issues {
 		for _, id := range acceptedStateIds {
@@ -152,7 +141,7 @@ func (release *runningRelease) Release() error {
 		newClient(release.tracker.config), release.issues, transitionIdRelease, "")
 }
 
-func ensureStageableIssue(issue *client.Issue) error {
+func ensureStageableIssue(issue *jira.Issue) error {
 	// Check subtasks recursively.
 	for _, subtask := range issue.Fields.Subtasks {
 		if err := ensureStageableIssue(subtask); err != nil {

@@ -8,10 +8,10 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/modules/common"
-	"github.com/salsaflow/salsaflow/modules/jira/client"
 	"github.com/salsaflow/salsaflow/version"
 
-	// Other
+	// Vendor
+	"github.com/salsita/go-jira/v2/jira"
 	"github.com/toqueteos/webbrowser"
 )
 
@@ -19,7 +19,7 @@ const ServiceName = "JIRA"
 
 type issueTracker struct {
 	config       Config
-	versionCache map[string]*client.Version
+	versionCache map[string]*jira.Version
 }
 
 func Factory() (common.IssueTracker, error) {
@@ -47,7 +47,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		formatInRange("type", codingIssueTypeIds...),
 		formatInRange("status", startableStateIds...))
 
-	issues, _, err := newClient(tracker.config).Issues.Search(&client.SearchOptions{
+	issues, _, err := newClient(tracker.config).Issues.Search(&jira.SearchOptions{
 		JQL:        query,
 		MaxResults: 200,
 	})
@@ -63,7 +63,7 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 		formatInRange("type", codingIssueTypeIds...),
 		formatInRange("status", inDevelopmentStateIds...))
 
-	issues, _, err := newClient(tracker.config).Issues.Search(&client.SearchOptions{
+	issues, _, err := newClient(tracker.config).Issues.Search(&jira.SearchOptions{
 		JQL:        query,
 		MaxResults: 200,
 	})
@@ -113,7 +113,7 @@ func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId stri
 	return tag, nil
 }
 
-func (tracker *issueTracker) getVersionResource(ver *version.Version) (*client.Version, error) {
+func (tracker *issueTracker) getVersionResource(ver *version.Version) (*jira.Version, error) {
 	var (
 		projectKey  = tracker.config.ProjectKey()
 		versionName = ver.ReleaseTagString()
@@ -127,7 +127,7 @@ func (tracker *issueTracker) getVersionResource(ver *version.Version) (*client.V
 			return nil, err
 		}
 
-		m := make(map[string]*client.Version, len(vs))
+		m := make(map[string]*jira.Version, len(vs))
 		for _, v := range vs {
 			m[v.Name] = v
 		}
@@ -141,7 +141,7 @@ func (tracker *issueTracker) getVersionResource(ver *version.Version) (*client.V
 	return nil, nil
 }
 
-func toCommonStories(issues []*client.Issue, tracker *issueTracker) []common.Story {
+func toCommonStories(issues []*jira.Issue, tracker *issueTracker) []common.Story {
 	stories := make([]common.Story, len(issues))
 	for i := range issues {
 		s, err := newStory(issues[i], tracker)

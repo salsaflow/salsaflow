@@ -15,7 +15,7 @@
    along with this program. If not, see {http://www.gnu.org/licenses/}.
 */
 
-package client
+package jira
 
 type User struct {
 	Self         string `json:"self,omitempty"`

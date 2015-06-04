@@ -15,7 +15,7 @@
    along with this program. If not, see {http://www.gnu.org/licenses/}.
 */
 
-package client
+package jira
 
 import (
 	"bytes"
@@ -29,7 +29,7 @@ const (
 
 	DefaultMaxPendingRequests = 10
 
-	defaultUserAgent = "salsaflow/" + LibraryVersion
+	defaultUserAgent = "go-jira/" + LibraryVersion
 )
 
 type (
@@ -56,6 +56,9 @@ type Client struct {
 	// Issue service.
 	Issues *IssueService
 
+	// Remote Issue Link service.
+	RemoteIssueLinks *RemoteIssueLinkService
+
 	// Version service.
 	Versions *VersionService
 
@@ -66,7 +69,7 @@ type Client struct {
 	optMaxPendingRequests int
 }
 
-func New(baseURL *url.URL, httpClient *http.Client, options ...func(*Client)) *Client {
+func NewClient(baseURL *url.URL, httpClient *http.Client, options ...func(*Client)) *Client {
 	// Create a Client object.
 	client := &Client{
 		httpClient:            httpClient,
@@ -79,6 +82,7 @@ func New(baseURL *url.URL, httpClient *http.Client, options ...func(*Client)) *C
 	client.Myself = newMyselfService(client)
 	client.Projects = newProjectService(client)
 	client.Issues = newIssueService(client)
+	client.RemoteIssueLinks = newRemoteIssueLinkService(client)
 	client.Versions = newVersionService(client)
 
 	// Set custom options.
