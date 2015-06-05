@@ -192,6 +192,25 @@ func runMain() (err error) {
 		}
 	}(task)
 
+	// Finalise the release in the code review tool.
+	codeReviewTool, err := modules.GetCodeReviewTool()
+	if err != nil {
+		return err
+	}
+	act, err = codeReviewTool.FinaliseRelease(releaseVersion)
+	if err != nil {
+		return err
+	}
+	defer func(act action.Action) {
+		if err == nil {
+			return
+		}
+		// On error, run the rollback function.
+		if ex := act.Rollback(); ex != nil {
+			errs.Log(ex)
+		}
+	}(act)
+
 	// Stage the release in the issue tracker.
 	act, err = release.Stage()
 	if err != nil {

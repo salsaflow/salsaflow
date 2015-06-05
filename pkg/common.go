@@ -20,6 +20,11 @@ import (
 	"github.com/kardianos/osext"
 )
 
+const (
+	DefaultGitHubOwner = "salsaflow"
+	DefaultGitHubRepo  = "salsaflow"
+)
+
 var ErrAborted = errors.New("aborted by the user")
 
 // doInstall performs the common step that both install and upgrade need to do.

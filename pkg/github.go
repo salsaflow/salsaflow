@@ -6,7 +6,7 @@ import (
 )
 
 func newGitHubClient() (*github.Client, error) {
-	config, err := LoadConfig()
+	config, err := ghutil.LoadConfig()
 	if err != nil {
 		return nil, err
 	}

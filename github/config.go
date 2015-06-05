@@ -1,13 +1,8 @@
-package pkg
+package github
 
 import (
 	"github.com/salsaflow/salsaflow/config"
 	"github.com/salsaflow/salsaflow/errs"
-)
-
-const (
-	DefaultGitHubOwner = "salsaflow"
-	DefaultGitHubRepo  = "salsaflow"
 )
 
 // Global config ---------------------------------------------------------------

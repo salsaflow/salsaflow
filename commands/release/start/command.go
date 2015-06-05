@@ -180,6 +180,25 @@ The relevant version strings are:
 		}
 	}(act)
 
+	// Initialise the next release in the code review tool.
+	codeReviewTool, err := modules.GetCodeReviewTool()
+	if err != nil {
+		return err
+	}
+	act, err = codeReviewTool.InitialiseRelease(nextTrunkVersion)
+	if err != nil {
+		return err
+	}
+	defer func(act action.Action) {
+		if err == nil {
+			return
+		}
+		// On error, run the rollback function.
+		if err := act.Rollback(); err != nil {
+			errs.Log(err)
+		}
+	}(act)
+
 	// Start the release in the issue tracker.
 	act, err = release.Start()
 	if err != nil {
