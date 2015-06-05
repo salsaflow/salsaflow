@@ -92,6 +92,17 @@ func runMain() (err error) {
 		return errs.NewError(task, err, nil)
 	}
 
+	// Make sure the remote release branch exists.
+	task = "Make sure that the remote release branch exists"
+	exists, err := git.RemoteBranchExists(releaseBranch, remoteName)
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+	if !exists {
+		return errs.NewError(task,
+			fmt.Errorf("branch '%v' not found in remote '%v'", releaseBranch, remoteName), nil)
+	}
+
 	// Make sure that the local release branch exists.
 	task = "Make sure that the local release branch exists"
 	if err := git.CreateTrackingBranchUnlessExists(releaseBranch, remoteName); err != nil {
