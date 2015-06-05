@@ -2,4 +2,6 @@
 
 package prompt
 
-const ConsoleDevice = "/dev/tty"
+var ConsoleDevices = []string{
+	"/dev/tty",
+}

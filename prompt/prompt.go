@@ -208,5 +208,15 @@ func ListStories(stories []common.Story, w io.Writer) (err error) {
 }
 
 func OpenConsole(flag int) (io.ReadWriteCloser, error) {
-	return os.OpenFile(ConsoleDevice, flag, 0600)
+	var (
+		file io.ReadWriteCloser
+		err  error
+	)
+	for _, deviceName := range ConsoleDevices {
+		file, err = os.OpenFile(deviceName, flag, 0600)
+		if err == nil {
+			return file, nil
+		}
+	}
+	return nil, err
 }
