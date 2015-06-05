@@ -19,7 +19,17 @@ import (
 const Id = "review_board"
 
 func init() {
-	repo.AddInitHook(ensureRbtVersion)
+	// Load common configuration.
+	config, err := common.LoadConfig()
+	if err != nil {
+		// Just do nothing on error.
+		return
+	}
+
+	// Register repo init hook in case we are using RB.
+	if config.CodeReviewToolId() == Id {
+		repo.AddInitHook(ensureRbtVersion)
+	}
 }
 
 type codeReviewTool struct{}
