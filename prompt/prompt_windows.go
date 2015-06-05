@@ -2,4 +2,7 @@
 
 package prompt
 
-const ConsoleDevice = "\\DEV\\CON"
+var ConsoleDevices = []string{
+	"CON",
+	"\\DEV\\CON",
+}
