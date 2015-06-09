@@ -7,7 +7,6 @@ package oauth2
 import (
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"golang.org/x/net/context"
@@ -54,15 +53,6 @@ type Token struct {
 
 // Type returns t.TokenType if non-empty, else "Bearer".
 func (t *Token) Type() string {
-	if strings.EqualFold(t.TokenType, "bearer") {
-		return "Bearer"
-	}
-	if strings.EqualFold(t.TokenType, "mac") {
-		return "MAC"
-	}
-	if strings.EqualFold(t.TokenType, "basic") {
-		return "Basic"
-	}
 	if t.TokenType != "" {
 		return t.TokenType
 	}

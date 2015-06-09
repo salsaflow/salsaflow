@@ -42,7 +42,7 @@ func (story *story) Title() string {
 
 func (story *story) Assignees() []common.User {
 	var users []common.User
-	for _, id := range story.OwnerIds {
+	for _, id := range *story.OwnerIds {
 		users = append(users, userId(id))
 	}
 	return users
@@ -50,7 +50,7 @@ func (story *story) Assignees() []common.User {
 
 func (story *story) AddAssignee(user common.User) *errs.Error {
 	task := fmt.Sprintf("Add user as the owner to story %v", user.Id(), story.Id)
-	for _, id := range story.OwnerIds {
+	for _, id := range *story.OwnerIds {
 		if strconv.Itoa(id) == user.Id() {
 			return nil
 		}
@@ -81,7 +81,7 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 		client    = pivotal.NewClient(config.UserToken())
 		projectId = config.ProjectId()
 	)
-	updateRequest := &pivotal.Story{OwnerIds: ownerIds}
+	updateRequest := &pivotal.Story{OwnerIds: &ownerIds}
 	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
 	if err != nil {
 		return errs.NewError(task, err, nil)
