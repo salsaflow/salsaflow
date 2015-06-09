@@ -9,11 +9,13 @@ import (
 	"strconv"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/repo"
 	"github.com/salsaflow/salsaflow/shell"
+	"github.com/salsaflow/salsaflow/version"
 )
 
 const Id = "review_board"
@@ -36,6 +38,14 @@ type codeReviewTool struct{}
 
 func Factory() (common.CodeReviewTool, error) {
 	return &codeReviewTool{}, nil
+}
+
+func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action, error) {
+	return action.ActionFunc(func() error { return nil }), nil
+}
+
+func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, error) {
+	return action.ActionFunc(func() error { return nil }), nil
 }
 
 func (tool *codeReviewTool) PostReviewRequests(

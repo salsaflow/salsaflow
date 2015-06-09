@@ -92,6 +92,17 @@ func runMain() (err error) {
 		return errs.NewError(task, err, nil)
 	}
 
+	// Make sure the remote release branch exists.
+	task = "Make sure that the remote release branch exists"
+	exists, err := git.RemoteBranchExists(releaseBranch, remoteName)
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+	if !exists {
+		return errs.NewError(task,
+			fmt.Errorf("branch '%v' not found in remote '%v'", releaseBranch, remoteName), nil)
+	}
+
 	// Make sure that the local release branch exists.
 	task = "Make sure that the local release branch exists"
 	if err := git.CreateTrackingBranchUnlessExists(releaseBranch, remoteName); err != nil {
@@ -180,6 +191,25 @@ func runMain() (err error) {
 			errs.Log(ex)
 		}
 	}(task)
+
+	// Finalise the release in the code review tool.
+	codeReviewTool, err := modules.GetCodeReviewTool()
+	if err != nil {
+		return err
+	}
+	act, err = codeReviewTool.FinaliseRelease(releaseVersion)
+	if err != nil {
+		return err
+	}
+	defer func(act action.Action) {
+		if err == nil {
+			return
+		}
+		// On error, run the rollback function.
+		if ex := act.Rollback(); ex != nil {
+			errs.Log(ex)
+		}
+	}(act)
 
 	// Stage the release in the issue tracker.
 	act, err = release.Stage()

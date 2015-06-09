@@ -82,9 +82,10 @@ func PushForce(remote string, args ...string) error {
 }
 
 func UpdateRemotes(remotes ...string) error {
-	argsList := make([]string, 2, 2+len(remotes))
+	argsList := make([]string, 3, 3+len(remotes))
 	argsList[0] = "remote"
 	argsList[1] = "update"
+	argsList[2] = "--prune"
 	argsList = append(argsList, remotes...)
 	_, err := Run(argsList...)
 	return err

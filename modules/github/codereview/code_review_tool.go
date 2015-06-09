@@ -10,11 +10,13 @@ import (
 	"strings"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	ghutil "github.com/salsaflow/salsaflow/github"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules/common"
+	"github.com/salsaflow/salsaflow/version"
 
 	// Other
 	"github.com/google/go-github/github"
@@ -29,6 +31,98 @@ type codeReviewTool struct{}
 
 func Factory() (common.CodeReviewTool, error) {
 	return &codeReviewTool{}, nil
+}
+
+func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action, error) {
+	// Get a GitHub client.
+	config, err := LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+	client := ghutil.NewClient(config.Token())
+
+	owner, repo, err := parseUpstreamURL()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the review milestone.
+	task := fmt.Sprintf("Create code review milestone for release %v", v)
+	log.Run(task)
+	milestone, _, err := client.Issues.CreateMilestone(owner, repo, &github.Milestone{
+		Title: github.String(milestoneTitle(v)),
+	})
+	if err != nil {
+		return nil, errs.NewError(task, err, nil)
+	}
+
+	// Return a rollback function.
+	return action.ActionFunc(func() error {
+		task := fmt.Sprintf("Delete code review milestone '%v'", *milestone.Title)
+		_, err := client.Issues.DeleteMilestone(owner, repo, *milestone.Number)
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
+		return nil
+	}), nil
+}
+
+func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, error) {
+	// Get a GitHub client.
+	config, err := LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+	client := ghutil.NewClient(config.Token())
+
+	owner, repo, err := parseUpstreamURL()
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the relevant review milestone.
+	task := fmt.Sprintf("Get code review milestone for release %v", v)
+	log.Run(task)
+	milestone, err := milestoneForVersion(config, owner, repo, v)
+	if err != nil {
+		if _, ok := err.(*ErrMilestoneNotFound); ok {
+			log.Warn("Weird, " + err.Error())
+			return action.ActionFunc(func() error { return nil }), nil
+		}
+		return nil, errs.NewError(task, err, nil)
+	}
+
+	// Close the milestone unless there are some issues open.
+	task = fmt.Sprintf("Make sure review milestone for release %v can be closed", v)
+	if num := *milestone.OpenIssues; num != 0 {
+		return nil, errs.NewError(task,
+			fmt.Errorf("review milestone for release %v cannot be closed: %v issue(s) open", v, num), nil)
+	}
+
+	task = fmt.Sprintf("Close review milestone for release %v", v)
+	log.Run(task)
+	milestone, _, err = client.Issues.EditMilestone(owner, repo, *milestone.Number, &github.Milestone{
+		State: github.String("closed"),
+	})
+	if err != nil {
+		return nil, errs.NewError(task, err, nil)
+	}
+
+	// Return a rollback function.
+	return action.ActionFunc(func() error {
+		task := fmt.Sprintf("Reopen review milestone for release %v", v)
+		_, _, err := client.Issues.EditMilestone(owner, repo, *milestone.Number, &github.Milestone{
+			State: github.String("open"),
+		})
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
+		return nil
+	}), nil
+}
+
+func milestoneTitle(v *version.Version) string {
+	return fmt.Sprintf("Code review milestone for release %v", v)
 }
 
 func (tool *codeReviewTool) PostReviewRequests(
@@ -226,8 +320,14 @@ func createAssignedReviewRequest(
 		fmt.Fprintf(&issueBody, "\n- [ ] %v: %v", commit.SHA, commit.MessageTitle)
 	}
 
+	// Get the right review milestone to add the issue into.
+	milestone, err := milestoneForCommit(config, owner, repo, commits[len(commits)-1].SHA)
+	if err != nil {
+		return err
+	}
+
 	// Create a new review issue.
-	issue, err := createIssue(task, config, owner, repo, issueTitle, issueBody.String())
+	issue, err := createIssue(task, config, owner, repo, issueTitle, issueBody.String(), milestone)
 	if err != nil {
 		return err
 	}
@@ -306,8 +406,15 @@ func createUnassignedReviewRequest(
 		issueBody  = fmt.Sprintf("Commits to be reviewed:\n- [ ] %v: %v",
 			commit.SHA, commit.MessageTitle)
 	)
+
+	// Get the right review milestone to add the issue into.
+	milestone, err := milestoneForCommit(config, owner, repo, commit.SHA)
+	if err != nil {
+		return err
+	}
+
 	// Create a new review issue.
-	issue, err := createIssue(task, config, owner, repo, issueTitle, issueBody)
+	issue, err := createIssue(task, config, owner, repo, issueTitle, issueBody, milestone)
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
@@ -445,15 +552,17 @@ func createIssue(
 	repo string,
 	issueTitle string,
 	issueBody string,
+	milestone *github.Milestone,
 ) (issue *github.Issue, err error) {
 
 	log.Run(task)
 	client := ghutil.NewClient(config.Token())
 	labels := []string{config.ReviewLabel()}
 	issue, _, err = client.Issues.Create(owner, repo, &github.IssueRequest{
-		Title:  github.String(issueTitle),
-		Body:   github.String(issueBody),
-		Labels: &labels,
+		Title:     github.String(issueTitle),
+		Body:      github.String(issueBody),
+		Labels:    &labels,
+		Milestone: milestone.Number,
 	})
 	if err != nil {
 		return nil, errs.NewError(task, err, nil)
@@ -461,4 +570,43 @@ func createIssue(
 
 	log.Log(fmt.Sprintf("GitHub issue #%v created", *issue.Number))
 	return issue, nil
+}
+
+func milestoneForVersion(
+	config Config,
+	owner string,
+	repo string,
+	v *version.Version,
+) (*github.Milestone, error) {
+
+	// Fetch milestones for the given repository.
+	var (
+		task   = fmt.Sprintf("Fetch GitHub milestones for %v/%v", owner, repo)
+		client = ghutil.NewClient(config.Token())
+		title  = milestoneTitle(v)
+	)
+	milestones, _, err := client.Issues.ListMilestones(owner, repo, nil)
+	if err != nil {
+		return nil, errs.NewError(task, err, nil)
+	}
+
+	// Find the right one.
+	task = fmt.Sprintf("Find review milestone for release %v", v)
+	for _, milestone := range milestones {
+		if *milestone.Title == title {
+			return &milestone, nil
+		}
+	}
+	return nil, &ErrMilestoneNotFound{v}
+}
+
+func milestoneForCommit(config Config, owner, repo, sha string) (*github.Milestone, error) {
+	// Get the version associated with the given commit.
+	v, err := version.GetByBranch(sha)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return the associated milestone.
+	return milestoneForVersion(config, owner, repo, v)
 }
