@@ -256,6 +256,9 @@ func BranchHexsha(branch string) (hexsha string, err error) {
 	return Hexsha("refs/heads/" + branch)
 }
 
+// IsBranchSynchronized returns true when the branch of the given name
+// is up to date with the given remote. In case the branch does not exist
+// in the remote repository, true is returned as well.
 func IsBranchSynchronized(branch, remote string) (bool, error) {
 	exists, err := RemoteBranchExists(branch, remote)
 	if err != nil {
