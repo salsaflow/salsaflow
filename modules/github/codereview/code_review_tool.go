@@ -121,10 +121,6 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 	}), nil
 }
 
-func milestoneTitle(v *version.Version) string {
-	return fmt.Sprintf("Code review milestone for release %v", v)
-}
-
 func (tool *codeReviewTool) PostReviewRequests(
 	ctxs []*common.ReviewContext,
 	opts map[string]interface{},
@@ -609,4 +605,8 @@ func milestoneForCommit(config Config, owner, repo, sha string) (*github.Milesto
 
 	// Return the associated milestone.
 	return milestoneForVersion(config, owner, repo, v)
+}
+
+func milestoneTitle(v *version.Version) string {
+	return fmt.Sprintf("%v-review", v)
 }
