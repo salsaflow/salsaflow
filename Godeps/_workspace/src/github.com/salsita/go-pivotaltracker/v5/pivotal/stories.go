@@ -53,13 +53,13 @@ type Story struct {
 	AcceptedAt    *time.Time `json:"accepted_at,omitempty"`
 	Deadline      *time.Time `json:"deadline,omitempty"`
 	RequestedById int        `json:"requested_by_id,omitempty"`
-	OwnerIds      []int      `json:"owner_ids,omitempty"`
-	LabelIds      []int      `json:"label_ids,omitempty"`
-	Labels        []*Label   `json:"labels,omitempty"`
-	TaskIds       []int      `json:"task_ids,omitempty"`
-	Tasks         []int      `json:"tasks,omitempty"`
-	FollowerIds   []int      `json:"follower_ids,omitempty"`
-	CommentIds    []int      `json:"comment_ids,omitempty"`
+	OwnerIds      *[]int     `json:"owner_ids,omitempty"`
+	LabelIds      *[]int     `json:"label_ids,omitempty"`
+	Labels        *[]*Label  `json:"labels,omitempty"`
+	TaskIds       *[]int     `json:"task_ids,omitempty"`
+	Tasks         *[]int     `json:"tasks,omitempty"`
+	FollowerIds   *[]int     `json:"follower_ids,omitempty"`
+	CommentIds    *[]int     `json:"comment_ids,omitempty"`
 	CreatedAt     *time.Time `json:"created_at,omitempty"`
 	UpdatedAt     *time.Time `json:"updated_at,omitempty"`
 	IntegrationId int        `json:"integration_id,omitempty"`

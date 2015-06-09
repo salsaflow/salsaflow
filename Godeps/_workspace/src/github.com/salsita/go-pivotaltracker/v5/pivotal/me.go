@@ -30,8 +30,8 @@ type Me struct {
 	TimeZone                   *TimeZone  `json:"time_zone"`
 	ApiToken                   string     `json:"api_token"`
 	HasGoogleIdentity          bool       `json:"has_google_identity"`
-	ProjectIds                 []int      `json:"project_ids"`
-	WorkspaceIds               []int      `json:"workspace_ids"`
+	ProjectIds                 *[]int     `json:"project_ids"`
+	WorkspaceIds               *[]int     `json:"workspace_ids"`
 	Email                      string     `json:"email"`
 	ReceivedInAppNotifications bool       `json:"receives_in_app_notifications"`
 	CreatedAt                  *time.Time `json:"created_at"`
