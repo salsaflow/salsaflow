@@ -45,7 +45,8 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		client    = pivotal.NewClient(tracker.config.UserToken())
 		projectId = tracker.config.ProjectId()
 	)
-	ptStories, err := searchStories(client, projectId, "state:%v", pivotal.StoryStateUnstarted)
+	ptStories, err := searchStories(client, projectId,
+		"state:%v,%v", pivotal.StoryStateUnstarted, pivotal.StoryStatePlanned)
 	if err != nil {
 		return nil, err
 	}
