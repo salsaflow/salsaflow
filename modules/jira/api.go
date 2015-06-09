@@ -139,7 +139,7 @@ func newAddLabelFunc(label string) issueUpdateFunc {
 }
 
 func newRemoveLabelFunc(label string) issueUpdateFunc {
-	addRequest := jira.M{
+	removeRequest := jira.M{
 		"update": jira.M{
 			"labels": jira.L{
 				jira.M{
@@ -150,7 +150,7 @@ func newRemoveLabelFunc(label string) issueUpdateFunc {
 	}
 
 	return func(api *jira.Client, issue *jira.Issue) error {
-		_, err := api.Issues.Update(issue.Id, addRequest)
+		_, err := api.Issues.Update(issue.Id, removeRequest)
 		return err
 	}
 }
