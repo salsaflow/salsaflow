@@ -147,15 +147,14 @@ func runMain() (err error) {
 	if err := git.Tag(tag, releaseBranch); err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	defer func(task string) {
+	defer action.RollbackOnError(&err, task, action.ActionFunc(func() error {
 		// On error, delete the release tag.
-		if err != nil {
-			log.Rollback(task)
-			if ex := git.DeleteTag(tag); ex != nil {
-				errs.LogError("Delete the release tag", ex, nil)
-			}
+		task := "Delete the release tag"
+		if err := git.DeleteTag(tag); err != nil {
+			return errs.NewError(task, err, nil)
 		}
-	}(task)
+		return nil
+	}))
 
 	// Reset the staging branch to point to the newly created tag.
 	task = fmt.Sprintf("Reset branch '%v' to point to tag '%v'", stagingBranch, tag)
@@ -164,16 +163,7 @@ func runMain() (err error) {
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	defer func(task string, act action.Action) {
-		if err == nil {
-			return
-		}
-		// Rollback on error.
-		log.Rollback(task)
-		if ex := act.Rollback(); ex != nil {
-			errs.Log(ex)
-		}
-	}(task, act)
+	defer action.RollbackOnError(&err, task, act)
 
 	// Delete the local release branch.
 	task = fmt.Sprintf("Delete branch '%v'", releaseBranch)
@@ -181,16 +171,13 @@ func runMain() (err error) {
 	if err := git.Branch("-d", releaseBranch); err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	defer func(task string) {
-		if err == nil {
-			return
+	defer action.RollbackOnError(&err, task, action.ActionFunc(func() error {
+		task := fmt.Sprintf("Recreate branch '%v'", releaseBranch)
+		if err := git.Branch(releaseBranch, remoteName+"/"+releaseBranch); err != nil {
+			return errs.NewError(task, err, nil)
 		}
-		// On error, re-create the local release branch.
-		log.Rollback(task)
-		if ex := git.Branch(releaseBranch, remoteName+"/"+releaseBranch); ex != nil {
-			errs.Log(ex)
-		}
-	}(task)
+		return nil
+	}))
 
 	// Finalise the release in the code review tool.
 	codeReviewTool, err := modules.GetCodeReviewTool()
@@ -201,30 +188,14 @@ func runMain() (err error) {
 	if err != nil {
 		return err
 	}
-	defer func(act action.Action) {
-		if err == nil {
-			return
-		}
-		// On error, run the rollback function.
-		if ex := act.Rollback(); ex != nil {
-			errs.Log(ex)
-		}
-	}(act)
+	defer action.RollbackOnError(&err, task, act)
 
 	// Stage the release in the issue tracker.
 	act, err = release.Stage()
 	if err != nil {
 		return err
 	}
-	defer func(act action.Action) {
-		if err == nil {
-			return
-		}
-		// On error, unstage the release.
-		if ex := act.Rollback(); ex != nil {
-			errs.Log(ex)
-		}
-	}(act)
+	defer action.RollbackOnError(&err, task, act)
 
 	// Push to create the tag, reset client and delete release in the remote repository.
 	task = "Push changes to the remote repository"

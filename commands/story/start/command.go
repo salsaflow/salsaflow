@@ -144,13 +144,7 @@ StoryLoop:
 			return err
 		}
 		// Roll back on error.
-		defer func() {
-			if err != nil {
-				if err := act.Rollback(); err != nil {
-					errs.Log(err)
-				}
-			}
-		}()
+		defer action.RollbackOnError(&err, task, act)
 	}
 
 	// Add the current user to the list of story assignees.
@@ -160,15 +154,13 @@ StoryLoop:
 	if err := story.AddAssignee(user); err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	defer func(task string) {
-		// On error, reset the list of story assignees.
-		if err != nil {
-			log.Rollback(task)
-			if err := story.SetAssignees(originalAssignees); err != nil {
-				errs.LogError("Reset the list of story assignees", err, nil)
-			}
+	defer action.RollbackOnError(&err, task, action.ActionFunc(func() error {
+		task := "Reset the list of story assignees"
+		if err := story.SetAssignees(originalAssignees); err != nil {
+			return errs.NewError(task, err, nil)
 		}
-	}(task)
+		return nil
+	}))
 
 	// Start the selected story. No need to roll back.
 	task = "Start the selected story"

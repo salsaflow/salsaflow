@@ -154,16 +154,13 @@ The relevant version strings are:
 	if err := git.Branch(releaseBranch, trunkBranch); err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	defer func(task string) {
-		if err == nil {
-			return
-		}
-		// On error, delete the newly created release branch.
-		log.Rollback(task)
+	defer action.RollbackOnError(&err, task, action.ActionFunc(func() error {
+		task := "Delete the release branch"
 		if err := git.Branch("-d", releaseBranch); err != nil {
-			errs.LogError("Delete the release branch", err, nil)
+			errs.NewError(task, err, nil)
 		}
-	}(task)
+		return nil
+	}))
 
 	// Commit the next version string into the trunk branch.
 	task = fmt.Sprintf(
@@ -172,13 +169,7 @@ The relevant version strings are:
 	if err != nil {
 		return err
 	}
-	defer func(act action.Action) {
-		if err != nil {
-			if ex := act.Rollback(); ex != nil {
-				errs.Log(ex)
-			}
-		}
-	}(act)
+	defer action.RollbackOnError(&err, task, act)
 
 	// Initialise the next release in the code review tool.
 	codeReviewTool, err := modules.GetCodeReviewTool()
@@ -189,30 +180,14 @@ The relevant version strings are:
 	if err != nil {
 		return err
 	}
-	defer func(act action.Action) {
-		if err == nil {
-			return
-		}
-		// On error, run the rollback function.
-		if err := act.Rollback(); err != nil {
-			errs.Log(err)
-		}
-	}(act)
+	defer action.RollbackOnError(&err, task, act)
 
 	// Start the release in the issue tracker.
 	act, err = release.Start()
 	if err != nil {
 		return err
 	}
-	defer func(act action.Action) {
-		if err == nil {
-			return
-		}
-		// On error, cancel the release in the issue tracker.
-		if err := act.Rollback(); err != nil {
-			errs.Log(err)
-		}
-	}(act)
+	defer action.RollbackOnError(&err, task, act)
 
 	// Push the modified branches.
 	task = "Push the affected git branches"
