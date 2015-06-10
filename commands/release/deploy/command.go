@@ -171,19 +171,20 @@ func runMain() error {
 	io.WriteString(tw, "Index\tRelease\n")
 	io.WriteString(tw, "=====\t=======\n")
 	for i, release := range releasable {
-		fmt.Fprintf(tw, "%v\t%v\n", i, release.Version())
+		fmt.Fprintf(tw, "%v\t%v\n", i+1, release.Version())
 	}
 	tw.Flush()
 
 	index, err := prompt.PromptIndex(`
 Choose the release to be deployed by inserting its index.
-Or you can just press Enter to abort: `, 0, len(tags)-1)
+Or you can just press Enter to abort: `, 1, len(tags))
 	if err != nil {
 		if err == prompt.ErrCanceled {
 			prompt.PanicCancel()
 		}
 		return errs.NewError(task, err, nil)
 	}
+	index -= 1
 	fmt.Println()
 
 	// Reset and push the stable branch.
