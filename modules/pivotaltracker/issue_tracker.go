@@ -41,6 +41,7 @@ func (tracker *issueTracker) CurrentUser() (common.User, error) {
 }
 
 func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
+	// Fetch the stories with the right story type.
 	var (
 		client    = pivotal.NewClient(tracker.config.UserToken())
 		projectId = tracker.config.ProjectId()
@@ -51,16 +52,21 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		return nil, err
 	}
 
-	// Drop the features that are not estimated.
-	estimatedStories := make([]*pivotal.Story, 0, len(ptStories))
+	// Make sure that only estimated stories are included.
+	ss := make([]*pivotal.Story, 0, len(ptStories))
 	for _, story := range ptStories {
-		if !(story.Type == pivotal.StoryTypeFeature && story.Estimate == nil) {
-			estimatedStories = append(estimatedStories, story)
+		switch {
+		case story.Type == pivotal.StoryTypeFeature && story.Estimate != nil:
+			fallthrough
+		case story.Type == pivotal.StoryTypeBug:
+			ss = append(ss, story)
 		}
 	}
 
-	ptStories = storiesMatchingByLabel(estimatedStories, tracker.config.IncludeStoryLabelFilter())
+	// Filter by include label.
+	ptStories = storiesMatchingByLabel(ss, tracker.config.IncludeStoryLabelFilter())
 
+	// Return what is left.
 	return toCommonStories(ptStories, tracker), nil
 }
 
