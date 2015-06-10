@@ -95,12 +95,12 @@ func (release *runningRelease) EnsureStageable() error {
 }
 
 func (release *runningRelease) Stage() (action.Action, error) {
-	task := "Mark the stories as Delivered in Pivotal Tracker"
-	log.Run(task)
+	stageTask := "Mark the stories as Delivered in Pivotal Tracker"
+	log.Run(stageTask)
 
 	// Make sure the stories are loaded.
 	if err := release.ensureStoriesLoaded(); err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(stageTask, err, nil)
 	}
 	stories := release.stories
 
@@ -128,13 +128,14 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	)
 	updatedStories, err := updateStories(client, projectId, stories, updateFunc, rollbackFunc)
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(stageTask, err, nil)
 	}
 	release.stories = updatedStories
 
 	// Return the rollback function.
 	return action.ActionFunc(func() error {
 		// On error, set the states back to the original ones.
+		log.Rollback(stageTask)
 		task := "Reset the story states back to the original ones"
 		updatedStories, err := updateStories(client, projectId, release.stories, rollbackFunc, nil)
 		if err != nil {

@@ -173,6 +173,19 @@ func runMain() (err error) {
 	}
 	defer action.RollbackOnError(&err, task, action.ActionFunc(func() error {
 		task := fmt.Sprintf("Recreate branch '%v'", releaseBranch)
+
+		// Make sure the branch does not exist.
+		// This code is needed since failing push somehow creates a local branch again.
+		// No idea how and why that is happening, but this check is necessary.
+		exists, err := git.LocalBranchExists(releaseBranch)
+		if err != nil {
+			return errs.NewError(task, err, nil)
+		}
+		if exists {
+			return nil
+		}
+
+		// In case the branch does not exist, create it again.
 		if err := git.Branch(releaseBranch, remoteName+"/"+releaseBranch); err != nil {
 			return errs.NewError(task, err, nil)
 		}
@@ -188,14 +201,14 @@ func runMain() (err error) {
 	if err != nil {
 		return err
 	}
-	defer action.RollbackOnError(&err, task, act)
+	defer action.RollbackOnError(&err, "", act)
 
 	// Stage the release in the issue tracker.
 	act, err = release.Stage()
 	if err != nil {
 		return err
 	}
-	defer action.RollbackOnError(&err, task, act)
+	defer action.RollbackOnError(&err, "", act)
 
 	// Push to create the tag, reset client and delete release in the remote repository.
 	task = "Push changes to the remote repository"

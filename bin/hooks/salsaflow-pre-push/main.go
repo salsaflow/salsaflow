@@ -217,6 +217,7 @@ func promptUserForConfirmation(commits []*git.Commit) (bool, error) {
 	fmt.Fprintln(console)
 
 	// Prompt the user for confirmation.
+	defer fmt.Fprintln(console)
 	return prompt.Confirm("Are you sure you want to push these commits?")
 }
 

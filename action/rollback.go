@@ -20,10 +20,13 @@ func RollbackOnError(err *error, task string, action Action) {
 		return
 	}
 
+	// Tell the user what is happening.
+	if task != "" {
+		log.Rollback(task)
+	}
+
 	// Call the rollback function.
-	log.Rollback(task)
 	if ex := action.Rollback(); ex != nil {
 		errs.Log(ex)
 	}
-
 }
