@@ -51,7 +51,7 @@ func Upgrade(opts *InstallOptions) error {
 	// Sort the releases by version and get the most recent release.
 	task = "Select the most suitable GitHub release"
 	var rs releaseSlice
-	for _, release := range releases {
+	for i, release := range releases {
 		// Skip drafts and pre-releases.
 		if *release.Draft || *release.Prerelease {
 			continue
@@ -65,7 +65,7 @@ func Upgrade(opts *InstallOptions) error {
 		// Append the release to the list of releases.
 		rs = append(rs, &githubRelease{
 			version:  version,
-			resource: &release,
+			resource: &releases[i],
 		})
 	}
 	if rs.Len() == 0 {
