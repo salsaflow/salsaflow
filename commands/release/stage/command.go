@@ -26,14 +26,15 @@ import (
 var Command = &gocli.Command{
 	UsageLine: `
   stage`,
-	Short: "stage and close the current release",
+	Short: "stage current release",
 	Long: `
-  Stage and close the release that is currently running, i.e.
+  Stage the release that is currently running, i.e.
 
     1) Make sure the release can be staged (the stories are reviewed and tested)
-    2) Tag the release branch and delete it.
-    3) Move the staging branch to point to the tag.
-    4) Push the changes.
+    2) Reset the staging branch to point to the release branch.
+    3) Delete the release branch.
+    4) Bump the version for the staging branch.
+    5) Push the changes.
 	`,
 	Action: run,
 }
@@ -139,27 +140,10 @@ func runMain() (err error) {
 		return err
 	}
 
-	// Tag the release branch with the associated version string.
-	tag := releaseVersion.ReleaseTagString()
-	task = fmt.Sprintf("Tag branch '%v' (tag = %v)", releaseBranch, tag)
-	log.Run(task)
-	tag = releaseVersion.ReleaseTagString()
-	if err := git.Tag(tag, releaseBranch); err != nil {
-		return errs.NewError(task, err, nil)
-	}
-	defer action.RollbackTaskOnError(&err, task, action.ActionFunc(func() error {
-		// On error, delete the release tag.
-		task := "Delete the release tag"
-		if err := git.DeleteTag(tag); err != nil {
-			return errs.NewError(task, err, nil)
-		}
-		return nil
-	}))
-
 	// Reset the staging branch to point to the newly created tag.
-	task = fmt.Sprintf("Reset branch '%v' to point to tag '%v'", stagingBranch, tag)
+	task = fmt.Sprintf("Reset branch '%v' to point to branch '%v'", stagingBranch, releaseBranch)
 	log.Run(task)
-	act, err := git.CreateOrResetBranch(stagingBranch, tag)
+	act, err := git.CreateOrResetBranch(stagingBranch, releaseBranch)
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
@@ -194,6 +178,20 @@ func runMain() (err error) {
 		return nil
 	}))
 
+	// Update the version string on the staging branch.
+	stagingVersion, err := releaseVersion.ToStageVersion()
+	if err != nil {
+		return err
+	}
+
+	task = fmt.Sprintf("Bump version (branch '%v' -> %v)", stagingBranch, stagingVersion)
+	log.Run(task)
+	act, err = version.SetForBranch(stagingVersion, stagingBranch)
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+	defer action.RollbackTaskOnError(&err, task, act)
+
 	// Finalise the release in the code review tool.
 	codeReviewTool, err := modules.GetCodeReviewTool()
 	if err != nil {
@@ -218,7 +216,7 @@ func runMain() (err error) {
 	task = "Push changes to the remote repository"
 	log.Run(task)
 	return git.Push(remoteName,
-		"-f", "--tags", // Force push, push the release tag.
+		"-f",                            // Use the Force, Luke.
 		":"+releaseBranch,               // Delete the release branch.
 		stagingBranch+":"+stagingBranch) // Push the staging branch.
 }
