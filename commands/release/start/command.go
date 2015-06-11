@@ -154,7 +154,7 @@ The relevant version strings are:
 	if err := git.Branch(releaseBranch, trunkBranch); err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	defer action.RollbackOnError(&err, task, action.ActionFunc(func() error {
+	defer action.RollbackTaskOnError(&err, task, action.ActionFunc(func() error {
 		task := "Delete the release branch"
 		if err := git.Branch("-d", releaseBranch); err != nil {
 			errs.NewError(task, err, nil)
@@ -169,7 +169,7 @@ The relevant version strings are:
 	if err != nil {
 		return err
 	}
-	defer action.RollbackOnError(&err, task, act)
+	defer action.RollbackTaskOnError(&err, task, act)
 
 	// Initialise the next release in the code review tool.
 	codeReviewTool, err := modules.GetCodeReviewTool()
@@ -180,14 +180,14 @@ The relevant version strings are:
 	if err != nil {
 		return err
 	}
-	defer action.RollbackOnError(&err, task, act)
+	defer action.RollbackTaskOnError(&err, task, act)
 
 	// Start the release in the issue tracker.
 	act, err = release.Start()
 	if err != nil {
 		return err
 	}
-	defer action.RollbackOnError(&err, task, act)
+	defer action.RollbackTaskOnError(&err, task, act)
 
 	// Push the modified branches.
 	task = "Push the affected git branches"

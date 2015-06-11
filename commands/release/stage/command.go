@@ -147,7 +147,7 @@ func runMain() (err error) {
 	if err := git.Tag(tag, releaseBranch); err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	defer action.RollbackOnError(&err, task, action.ActionFunc(func() error {
+	defer action.RollbackTaskOnError(&err, task, action.ActionFunc(func() error {
 		// On error, delete the release tag.
 		task := "Delete the release tag"
 		if err := git.DeleteTag(tag); err != nil {
@@ -163,7 +163,7 @@ func runMain() (err error) {
 	if err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	defer action.RollbackOnError(&err, task, act)
+	defer action.RollbackTaskOnError(&err, task, act)
 
 	// Delete the local release branch.
 	task = fmt.Sprintf("Delete branch '%v'", releaseBranch)
@@ -171,7 +171,7 @@ func runMain() (err error) {
 	if err := git.Branch("-d", releaseBranch); err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	defer action.RollbackOnError(&err, task, action.ActionFunc(func() error {
+	defer action.RollbackTaskOnError(&err, task, action.ActionFunc(func() error {
 		task := fmt.Sprintf("Recreate branch '%v'", releaseBranch)
 
 		// In case the release branch exists locally, do nothing.
@@ -205,14 +205,14 @@ func runMain() (err error) {
 	}
 	// No need to pass any task string, the module rollback functions
 	// are expected to take care of printing messages on their own.
-	defer action.RollbackOnError(&err, "", act)
+	defer action.RollbackOnError(&err, act)
 
 	// Stage the release in the issue tracker.
 	act, err = release.Stage()
 	if err != nil {
 		return err
 	}
-	defer action.RollbackOnError(&err, "", act)
+	defer action.RollbackOnError(&err, act)
 
 	// Push to create the tag, reset client and delete release in the remote repository.
 	task = "Push changes to the remote repository"
