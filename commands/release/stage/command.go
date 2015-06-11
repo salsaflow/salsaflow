@@ -174,9 +174,11 @@ func runMain() (err error) {
 	defer action.RollbackOnError(&err, task, action.ActionFunc(func() error {
 		task := fmt.Sprintf("Recreate branch '%v'", releaseBranch)
 
-		// Make sure the branch does not exist.
-		// This code is needed since failing push somehow creates a local branch again.
-		// No idea how and why that is happening, but this check is necessary.
+		// In case the release branch exists locally, do nothing.
+		// This might look like an extra and useless check, but it looks like
+		// the final git push at the end of the command function actually creates
+		// the release branch locally when it is aborted from the pre-push hook.
+		// Not sure why and how that is happening.
 		exists, err := git.LocalBranchExists(releaseBranch)
 		if err != nil {
 			return errs.NewError(task, err, nil)
@@ -185,7 +187,7 @@ func runMain() (err error) {
 			return nil
 		}
 
-		// In case the branch does not exist, create it again.
+		// In case the branch indeed does not exist, create it.
 		if err := git.Branch(releaseBranch, remoteName+"/"+releaseBranch); err != nil {
 			return errs.NewError(task, err, nil)
 		}
@@ -201,6 +203,8 @@ func runMain() (err error) {
 	if err != nil {
 		return err
 	}
+	// No need to pass any task string, the module rollback functions
+	// are expected to take care of printing messages on their own.
 	defer action.RollbackOnError(&err, "", act)
 
 	// Stage the release in the issue tracker.
