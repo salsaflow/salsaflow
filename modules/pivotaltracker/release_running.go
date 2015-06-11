@@ -148,7 +148,8 @@ func (release *runningRelease) Stage() (action.Action, error) {
 
 func (release *runningRelease) Releasable() (bool, error) {
 	task := fmt.Sprintf(
-		"Make sure the stories associated with release %v are releasable", release.version)
+		"Make sure the stories associated with release %v are releasable",
+		release.version.BaseString())
 	log.Run(task)
 
 	// Make sure the stories are loaded.

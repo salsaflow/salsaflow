@@ -105,11 +105,24 @@ func runMain() (err error) {
 	// Get the next trunk version (the future release version).
 	var nextTrunkVersion *version.Version
 	if !flagNextTrunk.Zero() {
+		// Make sure it's only major, minor and patch that are set.
 		// Make sure the new version is actually incrementing the current one.
 		var (
 			current = trunkVersion
 			next    = flagNextTrunk
 		)
+
+		var part string
+		switch {
+		case len(next.Pre) != 0:
+			part = "Pre"
+		case len(next.Build) != 0:
+			part = "Build"
+		}
+		if part != "" {
+			return fmt.Errorf("invalid future version string: %v version part cannot be set", part)
+		}
+
 		if current.GE(next.Version) {
 			return fmt.Errorf("future version string not an increment: %v <= %v", next, current)
 		}
@@ -117,6 +130,12 @@ func runMain() (err error) {
 		nextTrunkVersion = &flagNextTrunk
 	} else {
 		nextTrunkVersion = trunkVersion.IncrementMinor()
+	}
+
+	// Make sure the next trunk version has the right format.
+	nextTrunkVersion, err = nextTrunkVersion.ToTrunkVersion()
+	if err != nil {
+		return err
 	}
 
 	// Fetch the stories from the issue tracker.
@@ -154,7 +173,7 @@ The relevant version strings are:
 	if err := git.Branch(releaseBranch, trunkBranch); err != nil {
 		return errs.NewError(task, err, nil)
 	}
-	defer action.RollbackOnError(&err, task, action.ActionFunc(func() error {
+	defer action.RollbackTaskOnError(&err, task, action.ActionFunc(func() error {
 		task := "Delete the release branch"
 		if err := git.Branch("-d", releaseBranch); err != nil {
 			errs.NewError(task, err, nil)
@@ -162,14 +181,29 @@ The relevant version strings are:
 		return nil
 	}))
 
-	// Commit the next version string into the trunk branch.
-	task = fmt.Sprintf(
-		"Bump version for the future release (branch '%v' -> %v)", trunkBranch, nextTrunkVersion)
-	act, err := version.SetForBranch(nextTrunkVersion, trunkBranch)
+	// Bump the release branch version.
+	testingVersion, err := trunkVersion.ToTestingVersion()
 	if err != nil {
 		return err
 	}
-	defer action.RollbackOnError(&err, task, act)
+
+	task = fmt.Sprintf("Bump version (branch '%v' -> %v)", releaseBranch, testingVersion)
+	log.Run(task)
+	_, err = version.SetForBranch(testingVersion, releaseBranch)
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+	// No need for a rollback function here, git branch -d specified as a rollback
+	// for the previous step will take care of deleting this change as well.
+
+	// Bump the trunk branch version.
+	task = fmt.Sprintf("Bump version (branch '%v' -> %v)", trunkBranch, nextTrunkVersion)
+	log.Run(task)
+	act, err := version.SetForBranch(nextTrunkVersion, trunkBranch)
+	if err != nil {
+		return errs.NewError(task, err, nil)
+	}
+	defer action.RollbackTaskOnError(&err, task, act)
 
 	// Initialise the next release in the code review tool.
 	codeReviewTool, err := modules.GetCodeReviewTool()
@@ -180,17 +214,17 @@ The relevant version strings are:
 	if err != nil {
 		return err
 	}
-	defer action.RollbackOnError(&err, task, act)
+	defer action.RollbackTaskOnError(&err, task, act)
 
 	// Start the release in the issue tracker.
 	act, err = release.Start()
 	if err != nil {
 		return err
 	}
-	defer action.RollbackOnError(&err, task, act)
+	defer action.RollbackTaskOnError(&err, task, act)
 
 	// Push the modified branches.
-	task = "Push the affected git branches"
+	task = "Push changes to the remote repository"
 	log.Run(task)
 	err = git.Push(remote, trunkBranch+":"+trunkBranch, releaseBranch+":"+releaseBranch)
 	if err != nil {
