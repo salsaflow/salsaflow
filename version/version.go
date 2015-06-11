@@ -1,17 +1,20 @@
 package version
 
 import (
+	// Stdlib
+	"fmt"
+
 	// Vendor
 	"github.com/blang/semver"
 )
 
-const (
-	MatcherString      = "[0-9]+[.][0-9]+[.][0-9]+"
-	GroupMatcherString = "([0-9]+)[.]([0-9]+)[.]([0-9]+)"
-)
-
 type Version struct {
 	semver.Version
+}
+
+// BaseString only returns MAJOR.MINOR.PATCH
+func (v *Version) BaseString() string {
+	return fmt.Sprintf("%v.%v.%v", v.Major, v.Minor, v.Patch)
 }
 
 func (v *Version) Clone() *Version {

@@ -610,5 +610,5 @@ func milestoneForCommit(config Config, owner, repo, sha string) (*github.Milesto
 }
 
 func milestoneTitle(v *version.Version) string {
-	return fmt.Sprintf("%v-review", v)
+	return fmt.Sprintf("%v-review", v.BaseString())
 }
