@@ -27,12 +27,14 @@ var Command = &gocli.Command{
 
   This basically means that:
 
-    1) The stable branch is reset to point to the staging branch.
-    2) Version is bumped for the stable branch.
-    3) The stable branch is tagged with a release tag.
-    4) The staging branch is reset to the current release branch
+    1) The issue tracker is checked to make sure the release
+       is accepted and that it can be actually released.
+    2) The stable branch is reset to point to the staging branch.
+    3) Version is bumped for the stable branch.
+    4) The stable branch is tagged with a release tag.
+    5) The staging branch is reset to the current release branch
        in case there is already another release started.
-    5) Everything is pushed to the remote repository.
+    6) Everything is pushed to the remote repository.
 	`,
 	Action: run,
 }
