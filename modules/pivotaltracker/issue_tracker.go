@@ -2,7 +2,6 @@ package pivotaltracker
 
 import (
 	// Stdlib
-	"bytes"
 	"fmt"
 	"strings"
 
@@ -71,30 +70,17 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 	return toCommonStories(ptStories, tracker), nil
 }
 
-func (tracker *issueTracker) StoriesInDevelopment(
-	includeReviewed bool,
-) (stories []common.Story, err error) {
-
-	// Build the query.
-	query := bytes.NewBufferString(
-		fmt.Sprintf("state:%v AND -label:\"%v\"",
-			pivotal.StoryStateStarted, tracker.config.NoReviewLabel()))
-
-	if !includeReviewed {
-		fmt.Fprintf(query, " AND -label:\"%v\"", tracker.config.ReviewedLabel())
-	}
-
-	// Fetch the stories.
+func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
 	var (
 		client    = pivotal.NewClient(tracker.config.UserToken())
 		projectId = tracker.config.ProjectId()
 	)
-	ptStories, err := searchStories(client, projectId, query.String())
+	ptStories, err := searchStories(client, projectId,
+		"state:%v AND -label:\"%v\" AND -label:\"%v\"",
+		pivotal.StoryStateStarted, tracker.config.ReviewedLabel(), tracker.config.NoReviewLabel())
 	if err != nil {
 		return nil, err
 	}
-
-	// Wrap the stories in the right interface.
 	return toCommonStories(ptStories, tracker), nil
 }
 

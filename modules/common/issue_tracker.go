@@ -26,7 +26,7 @@ type IssueTracker interface {
 	StartableStories() ([]Story, error)
 
 	// StoriesInDevelopment returns the list of stories that are being developed.
-	StoriesInDevelopment(includeReviewed bool) ([]Story, error)
+	StoriesInDevelopment() ([]Story, error)
 
 	// ListStoriesByTag returns the stories for the given list of Story-Id tags.
 	ListStoriesByTag(tags []string) ([]Story, error)
