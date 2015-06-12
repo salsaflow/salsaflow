@@ -22,6 +22,7 @@ const (
 	stateIdApproved         = "10000"
 	stateIdBeingImplemented = "10400"
 	stateIdImplemented      = "10401"
+	stateIdReviewed         = "10102"
 	stateIdTested           = "10103"
 	stateIdStaged           = "10105"
 	stateIdAccepted         = "10005"

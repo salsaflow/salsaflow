@@ -42,11 +42,7 @@ func (tracker *issueTracker) CurrentUser() (common.User, error) {
 
 func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
 	// Fetch the stories with the right story type.
-	var (
-		client    = pivotal.NewClient(tracker.config.UserToken())
-		projectId = tracker.config.ProjectId()
-	)
-	ptStories, err := searchStories(client, projectId,
+	ptStories, err := tracker.searchStories(
 		"state:%v,%v", pivotal.StoryStateUnstarted, pivotal.StoryStatePlanned)
 	if err != nil {
 		return nil, err
@@ -70,17 +66,26 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 	return toCommonStories(ptStories, tracker), nil
 }
 
+func (tracker *issueTracker) ReviewedStories() (stories []common.Story, err error) {
+	ptStories, err := tracker.searchStories(
+		"state:%v AND label:\"%v\"", pivotal.StoryStateStarted, tracker.config.ReviewedLabel())
+	if err != nil {
+		return nil, err
+	}
+
+	ptStories = storiesMatchingByLabel(ptStories, tracker.config.IncludeStoryLabelFilter())
+	return toCommonStories(ptStories, tracker), nil
+}
+
 func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
-	var (
-		client    = pivotal.NewClient(tracker.config.UserToken())
-		projectId = tracker.config.ProjectId()
-	)
-	ptStories, err := searchStories(client, projectId,
+	ptStories, err := tracker.searchStories(
 		"state:%v AND -label:\"%v\" AND -label:\"%v\"",
 		pivotal.StoryStateStarted, tracker.config.ReviewedLabel(), tracker.config.NoReviewLabel())
 	if err != nil {
 		return nil, err
 	}
+
+	ptStories = storiesMatchingByLabel(ptStories, tracker.config.IncludeStoryLabelFilter())
 	return toCommonStories(ptStories, tracker), nil
 }
 
@@ -134,4 +139,16 @@ func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId stri
 		return "", fmt.Errorf("invalid Pivotal Tracker Story-Id tag: %v", tag)
 	}
 	return parts[2], nil
+}
+
+func (tracker *issueTracker) searchStories(
+	queryFormat string,
+	v ...interface{},
+) ([]*pivotal.Story, error) {
+
+	var (
+		client    = pivotal.NewClient(tracker.config.UserToken())
+		projectId = tracker.config.ProjectId()
+	)
+	return searchStories(client, projectId, queryFormat, v...)
 }

@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -391,6 +392,11 @@ and read the DESCRIPTION section.
 		return nil, errs.NewError(storiesTask, err, nil)
 	}
 
+	reviewedStories, err := tracker.ReviewedStories()
+	if err != nil {
+		return nil, errs.NewError(storiesTask, err, nil)
+	}
+
 	// Show only the stories owned by the current user.
 	var myStories []common.Story
 StoryLoop:
@@ -453,22 +459,10 @@ StoryLoop:
 		header := `
 Some of the commits listed above are not assigned to any story.
 Please pick up the story that these commits will be assigned to.
-You can also insert '0' to mark the commits as unassigned:`
-		selectedStory, err := prompt.PromptStoryAllowNone(header, stories)
+You can also insert 'u' to mark the commits as unassigned:`
+		selectedStory, err := promptForStory(header, stories, reviewedStories)
 		if err != nil {
-			switch err {
-			case prompt.ErrNoStories:
-				hint := `
-There are no stories that the unassigned commits can be assigned to.
-In other words, there are no stories in the right state for that.
-
-`
-				return nil, errs.NewError(task, err, bytes.NewBufferString(hint))
-			case prompt.ErrCanceled:
-				prompt.PanicCancel()
-			default:
-				return nil, err
-			}
+			return nil, err
 		}
 		story = selectedStory
 	}
@@ -492,12 +486,9 @@ The following commit is not assigned to any story:
   commit title: %v
 
 Please pick up the story to assign the commit to.
-Inserting '0' will mark the commit as unassigned:`, commit.SHA, commitMessageTitle)
-				selectedStory, err := prompt.PromptStoryAllowNone(header, stories)
+Inserting 'u' will mark the commit as unassigned:`, commit.SHA, commitMessageTitle)
+				selectedStory, err := promptForStory(header, stories, reviewedStories)
 				if err != nil {
-					if err == prompt.ErrCanceled {
-						panic(err)
-					}
 					return nil, err
 				}
 				story = selectedStory
@@ -768,4 +759,90 @@ func merge(commit, branch string, flags ...string) error {
 		return errs.NewError(task, err, nil)
 	}
 	return nil
+}
+
+func promptForStory(
+	header string,
+	stories []common.Story,
+	reviewedStories []common.Story,
+) (common.Story, error) {
+
+	var (
+		task         = "Prompt the user to select a story"
+		showReviewed = false
+	)
+
+	msgFormat := `Choose a story by inserting its index. You can also:
+  - insert 'u' not to choose any story, or
+  - insert 'r' to select a story that is %v, or
+  - press Enter to abort.
+Your choice: `
+
+	// Print the header.
+	fmt.Println(header)
+
+	for {
+		// Set the context for this iteration.
+		var (
+			ss  []common.Story
+			msg string
+		)
+		if showReviewed {
+			ss = reviewedStories
+			msg = fmt.Sprintf(msgFormat, "being developed")
+		} else {
+			ss = stories
+			msg = fmt.Sprintf(msgFormat, "already reviewed")
+		}
+
+		// Present the stories to the user.
+		fmt.Println()
+		if err := prompt.ListStories(ss, os.Stdout); err != nil {
+			return nil, errs.NewError(task, err, nil)
+		}
+		fmt.Println()
+
+		// Prompt the user to select a story to assign the commit with.
+		input, err := prompt.Prompt(msg)
+		if err != nil {
+			switch err {
+			case prompt.ErrNoStories:
+				hint := `
+There are no stories that the unassigned commits can be assigned to.
+In other words, there are no stories in the right state for that.
+
+`
+				return nil, errs.NewError(task, err, bytes.NewBufferString(hint))
+			case prompt.ErrCanceled:
+				prompt.PanicCancel()
+			default:
+				return nil, errs.NewError(task, err, nil)
+			}
+		}
+
+		// Check the valid letter values.
+		switch strings.ToLower(input) {
+		case "u":
+			return nil, nil
+		case "r":
+			showReviewed = !showReviewed
+			continue
+		}
+
+		// Parse the input as a number.
+		index, err := strconv.Atoi(input)
+		if err != nil {
+			// Print the list again on invalid input.
+			continue
+		}
+
+		// Make sure we are not out of bounds.
+		if index < 1 || index > len(ss) {
+			// Print the list again on invalid input.
+			continue
+		}
+
+		// Return the selected story.
+		return ss[index-1], nil
+	}
 }

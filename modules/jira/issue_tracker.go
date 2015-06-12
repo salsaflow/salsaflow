@@ -43,35 +43,27 @@ func (tracker *issueTracker) CurrentUser() (common.User, error) {
 }
 
 func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
-	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", tracker.config.ProjectKey(),
+	query := fmt.Sprintf("(%v) AND (%v)",
 		formatInRange("type", codingIssueTypeIds...),
 		formatInRange("status", startableStateIds...))
 
-	issues, _, err := newClient(tracker.config).Issues.Search(&jira.SearchOptions{
-		JQL:        query,
-		MaxResults: 200,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return toCommonStories(issues, tracker), nil
+	return tracker.searchIssues(query)
 }
 
 func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
-	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", tracker.config.ProjectKey(),
+	query := fmt.Sprintf("(%v) AND (%v)",
 		formatInRange("type", codingIssueTypeIds...),
 		formatInRange("status", inDevelopmentStateIds...))
 
-	issues, _, err := newClient(tracker.config).Issues.Search(&jira.SearchOptions{
-		JQL:        query,
-		MaxResults: 200,
-	})
-	if err != nil {
-		return nil, err
-	}
+	return tracker.searchIssues(query)
+}
 
-	return toCommonStories(issues, tracker), nil
+func (tracker *issueTracker) ReviewedStories() (stories []common.Story, err error) {
+	query := fmt.Sprintf("(%v) AND (%v)",
+		formatInRange("type", codingIssueTypeIds...),
+		formatInRange("status", stateIdReviewed))
+
+	return tracker.searchIssues(query)
 }
 
 func (tracker *issueTracker) ListStoriesByTag(tags []string) (stories []common.Story, err error) {
@@ -139,6 +131,20 @@ func (tracker *issueTracker) getVersionResource(ver *version.Version) (*jira.Ver
 		return res, nil
 	}
 	return nil, nil
+}
+
+func (tracker *issueTracker) searchIssues(query string) ([]common.Story, error) {
+	jql := fmt.Sprintf("project = \"%v\" AND (%v)", tracker.config.ProjectKey(), query)
+
+	issues, _, err := newClient(tracker.config).Issues.Search(&jira.SearchOptions{
+		JQL:        jql,
+		MaxResults: 200,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return toCommonStories(issues, tracker), nil
 }
 
 func toCommonStories(issues []*jira.Issue, tracker *issueTracker) []common.Story {

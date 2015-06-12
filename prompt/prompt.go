@@ -23,19 +23,19 @@ const maxStoryTitleColumnWidth = 80
 var ErrNoStories = errors.New("no stories to choose from")
 
 type InvalidInputError struct {
-	input string
+	Input string
 }
 
 func (i *InvalidInputError) Error() string {
-	return "Invalid input: " + i.input
+	return "invalid input: " + i.Input
 }
 
 type OutOfBoundsError struct {
-	input string
+	Input string
 }
 
 func (i *OutOfBoundsError) Error() string {
-	return "Index out of bounds: " + i.input
+	return "index out of bounds: " + i.Input
 }
 
 func Confirm(question string) (bool, error) {
@@ -97,16 +97,18 @@ func Prompt(msg string) (string, error) {
 	if err := scanner.Err(); err != nil {
 		return "", err
 	}
-	return scanner.Text(), nil
+
+	input := scanner.Text()
+	if input == "" {
+		return "", ErrCanceled
+	}
+	return input, nil
 }
 
 func PromptIndex(msg string, min, max int) (int, error) {
 	line, err := Prompt(msg)
 	if err != nil {
 		return 0, err
-	}
-	if line == "" {
-		return 0, ErrCanceled
 	}
 
 	index, err := strconv.Atoi(line)
