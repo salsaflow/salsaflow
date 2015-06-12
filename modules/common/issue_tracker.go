@@ -6,7 +6,6 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
-	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/version"
 )
 
@@ -79,14 +78,14 @@ type Story interface {
 	Assignees() []User
 
 	// AddAssignee can be used to add an additional user to the list of assignees.
-	AddAssignee(User) *errs.Error
+	AddAssignee(User) error
 
 	// SetAssigness can be used to set the list of assignees,
 	// effectively replacing the current list.
-	SetAssignees([]User) *errs.Error
+	SetAssignees([]User) error
 
 	// Start can be used to start the story in the issue tracker.
-	Start() *errs.Error
+	Start() error
 
 	// LessThan is being used for sorting stories for output.
 	// Stories are printed in the order they are sorted by this function.
