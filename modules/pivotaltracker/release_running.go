@@ -37,36 +37,22 @@ func (release *runningRelease) Version() *version.Version {
 }
 
 func (release *runningRelease) Stories() ([]common.Story, error) {
-	// Fetch the stories unless cached.
-	if release.stories == nil {
-		task := "Fetch data from Pivotal Tracker"
-		log.Run(task)
-		var (
-			config       = release.tracker.config
-			client       = pivotal.NewClient(config.UserToken())
-			projectId    = config.ProjectId()
-			releaseLabel = getReleaseLabel(release.version)
-		)
-		stories, err := searchStories(client, projectId, "label:%v", releaseLabel)
-		if err != nil {
-			return nil, errs.NewError(task, err, nil)
-		}
-		release.stories = stories
+	stories, err := release.loadStories()
+	if err != nil {
+		return nil, err
 	}
-
-	// Return the cached stories.
-	return toCommonStories(release.stories, release.tracker), nil
+	return toCommonStories(stories, release.tracker), nil
 }
 
 func (release *runningRelease) EnsureStageable() error {
 	task := "Make sure the stories can be staged"
 	log.Run(task)
 
-	// Make sure the stories are fetched.
-	if err := release.ensureStoriesLoaded(); err != nil {
-		return err
+	// Load the assigned stories.
+	stories, err := release.loadStories()
+	if err != nil {
+		return errs.NewError(task, err, nil)
 	}
-	stories := release.stories
 
 	var details bytes.Buffer
 	tw := tabwriter.NewWriter(&details, 0, 8, 4, '\t', 0)
@@ -76,10 +62,7 @@ func (release *runningRelease) EnsureStageable() error {
 
 	// For a story to be stageable, it must be in the Finished stage.
 	// That by definition means that it has been reviewed and verified.
-	var (
-		err             error
-		errNotStageable = errors.New("release not stageable")
-	)
+	errNotStageable := errors.New("release not stageable")
 	for _, story := range stories {
 		if !stateAtLeast(story, pivotal.StoryStateFinished) {
 			fmt.Fprintf(tw, "%v\t%v\n", story.URL, "story not finished yet")
@@ -95,14 +78,14 @@ func (release *runningRelease) EnsureStageable() error {
 }
 
 func (release *runningRelease) Stage() (action.Action, error) {
-	stageTask := "Mark the stories as Delivered in Pivotal Tracker"
+	stageTask := "Mark the stories as delivered in Pivotal Tracker"
 	log.Run(stageTask)
 
-	// Make sure the stories are loaded.
-	if err := release.ensureStoriesLoaded(); err != nil {
+	// Load the assigned stories.
+	stories, err := release.loadStories()
+	if err != nil {
 		return nil, errs.NewError(stageTask, err, nil)
 	}
-	stories := release.stories
 
 	// Save the original states into a map.
 	originalStates := make(map[int]string, len(stories))
@@ -153,10 +136,10 @@ func (release *runningRelease) Releasable() (bool, error) {
 	log.Run(task)
 
 	// Make sure the stories are loaded.
-	if err := release.ensureStoriesLoaded(); err != nil {
+	stories, err := release.loadStories()
+	if err != nil {
 		return false, errs.NewError(task, err, nil)
 	}
-	stories := release.stories
 
 	// Make sure all relevant stories are Accepted.
 	// This includes the stories with SkipCheckLabels.
@@ -175,12 +158,24 @@ func (release *runningRelease) Release() error {
 	return nil
 }
 
-func (release *runningRelease) ensureStoriesLoaded() error {
-	if _, err := release.Stories(); err != nil {
-		return err
-	}
+func (release *runningRelease) loadStories() ([]*pivotal.Story, error) {
+	// Fetch the stories unless cached.
 	if release.stories == nil {
-		panic("bug(stories == nil)")
+		task := "Fetch data from Pivotal Tracker"
+		log.Run(task)
+		var (
+			config       = release.tracker.config
+			client       = pivotal.NewClient(config.UserToken())
+			projectId    = config.ProjectId()
+			releaseLabel = getReleaseLabel(release.version)
+		)
+		stories, err := searchStories(client, projectId, "label:%v", releaseLabel)
+		if err != nil {
+			return nil, errs.NewError(task, err, nil)
+		}
+		release.stories = stories
 	}
-	return nil
+
+	// Return the cached stories.
+	return release.stories, nil
 }
