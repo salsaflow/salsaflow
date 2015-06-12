@@ -106,6 +106,9 @@ type RunningRelease interface {
 	Stories() ([]Story, error)
 	EnsureStageable() error
 	Stage() (action.Action, error)
-	Releasable() (bool, error)
+
+	// EnsureReleasable shall return *ErrNotReleasable in case
+	// it is not possible to release the given release.
+	EnsureReleasable() error
 	Release() error
 }

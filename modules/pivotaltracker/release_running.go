@@ -129,7 +129,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	}), nil
 }
 
-func (release *runningRelease) Releasable() (bool, error) {
+func (release *runningRelease) EnsureReleasable() error {
 	task := fmt.Sprintf(
 		"Make sure the stories associated with release %v are releasable",
 		release.version.BaseString())
@@ -138,18 +138,41 @@ func (release *runningRelease) Releasable() (bool, error) {
 	// Make sure the stories are loaded.
 	stories, err := release.loadStories()
 	if err != nil {
-		return false, errs.NewError(task, err, nil)
+		return errs.NewError(task, err, nil)
 	}
 
-	// Make sure all relevant stories are Accepted.
+	// Make sure all relevant stories are accepted.
 	// This includes the stories with SkipCheckLabels.
-	// These should be Accepted as well, maybe by a daemon.
+	notAccepted := make([]*pivotal.Story, 0, len(stories))
 	for _, story := range stories {
 		if story.State != pivotal.StoryStateAccepted {
-			return false, nil
+			notAccepted = append(notAccepted, story)
 		}
 	}
-	return true, nil
+
+	// In case there is no story that is not accepted, we are done.
+	if len(notAccepted) == 0 {
+		return nil
+	}
+
+	// Generate the error hint.
+	var hint bytes.Buffer
+	tw := tabwriter.NewWriter(&hint, 0, 8, 2, '\t', 0)
+	fmt.Fprintf(tw, "\nThe following stories cannot be released:\n\n")
+	fmt.Fprintf(tw, "Story URL\tState\n")
+	fmt.Fprintf(tw, "=========\t=====\n")
+	for _, story := range notAccepted {
+		fmt.Fprintf(tw, "%v\t%v\n", story.URL, story.State)
+	}
+	fmt.Fprintf(tw, "\n")
+	tw.Flush()
+
+	return &common.ErrNotReleasable{
+		errs.NewError(
+			fmt.Sprintf("Make sure release '%v' can be released", release.version),
+			fmt.Errorf("release '%v' is not releasable"),
+			&hint),
+	}
 }
 
 func (release *runningRelease) Release() error {

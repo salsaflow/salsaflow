@@ -2,7 +2,6 @@ package deployCmd
 
 import (
 	// Stdlib
-	"errors"
 	"fmt"
 	"os"
 
@@ -104,12 +103,8 @@ func runMain() (err error) {
 		return errs.NewError(task, err, nil)
 	}
 
-	ok, err := release.Releasable()
-	if err != nil {
+	if err := release.EnsureReleasable(); err != nil {
 		return errs.NewError(task, err, nil)
-	}
-	if !ok {
-		return errs.NewError(task, errors.New("staging branch not releasable"), nil)
 	}
 
 	// Reset the stable branch to point to stage.

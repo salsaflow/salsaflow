@@ -116,7 +116,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	}), nil
 }
 
-func (release *runningRelease) Releasable() (bool, error) {
+func (release *runningRelease) EnsureReleasable() error {
 	// Drop accepted issues.
 	var notAccepted []*jira.Issue
 IssueLoop:
@@ -129,8 +129,29 @@ IssueLoop:
 		notAccepted = append(notAccepted, issue)
 	}
 
-	// Return the result.
-	return len(notAccepted) == 0, nil
+	// In case there is no open story, we are done.
+	if len(notAccepted) == 0 {
+		return nil
+	}
+
+	// Generate the error hint.
+	var hint bytes.Buffer
+	tw := tabwriter.NewWriter(&hint, 0, 8, 2, '\t', 0)
+	fmt.Fprintf(tw, "\nThe following issues cannot be released:\n\n")
+	fmt.Fprintf(tw, "Issue Key\tStatus\n")
+	fmt.Fprintf(tw, "=========\t======\n")
+	for _, issue := range notAccepted {
+		fmt.Fprintf(tw, "%v\t%v\n", issue.Key, issue.Fields.Status.Name)
+	}
+	fmt.Fprintf(tw, "\n")
+	tw.Flush()
+
+	return &common.ErrNotReleasable{
+		errs.NewError(
+			fmt.Sprintf("Make sure release '%v' can be released", release.releaseVersion),
+			fmt.Errorf("release '%v' is not releasable"),
+			&hint),
+	}
 }
 
 func (release *runningRelease) Release() error {
