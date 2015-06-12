@@ -58,10 +58,18 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 	return toCommonStories(issues, tracker), nil
 }
 
-func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
+func (tracker *issueTracker) StoriesInDevelopment(
+	includeReviewed bool,
+) (stories []common.Story, err error) {
+
+	stateIds := inDevelopmentStateIds
+	if includeReviewed {
+		stateIds = append(stateIds, stateIdReviewed)
+	}
+
 	query := fmt.Sprintf("project=%v AND (%v) AND (%v)", tracker.config.ProjectKey(),
 		formatInRange("type", codingIssueTypeIds...),
-		formatInRange("status", inDevelopmentStateIds...))
+		formatInRange("status", stateIds...))
 
 	issues, _, err := newClient(tracker.config).Issues.Search(&jira.SearchOptions{
 		JQL:        query,

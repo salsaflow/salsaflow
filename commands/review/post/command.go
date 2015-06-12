@@ -28,10 +28,10 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  post [-update=RRID] [-fixes=RRID] [-open] [REVISION]
+  post [-update=RRID] [-fixes=RRID] [-include_reviewed] [-open] [REVISION]
 
   post [-fixes=RRID] [-no_fetch] [-no_rebase] [-ask_once]
-       [-no_seq] [-open] [-no_dialog] -parent=BRANCH`,
+       [-include_reviewed] [-open] [-no_dialog] -parent=BRANCH`,
 	Short: "post code review requests",
 	Long: `
   Post a code review request for each commit specified.
@@ -49,19 +49,25 @@ var Command = &gocli.Command{
 
   When no parent branch nor the revision is specified, the last commit
   on the current branch is selected and posted alone into the code review tool.
+
+  When you need to assign a commit to a stary that is already reviewed,
+  you can use -include_reviewed to add the reviewed stories to the set
+  of stories offered when missing Story-Id tag is detected. However,
+  this is considered a bad practice, so please try to avoid it.
   `,
 	Action: run,
 }
 
 var (
-	flagAskOnce  bool
-	flagFixes    uint
-	flagNoDialog bool
-	flagNoFetch  bool
-	flagNoRebase bool
-	flagOpen     bool
-	flagParent   string
-	flagUpdate   uint
+	flagAskOnce         bool
+	flagFixes           uint
+	flagIncludeReviewed bool
+	flagNoDialog        bool
+	flagNoFetch         bool
+	flagNoRebase        bool
+	flagOpen            bool
+	flagParent          string
+	flagUpdate          uint
 )
 
 func init() {
@@ -69,6 +75,8 @@ func init() {
 		"ask once and reuse the story ID for all commits")
 	Command.Flags.UintVar(&flagFixes, "fixes", flagFixes,
 		"mark the commits as fixing issues in the given review request")
+	Command.Flags.BoolVar(&flagIncludeReviewed, "include_reviewed", flagIncludeReviewed,
+		"include the reviewed stories in the listing")
 	Command.Flags.BoolVar(&flagNoDialog, "no_dialog", flagNoDialog,
 		"skip the followup dialog in case -parent is being used")
 	Command.Flags.BoolVar(&flagNoFetch, "no_fetch", flagNoFetch,
@@ -386,7 +394,7 @@ and read the DESCRIPTION section.
 		return nil, errs.NewError(task, err, nil)
 	}
 
-	stories, err := tracker.StoriesInDevelopment()
+	stories, err := tracker.StoriesInDevelopment(flagIncludeReviewed)
 	if err != nil {
 		return nil, errs.NewError(storiesTask, err, nil)
 	}
