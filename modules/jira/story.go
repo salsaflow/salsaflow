@@ -62,11 +62,11 @@ func (story *story) Assignees() []common.User {
 	return []common.User{&user{story.Issue.Fields.Assignee}}
 }
 
-func (story *story) AddAssignee(user common.User) *errs.Error {
+func (story *story) AddAssignee(user common.User) error {
 	return story.SetAssignees([]common.User{user})
 }
 
-func (story *story) SetAssignees(users []common.User) *errs.Error {
+func (story *story) SetAssignees(users []common.User) error {
 	api := newClient(story.tracker.config)
 
 	var data struct {
@@ -85,7 +85,7 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 	return nil
 }
 
-func (story *story) Start() *errs.Error {
+func (story *story) Start() error {
 	api := newClient(story.tracker.config)
 
 	_, err := api.Issues.PerformTransition(story.Issue.Id, transitionIdStartImplementing)

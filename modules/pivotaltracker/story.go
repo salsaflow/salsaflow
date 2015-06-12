@@ -48,7 +48,7 @@ func (story *story) Assignees() []common.User {
 	return users
 }
 
-func (story *story) AddAssignee(user common.User) *errs.Error {
+func (story *story) AddAssignee(user common.User) error {
 	task := fmt.Sprintf("Add user as the owner to story %v", user.Id(), story.Id)
 	for _, id := range *story.OwnerIds {
 		if strconv.Itoa(id) == user.Id() {
@@ -64,7 +64,7 @@ func (story *story) AddAssignee(user common.User) *errs.Error {
 	return story.SetAssignees(append(story.Assignees(), userId(id)))
 }
 
-func (story *story) SetAssignees(users []common.User) *errs.Error {
+func (story *story) SetAssignees(users []common.User) error {
 	task := fmt.Sprintf("Set owners for story %v", story.Story.Id)
 
 	ownerIds := make([]int, len(users))
@@ -90,7 +90,7 @@ func (story *story) SetAssignees(users []common.User) *errs.Error {
 	return nil
 }
 
-func (story *story) Start() *errs.Error {
+func (story *story) Start() error {
 	task := fmt.Sprintf("Start Pivotal Tracker story %v", story.Story.Id)
 
 	var (
