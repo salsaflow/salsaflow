@@ -40,51 +40,54 @@ func (v *Version) IncrementPatch() *Version {
 	}}
 }
 
-func (v *Version) ToTrunkVersion() (*Version, error) {
-	config, err := LoadConfig()
-	if err != nil {
-		return nil, err
-	}
+type versionKind int
 
-	suffix := config.TrunkSuffix()
-	return v.toVersion(&suffix), nil
+const (
+	vkTrunk versionKind = iota
+	vkTesting
+	vkStage
+	vkStable
+)
+
+func (v *Version) ToTrunkVersion() (*Version, error) {
+	return v.toVersion(vkTrunk)
 }
 
 func (v *Version) ToTestingVersion() (*Version, error) {
-	config, err := LoadConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	suffix := config.TestingSuffix()
-	return v.toVersion(&suffix), nil
+	return v.toVersion(vkTesting)
 }
 
 func (v *Version) ToStageVersion() (*Version, error) {
+	return v.toVersion(vkStage)
+}
+
+func (v *Version) ToStableVersion() (*Version, error) {
+	return v.toVersion(vkStable)
+}
+
+func (v *Version) toVersion(kind versionKind) (*Version, error) {
 	config, err := LoadConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	suffix := config.StageSuffix()
-	return v.toVersion(&suffix), nil
-}
-
-func (v *Version) ToStableVersion() (*Version, error) {
-	return v.toVersion(nil), nil
-}
-
-func (v *Version) toVersion(suffix *semver.PRVersion) *Version {
 	ver := v.Clone()
 	ver.Build = nil
 
-	if suffix == nil {
+	switch kind {
+	case vkTrunk:
+		ver.Pre = []semver.PRVersion{config.TrunkSuffix()}
+	case vkTesting:
+		ver.Pre = []semver.PRVersion{config.TestingSuffix()}
+	case vkStage:
+		ver.Pre = []semver.PRVersion{config.StageSuffix()}
+	case vkStable:
 		ver.Pre = nil
-	} else {
-		ver.Pre = []semver.PRVersion{*suffix}
+	default:
+		panic(fmt.Errorf("not a valid version kind: %v", kind))
 	}
 
-	return ver
+	return ver, nil
 }
 
 func (v *Version) ReleaseTagString() string {
