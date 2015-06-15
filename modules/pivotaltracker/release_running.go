@@ -51,7 +51,7 @@ func (release *runningRelease) EnsureStageable() error {
 	// Load the assigned stories.
 	stories, err := release.loadStories()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	var details bytes.Buffer
@@ -72,7 +72,7 @@ func (release *runningRelease) EnsureStageable() error {
 	if err != nil {
 		io.WriteString(tw, "\n")
 		tw.Flush()
-		return errs.NewError(task, err, &details)
+		return errs.NewErrorWithHint(task, err, details.String())
 	}
 	return nil
 }
@@ -84,7 +84,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	// Load the assigned stories.
 	stories, err := release.loadStories()
 	if err != nil {
-		return nil, errs.NewError(stageTask, err, nil)
+		return nil, errs.NewError(stageTask, err)
 	}
 
 	// Save the original states into a map.
@@ -111,7 +111,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	)
 	updatedStories, err := updateStories(client, projectId, stories, updateFunc, rollbackFunc)
 	if err != nil {
-		return nil, errs.NewError(stageTask, err, nil)
+		return nil, errs.NewError(stageTask, err)
 	}
 	release.stories = updatedStories
 
@@ -122,7 +122,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 		task := "Reset the story states back to the original ones"
 		updatedStories, err := updateStories(client, projectId, release.stories, rollbackFunc, nil)
 		if err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		release.stories = updatedStories
 		return nil
@@ -139,7 +139,7 @@ func (release *runningRelease) EnsureReleasable() error {
 	// Make sure the stories are loaded.
 	stories, err := release.loadStories()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Make sure all relevant stories are accepted.
@@ -169,10 +169,8 @@ func (release *runningRelease) EnsureReleasable() error {
 	tw.Flush()
 
 	return &common.ErrNotReleasable{
-		errs.NewError(
-			fmt.Sprintf("Make sure release %v can be released", versionString),
-			fmt.Errorf("release %v cannot be released", versionString),
-			&hint),
+		errs.NewErrorWithHint(
+			task, fmt.Errorf("release %v cannot be released", versionString), hint.String()),
 	}
 }
 
@@ -195,7 +193,7 @@ func (release *runningRelease) loadStories() ([]*pivotal.Story, error) {
 		)
 		stories, err := searchStories(client, projectId, "label:%v", releaseLabel)
 		if err != nil {
-			return nil, errs.NewError(task, err, nil)
+			return nil, errs.NewError(task, err)
 		}
 		release.stories = stories
 	}

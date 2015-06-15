@@ -72,7 +72,7 @@ func runMain() error {
 		task := "Fetch the remote repository"
 		log.Run(task)
 		if err := git.UpdateRemotes(remoteName); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 	}
 
@@ -82,19 +82,19 @@ func runMain() error {
 	task := "Make sure that the local release branch exists"
 	err = git.CreateTrackingBranchUnlessExists(releaseBranch, remoteName)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Make sure that the release branch is up to date.
 	task = "Make sure the release branch is up to date"
 	if err := git.EnsureBranchSynchronized(releaseBranch, remoteName); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Make sure that the trunk branch is up to date.
 	task = "Make sure the trunk branch is up to date"
 	if err := git.EnsureBranchSynchronized(trunkBranch, remoteName); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Remember the current branch.
@@ -106,7 +106,7 @@ func runMain() error {
 	// Checkout the release branch.
 	task = "Checkout the release branch"
 	if err := git.Checkout(releaseBranch); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	defer func() {
 		// Do not checkout the original branch in case the name is empty.
@@ -117,7 +117,7 @@ func runMain() error {
 		// Otherwise checkout the original branch.
 		task := fmt.Sprintf("Checkout the original branch (%v)", currentBranch)
 		if err := git.Checkout(currentBranch); err != nil {
-			errs.LogError(task, err, nil)
+			errs.LogError(task, err)
 		}
 	}()
 
@@ -127,7 +127,7 @@ func runMain() error {
 	task = "Get the release branch version string"
 	releaseVersion, err := version.Get()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Get the stories associated with the current release.
@@ -135,19 +135,19 @@ func runMain() error {
 	log.Run(task)
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	release, err := tracker.RunningRelease(releaseVersion)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	stories, err := release.Stories()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	if len(stories) == 0 {
-		return errs.NewError(task, errors.New("no relevant stories found"), nil)
+		return errs.NewError(task, errors.New("no relevant stories found"))
 	}
 
 	// Get the release changes.
@@ -155,19 +155,19 @@ func runMain() error {
 	log.Run(task)
 	groups, err := changes.StoryChanges(stories)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Just return in case there are no relevant commits found.
 	if len(groups) == 0 {
-		return errs.NewError(task, errors.New("no relevant commits found"), nil)
+		return errs.NewError(task, errors.New("no relevant commits found"))
 	}
 
 	// Sort the change groups.
 	groups = changes.SortStoryChanges(groups, stories)
 	groups, err = releases.StoryChangesToCherryPick(groups)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	var (
@@ -224,8 +224,8 @@ Please cherry-pick these changes onto the trunk branch.
 Only then we can proceed and cherry-pick the changes.
 
 `)
-		return errs.NewError(
-			task, errors.New("commits not reachable from trunk detected"), &details)
+		return errs.NewErrorWithHint(
+			task, errors.New("commits not reachable from trunk detected"), details.String())
 	}
 
 	// Everything seems fine, let's continue with the process
@@ -239,7 +239,7 @@ Only then we can proceed and cherry-pick the changes.
 The changes listed above will be cherry-picked into the release branch.`)
 	confirmed, err := prompt.Confirm("Are you sure you want to continue?")
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if !confirmed {
 		prompt.PanicCancel()
@@ -250,7 +250,7 @@ The changes listed above will be cherry-picked into the release branch.`)
 	task = "Collect the trunk commits added since the last release"
 	trunkCommits, err := releases.ListNewTrunkCommits()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	// We need the list to start with the oldest commit.
 	for i, j := 0, len(trunkCommits)-1; i < j; i, j = i+1, j-1 {
@@ -278,7 +278,7 @@ the repository status and potentially resolve the cherry-picking manually.
 `
 		// Do not checkout the original branch.
 		currentBranch = ""
-		return errs.NewError(task, err, bytes.NewBufferString(hint))
+		return errs.NewErrorWithHint(task, err, hint)
 	}
 
 	log.Log("All missing changes cherry-picked into the release branch")

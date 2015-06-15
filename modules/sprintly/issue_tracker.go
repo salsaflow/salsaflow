@@ -41,7 +41,7 @@ func (tracker *issueTracker) CurrentUser() (common.User, error) {
 	// Fetch all members of this product.
 	users, _, err := tracker.client.People.List(productId)
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Find the user with matching username.
@@ -69,7 +69,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		Status: []sprintly.ItemStatus{sprintly.ItemStatusBacklog},
 	})
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Drop the items that were already assigned.
@@ -97,7 +97,7 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 		Status: []sprintly.ItemStatus{sprintly.ItemStatusInProgress},
 	})
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Drop the items that are not assigned to the current user.

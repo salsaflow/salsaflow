@@ -79,27 +79,27 @@ func runMain() (err error) {
 		task := "Fetch the remote repository"
 		log.Run(task)
 		if err := git.UpdateRemotes(remote); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 	}
 
 	// Make sure that the trunk branch is up to date.
 	task := fmt.Sprintf("Make sure that branch '%v' is up to date", trunkBranch)
 	if err := git.EnsureBranchSynchronized(trunkBranch, remote); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Make sure that the release branch does not exist.
 	task = fmt.Sprintf("Make sure that branch '%v' does not exist", releaseBranch)
 	if err := git.EnsureBranchNotExist(releaseBranch, remote); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Get the current trunk version string.
 	task = "Get the current trunk version string"
 	trunkVersion, err := version.GetByBranch(trunkBranch)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Get the next trunk version (the future release version).
@@ -141,11 +141,11 @@ func runMain() (err error) {
 	// Fetch the stories from the issue tracker.
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	release, err := tracker.NextRelease(trunkVersion, nextTrunkVersion)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Prompt the user to confirm the release.
@@ -171,12 +171,12 @@ The relevant version strings are:
 	task = fmt.Sprintf("Create branch '%v' on top of branch '%v'", releaseBranch, trunkBranch)
 	log.Run(task)
 	if err := git.Branch(releaseBranch, trunkBranch); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	defer action.RollbackTaskOnError(&err, task, action.ActionFunc(func() error {
 		task := "Delete the release branch"
 		if err := git.Branch("-d", releaseBranch); err != nil {
-			errs.NewError(task, err, nil)
+			errs.NewError(task, err)
 		}
 		return nil
 	}))
@@ -191,7 +191,7 @@ The relevant version strings are:
 	log.Run(task)
 	_, err = version.SetForBranch(testingVersion, releaseBranch)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	// No need for a rollback function here, git branch -d specified as a rollback
 	// for the previous step will take care of deleting this change as well.
@@ -201,7 +201,7 @@ The relevant version strings are:
 	log.Run(task)
 	act, err := version.SetForBranch(nextTrunkVersion, trunkBranch)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	defer action.RollbackTaskOnError(&err, task, act)
 
@@ -228,7 +228,7 @@ The relevant version strings are:
 	log.Run(task)
 	err = git.Push(remote, trunkBranch+":"+trunkBranch, releaseBranch+":"+releaseBranch)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	return nil

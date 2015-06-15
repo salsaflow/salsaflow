@@ -270,7 +270,7 @@ func updateStories(
 		}
 
 		// Return the aggregate error.
-		return nil, errs.NewError("Update Pivotal Tracker stories", err, stderr)
+		return nil, errs.NewErrorWithHint("Update Pivotal Tracker stories", err, stderr.String())
 	}
 	return updatedStories, nil
 }

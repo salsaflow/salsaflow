@@ -2,7 +2,6 @@ package modules
 
 import (
 	// Stdlib
-	"bytes"
 	"fmt"
 
 	// Internal
@@ -49,15 +48,15 @@ func GetCodeReviewTool() (common.CodeReviewTool, error) {
 			ids = append(ids, id)
 		}
 
-		hint := new(bytes.Buffer)
-		fmt.Fprintf(hint, "\nAvailable code review tools: %v\n\n", ids)
-		return nil, errs.NewError(task, fmt.Errorf("unknown code review tool: '%v'", id), hint)
+		hint := fmt.Sprintf("\nAvailable code review tools: %v\n\n", ids)
+		return nil, errs.NewErrorWithHint(
+			task, fmt.Errorf("unknown code review tool: '%v'", id), hint)
 	}
 
 	// Try to instantiate the code review tool.
 	tool, err := factory()
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	return tool, nil

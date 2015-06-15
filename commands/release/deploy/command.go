@@ -71,19 +71,19 @@ func runMain() (err error) {
 	// Make sure the stable branch exists.
 	task := fmt.Sprintf("Make sure that branch '%v' exists", stableBranch)
 	if err := git.CreateTrackingBranchUnlessExists(stableBranch, remoteName); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Make sure we are not on the stable branch.
 	task = fmt.Sprintf("Make sure that branch '%v' is not checked out", stableBranch)
 	currentBranch, err := git.CurrentBranch()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	if currentBranch == stableBranch {
 		err := fmt.Errorf("cannot deploy while on branch '%v'", stableBranch)
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Make sure the current staging branch can be released.
@@ -91,22 +91,21 @@ func runMain() (err error) {
 	log.Run(task)
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	stagingVersion, err := version.GetByBranch(stagingBranch)
 	if err != nil {
-		return err
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	release, err := tracker.RunningRelease(stagingVersion)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return err
 	}
 
 	if err := release.EnsureReleasable(); err != nil {
-		return errs.NewError(task, err, nil)
+		return err
 	}
 
 	// Reset the stable branch to point to stage.
@@ -114,7 +113,7 @@ func runMain() (err error) {
 	log.Run(task)
 	act, err := git.CreateOrResetBranch(stableBranch, stagingBranch)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	defer action.RollbackTaskOnError(&err, task, act)
 
@@ -128,7 +127,7 @@ func runMain() (err error) {
 	log.Run(task)
 	act, err = version.SetForBranch(stableVersion, stableBranch)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	defer action.RollbackTaskOnError(&err, task, act)
 
@@ -137,12 +136,12 @@ func runMain() (err error) {
 	task = fmt.Sprintf("Tag branch '%v' with tag '%v'", stableBranch, tag)
 	log.Run(task)
 	if err := git.Tag(tag, stableBranch); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	defer action.RollbackTaskOnError(&err, task, action.ActionFunc(func() error {
 		task := fmt.Sprintf("Delete tag '%v'", tag)
 		if err := git.Tag("-d", tag); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		return nil
 	}))
@@ -153,7 +152,7 @@ func runMain() (err error) {
 
 	exists, err := git.RemoteBranchExists(releaseBranch, remoteName)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if exists {
 		task = fmt.Sprintf(
@@ -163,7 +162,7 @@ func runMain() (err error) {
 		remoteReleaseBranch := fmt.Sprintf("%v/%v", remoteName, releaseBranch)
 		act, err = git.CreateOrResetBranch(stagingBranch, remoteReleaseBranch)
 		if err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		defer action.RollbackTaskOnError(&err, task, act)
 
@@ -176,7 +175,7 @@ func runMain() (err error) {
 
 	toPush = append(toPush, fmt.Sprintf("%v:%v", stableBranch, stableBranch))
 	if err := git.PushForce(remoteName, toPush...); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	return nil
 }

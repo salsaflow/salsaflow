@@ -52,7 +52,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	log.Run(task)
 	ids, err := releases.ListStoryIdsToBeAssigned(release.tracker)
 	if err != nil {
-		return false, errs.NewError(task, err, nil)
+		return false, errs.NewError(task, err)
 	}
 
 	// Fetch the collected stories from Pivotal Tracker, if necessary.
@@ -64,7 +64,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 		var err error
 		additional, err = listStoriesById(client, config.ProjectId(), ids)
 		if len(additional) == 0 && err != nil {
-			return false, errs.NewError(task, err, nil)
+			return false, errs.NewError(task, err)
 		}
 		if len(additional) != len(ids) {
 			log.Warn("Some stories were dropped since they were not found in PT")
@@ -90,7 +90,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	pmStories, err := searchStories(client, config.ProjectId(),
 		"label:\"%v\" AND label:\"%v\"", releaseLabel, pmLabel)
 	if err != nil {
-		return false, errs.NewError(task, err, nil)
+		return false, errs.NewError(task, err)
 	}
 	// Also add these that are to be added but are unpointed.
 	for _, story := range additional {
@@ -106,7 +106,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 			return false, err
 		}
 		fmt.Println()
-		return false, errs.NewError(task, errors.New("unpointed stories detected"), nil)
+		return false, errs.NewError(task, errors.New("unpointed stories detected"))
 	}
 
 	// Print the stories to be added to the release.
@@ -143,7 +143,7 @@ func (release *nextRelease) Start() (action.Action, error) {
 	stories, err := addLabel(client, projectId,
 		release.additionalStories, releaseLabel)
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 	release.additionalStories = nil
 
@@ -152,7 +152,7 @@ func (release *nextRelease) Start() (action.Action, error) {
 		log.Rollback(task)
 		_, err := removeLabel(client, projectId, stories, releaseLabel)
 		if err != nil {
-			return errs.NewError("Remove the release label from the stories", err, nil)
+			return errs.NewError("Remove the release label from the stories", err)
 		}
 		return nil
 	}), nil

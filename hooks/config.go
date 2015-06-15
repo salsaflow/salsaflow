@@ -25,7 +25,7 @@ func SalsaFlowEnabledTimestamp() (time.Time, error) {
 
 	var lc LocalConfig
 	if err := config.UnmarshalLocalConfig(&lc); err != nil {
-		return time.Time{}, errs.NewError(task, err, nil)
+		return time.Time{}, errs.NewError(task, err)
 	}
 
 	return lc.EnabledTimestamp, nil

@@ -97,7 +97,7 @@ func RefExists(ref string) (exists bool, err error) {
 	if err != nil {
 		if stderr.Len() != 0 {
 			// Non-empty error output means that there was an error.
-			return false, errs.NewError(task, err, stderr)
+			return false, errs.NewErrorWithHint(task, err, stderr.String())
 		}
 		// Otherwise the ref does not exist.
 		return false, nil
@@ -114,7 +114,7 @@ func RefExistsStrict(ref string) (exists bool, err error) {
 	if err != nil {
 		if stderr.Len() != 0 {
 			// Non-empty error output means that there was an error.
-			return false, errs.NewError(task, err, stderr)
+			return false, errs.NewErrorWithHint(task, err, stderr.String())
 		}
 		// Otherwise the ref does not exist.
 		return false, nil
@@ -354,7 +354,7 @@ func GetConfigString(key string) (value string, err error) {
 			return "", nil
 		}
 		// Otherwise there is an error.
-		return "", errs.NewError(task, err, stderr)
+		return "", errs.NewErrorWithHint(task, err, stderr.String())
 	}
 	// Just return what was printed to stdout.
 	return strings.TrimSpace(stdout.String()), nil
@@ -364,7 +364,7 @@ func SetConfigString(key string, value string) error {
 	task := fmt.Sprintf("Run 'git config %v %v'", key, value)
 	_, stderr, err := shell.Run("git", "config", key, value)
 	if err != nil {
-		return errs.NewError(task, err, stderr)
+		return errs.NewErrorWithHint(task, err, stderr.String())
 	}
 	return nil
 }

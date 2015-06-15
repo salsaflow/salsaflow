@@ -54,7 +54,7 @@ func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action
 		Title: github.String(milestoneTitle(v)),
 	})
 	if err != nil {
-		return nil, errs.NewError(milestoneTask, err, nil)
+		return nil, errs.NewError(milestoneTask, err)
 	}
 
 	// Return a rollback function.
@@ -63,7 +63,7 @@ func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action
 		task := fmt.Sprintf("Delete code review milestone for release %v", releaseString)
 		_, err := client.Issues.DeleteMilestone(owner, repo, *milestone.Number)
 		if err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		return nil
 	}), nil
@@ -92,7 +92,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 			log.Warn("Weird, " + err.Error())
 			return action.ActionFunc(func() error { return nil }), nil
 		}
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Close the milestone unless there are some issues open.
@@ -102,8 +102,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 			task,
 			fmt.Errorf(
 				"review milestone for release %v cannot be closed: %v issue(s) open",
-				releaseString, num),
-			nil)
+				releaseString, num))
 	}
 
 	milestoneTask := fmt.Sprintf("Close review milestone for release %v", releaseString)
@@ -112,7 +111,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 		State: github.String("closed"),
 	})
 	if err != nil {
-		return nil, errs.NewError(milestoneTask, err, nil)
+		return nil, errs.NewError(milestoneTask, err)
 	}
 
 	// Return a rollback function.
@@ -123,7 +122,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 			State: github.String("open"),
 		})
 		if err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		return nil
 	}), nil
@@ -230,14 +229,14 @@ func parseUpstreamURL() (owner, repo string, err error) {
 	task := fmt.Sprintf("Get URL for git remote '%v'", remoteName)
 	remoteURL, err := git.GetConfigString(fmt.Sprintf("remote.%v.url", remoteName))
 	if err != nil {
-		return "", "", errs.NewError(task, err, nil)
+		return "", "", errs.NewError(task, err)
 	}
 
 	// Parse the upstream URL to get the owner and repo name.
 	task = "Parse the upstream repository URL"
 	u, err := url.Parse(remoteURL)
 	if err != nil {
-		return "", "", errs.NewError(task, err, nil)
+		return "", "", errs.NewError(task, err)
 	}
 
 	var match []string
@@ -252,7 +251,7 @@ func parseUpstreamURL() (owner, repo string, err error) {
 	}
 	if len(match) != 3 {
 		err := fmt.Errorf("failed to parse git remote URL: %v", remoteURL)
-		return "", "", errs.NewError(task, err, nil)
+		return "", "", errs.NewError(task, err)
 	}
 	return match[1], match[2], nil
 }
@@ -279,7 +278,7 @@ func postAssignedReviewRequest(
 	client := ghutil.NewClient(config.Token())
 	result, _, err := client.Search.Issues(query, &github.SearchOptions{})
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Decide what to do next based on the search results.
@@ -294,7 +293,7 @@ func postAssignedReviewRequest(
 		// Multiple review issue found for the given story, that is clearly wrong
 		// since there is always just a single review issue for every story.
 		err := errors.New("inconsistency detected: multiple story review issues found")
-		return errs.NewError("Make sure the review issue can be created", err, nil)
+		return errs.NewError("Make sure the review issue can be created", err)
 	}
 }
 
@@ -372,7 +371,7 @@ func postUnassignedReviewRequest(
 	client := ghutil.NewClient(config.Token())
 	result, _, err := client.Search.Issues(query, &github.SearchOptions{})
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Decide what to do next based on the search results.
@@ -384,12 +383,12 @@ func postUnassignedReviewRequest(
 		// The issues already exists, return an error.
 		issueNum := *result.Issues[0].Number
 		err := fmt.Errorf("existing review issue found for commit %v: %v", commit.SHA, issueNum)
-		return errs.NewError("Make sure the review issue can be created", err, nil)
+		return errs.NewError("Make sure the review issue can be created", err)
 	default:
 		// Inconsistency detected: multiple review issues found.
 		err := fmt.Errorf(
 			"inconsistency detected: multiple review issue found for commit %v", commit.SHA)
-		return errs.NewError("Make sure the review issue can be created", err, nil)
+		return errs.NewError("Make sure the review issue can be created", err)
 	}
 }
 
@@ -420,7 +419,7 @@ func createUnassignedReviewRequest(
 	// Create a new review issue.
 	issue, err := createIssue(task, config, owner, repo, issueTitle, issueBody, milestone)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Open the issue if requested.
@@ -447,7 +446,7 @@ func extendUnassignedReviewRequest(
 	client := ghutil.NewClient(config.Token())
 	issue, _, err := client.Issues.Get(owner, repo, issueNum)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Extend the given review issue.
@@ -500,7 +499,7 @@ func extendReviewRequest(
 		State: github.String("open"),
 	})
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Add the review comment.
@@ -536,7 +535,7 @@ func addReviewComment(
 		Body: github.String(buffer.String()),
 	})
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	return nil
 }
@@ -544,7 +543,7 @@ func addReviewComment(
 func openIssue(issue *github.Issue) error {
 	task := fmt.Sprintf("Open issue #%v in the browser", *issue.Number)
 	if err := webbrowser.Open(*issue.HTMLURL); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	return nil
 }
@@ -569,7 +568,7 @@ func createIssue(
 		Milestone: milestone.Number,
 	})
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	log.Log(fmt.Sprintf("GitHub issue #%v created", *issue.Number))
@@ -591,7 +590,7 @@ func milestoneForVersion(
 	)
 	milestones, _, err := client.Issues.ListMilestones(owner, repo, nil)
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Find the right one.

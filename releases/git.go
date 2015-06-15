@@ -48,7 +48,7 @@ func ListStoryIdsToBeAssigned(tracker common.IssueTracker) ([]string, error) {
 	task := "Get the commits that modified trunk"
 	commits, err := ListNewTrunkCommits()
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Collect the story IDs.
@@ -86,7 +86,7 @@ func ListTags() (tags []string, err error) {
 	// Get all release tags.
 	stdout, err := git.RunCommand("tag", "--list", "v*.*.*")
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Parse the output to get sortable versions.
@@ -102,7 +102,7 @@ func ListTags() (tags []string, err error) {
 		vers = append(vers, ver)
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Sort the versions.

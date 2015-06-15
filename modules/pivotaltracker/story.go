@@ -58,7 +58,7 @@ func (story *story) AddAssignee(user common.User) error {
 
 	id, err := strconv.Atoi(user.Id())
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	return story.SetAssignees(append(story.Assignees(), userId(id)))
@@ -71,7 +71,7 @@ func (story *story) SetAssignees(users []common.User) error {
 	for i, user := range users {
 		id, err := strconv.Atoi(user.Id())
 		if err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		ownerIds[i] = id
 	}
@@ -84,7 +84,7 @@ func (story *story) SetAssignees(users []common.User) error {
 	updateRequest := &pivotal.Story{OwnerIds: &ownerIds}
 	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	story.Story = updatedStory
 	return nil
@@ -101,7 +101,7 @@ func (story *story) Start() error {
 	updateRequest := &pivotal.Story{State: pivotal.StoryStateStarted}
 	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	story.Story = updatedStory
 	return nil

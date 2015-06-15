@@ -41,7 +41,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	log.Run(task)
 	ids, err := releases.ListStoryIdsToBeAssigned(release.tracker)
 	if err != nil {
-		return false, errs.NewError(task, err, nil)
+		return false, errs.NewError(task, err)
 	}
 
 	// Get the story ids associated with these commits.
@@ -90,7 +90,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// Fetch the items that were assigned manually.
 	assignedItems, err := listItemsByTag(client, productId, []string{itemReleaseTag})
 	if err != nil {
-		return false, errs.NewError(task, err, nil)
+		return false, errs.NewError(task, err)
 	}
 
 	// Check the manually assigned items and collect the unrated ones.
@@ -147,7 +147,7 @@ func (release *nextRelease) Start() (action.Action, error) {
 	log.Run(task)
 	items, err := addTag(client, productId, release.additionalItems, itemReleaseTag)
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 	release.additionalItems = nil
 

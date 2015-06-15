@@ -54,7 +54,7 @@ func CoreBranchHashes() (map[string]string, error) {
 		parts := strings.Split(line, " ")
 		if len(parts) != 2 {
 			return nil, errs.NewError(
-				task, fmt.Errorf("failed to parse output line: %v", line), nil)
+				task, fmt.Errorf("failed to parse output line: %v", line))
 		}
 		hash, ref := parts[0], parts[1]
 		// Drop the refs/heads/ prefix.

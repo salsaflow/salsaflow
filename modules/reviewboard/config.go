@@ -25,11 +25,11 @@ func (local LocalConfig) validate() error {
 	)
 	switch {
 	case serverURL == "":
-		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".server_url"}, nil)
+		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".server_url"})
 	}
 
 	if _, err := url.Parse(serverURL); err != nil {
-		return errs.NewError(task, &config.ErrKeyInvalid{Id + ".server_url", serverURL}, nil)
+		return errs.NewError(task, &config.ErrKeyInvalid{Id + ".server_url", serverURL})
 	}
 
 	return nil

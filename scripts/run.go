@@ -20,7 +20,7 @@ func Run(scriptName string, args ...string) (stdout *bytes.Buffer, err error) {
 	// Get the command for the given script name and args.
 	cmd, err := Command(scriptName, args...)
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Run the given script in the repository root.
@@ -31,7 +31,7 @@ func Run(scriptName string, args ...string) (stdout *bytes.Buffer, err error) {
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
 	if err := cmd.Run(); err != nil {
-		return nil, errs.NewError(task, err, &serr)
+		return nil, errs.NewErrorWithHint(task, err, serr.String())
 	}
 	return &sout, nil
 }

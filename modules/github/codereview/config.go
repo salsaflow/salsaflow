@@ -26,7 +26,7 @@ type GlobalConfig struct {
 func (global *GlobalConfig) validate() error {
 	task := "Validate the global GitHub configuration"
 	if global.GitHub.Token == "" {
-		return errs.NewError(task, &config.ErrKeyNotSet{"github.token"}, nil)
+		return errs.NewError(task, &config.ErrKeyNotSet{"github.token"})
 	}
 	return nil
 }

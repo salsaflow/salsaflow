@@ -41,10 +41,10 @@ func Init(force bool) error {
 	task := "Check whether the repository has been initialised"
 	versionString, err := git.GetConfigString("salsaflow.initialised")
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if versionString == metadata.Version && !force {
-		return errs.NewError(task, ErrInitialised, nil)
+		return errs.NewError(task, ErrInitialised)
 	}
 
 	log.Log("Initialising the repository for SalsaFlow")
@@ -58,12 +58,12 @@ func Init(force bool) error {
 	log.Run(task)
 	stdout, err := git.Run("--version")
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	pattern := regexp.MustCompile("^git version (([0-9]+)[.]([0-9]+).*)")
 	parts := pattern.FindStringSubmatch(stdout.String())
 	if len(parts) != 4 {
-		return errs.NewError(task, errors.New("unexpected git --version output"), nil)
+		return errs.NewError(task, errors.New("unexpected git --version output"))
 	}
 	gitVersion := parts[1]
 	// This cannot fail since we matched the regexp.
@@ -80,10 +80,10 @@ func Init(force bool) error {
 You need Git version 1.9.0 or newer.
 
 `
-		return errs.NewError(
+		return errs.NewErrorWithHint(
 			task,
 			errors.New("unsupported git version detected: "+gitVersion),
-			bytes.NewBufferString(hint))
+			hint)
 	}
 
 	// Get hold of a git config instance.
@@ -98,13 +98,13 @@ You need Git version 1.9.0 or newer.
 	var stableBranch = gitConfig.StableBranchName()
 	exists, err := git.RefExists(stableBranch)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if !exists {
 		stderr := bytes.NewBufferString(fmt.Sprintf(
 			"Make sure that branch '%v' exists and run init again.\n", stableBranch))
 		err := fmt.Errorf("branch '%v' not found", stableBranch)
-		return errs.NewError(task, err, stderr)
+		return errs.NewErrorWithHint(task, err, stderr.String())
 	}
 
 	// Make sure that the trunk branch exists.
@@ -113,7 +113,7 @@ You need Git version 1.9.0 or newer.
 	var trunkBranch = gitConfig.TrunkBranchName()
 	exists, err = git.RefExists(trunkBranch)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if !exists {
 		task := "Create the trunk branch"
@@ -122,13 +122,13 @@ You need Git version 1.9.0 or newer.
 		log.NewLine(fmt.Sprintf(
 			"The newly created branch is pointing to '%v'.", stableBranch))
 		if err := git.Branch(trunkBranch, stableBranch); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 
 		task = "Push the newly created trunk branch"
 		log.Run(task)
 		if err := git.Push(gitConfig.RemoteName(), trunkBranch+":"+trunkBranch); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 	}
 
@@ -136,26 +136,26 @@ You need Git version 1.9.0 or newer.
 	task = "Check the current git commit-msg hook"
 	log.Run(task)
 	if err := hooks.CheckAndUpsert(hooks.HookTypeCommitMsg, force); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	task = "Check the current git post-checkout hook"
 	log.Run(task)
 	if err := hooks.CheckAndUpsert(hooks.HookTypePostCheckout, force); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	task = "Check the current git pre-push hook"
 	log.Run(task)
 	if err := hooks.CheckAndUpsert(hooks.HookTypePrePush, force); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Run other registered init hooks.
 	task = "Running the registered repository init hooks"
 	log.Log(task)
 	if err := executeInitHooks(); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Success! Mark the repository as initialised in git config.

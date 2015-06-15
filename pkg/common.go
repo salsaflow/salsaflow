@@ -44,7 +44,7 @@ func doInstall(client *github.Client, owner, repo string, assets []github.Releas
 		}
 	}
 	if assetURL == "" {
-		return errs.NewError(task, errors.New("no suitable release asset found"), nil)
+		return errs.NewError(task, errors.New("no suitable release asset found"))
 	}
 
 	// Download the selected release asset.
@@ -61,7 +61,7 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 	log.Run(task)
 	resp, err := http.Get(assetURL)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	defer resp.Body.Close()
 
@@ -75,22 +75,22 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 	bodyBuffer := bytes.NewBuffer(make([]byte, 0, capacity))
 	_, err = io.Copy(bodyBuffer, resp.Body)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	task = "Replace SalsaFlow executables"
 	archive, err := zip.NewReader(bytes.NewReader(bodyBuffer.Bytes()), int64(bodyBuffer.Len()))
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	exeDir, err := osext.ExecutableFolder()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	var numThreads int
-	errCh := make(chan *errs.Err, len(archive.File))
+	errCh := make(chan errs.Error, len(archive.File))
 
 	// Uncompress all the executables in the archive and move them into place.
 	// This part replaces the current executables with new ones just downloaded.
@@ -108,7 +108,7 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 
 			src, err := file.Open()
 			if err != nil {
-				errCh <- errs.NewError(task, err, nil)
+				errCh <- errs.NewError(task, err)
 				return
 			}
 
@@ -116,7 +116,7 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 			log.Go(task)
 			if err := replaceExecutable(src, exeDir, baseName); err != nil {
 				src.Close()
-				errCh <- errs.NewError(task, err, nil)
+				errCh <- errs.NewError(task, err)
 				return
 			}
 
@@ -127,7 +127,7 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 
 	for i := 0; i < numThreads; i++ {
 		if err := <-errCh; err != nil {
-			err.Log(log.V(log.Info))
+			errs.Log(err)
 		}
 	}
 

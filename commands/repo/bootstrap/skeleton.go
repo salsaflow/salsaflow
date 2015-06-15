@@ -30,10 +30,10 @@ func fetchOrUpdateSkeleton(skeleton string) error {
 	task := "Make sure the local cache directory exists"
 	cacheDir, err := cacheDirectoryAbsolutePath()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if err := os.MkdirAll(cacheDir, 0755); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Pull or close the given skeleton.
@@ -41,13 +41,13 @@ func fetchOrUpdateSkeleton(skeleton string) error {
 	skeletonDir := filepath.Join(cacheDir, "github.com", owner)
 
 	if err := os.MkdirAll(skeletonDir, 0755); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	skeletonPath := filepath.Join(skeletonDir, repo)
 	if _, err := os.Stat(skeletonPath); err != nil {
 		if !os.IsNotExist(err) {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 
 		// The directory does not exist, hence we clone.
@@ -60,7 +60,7 @@ func fetchOrUpdateSkeleton(skeleton string) error {
 			skeletonPath,
 		}
 		if _, err := git.Run(args...); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		return nil
 	}
@@ -71,7 +71,7 @@ func fetchOrUpdateSkeleton(skeleton string) error {
 	cmd, _, stderr := shell.Command("git", "pull")
 	cmd.Dir = skeletonPath
 	if err := cmd.Run(); err != nil {
-		return errs.NewError(task, err, stderr)
+		return errs.NewErrorWithHint(task, err, stderr.String())
 	}
 	return nil
 }

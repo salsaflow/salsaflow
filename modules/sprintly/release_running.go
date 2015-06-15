@@ -92,7 +92,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 
 	// Create the Sprintly deployment.
 	if err := release.deploy(release.config.StagingEnvironment()); err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Return the rollback function, which is empty in this case.
@@ -158,7 +158,7 @@ func (release *runningRelease) items() ([]sprintly.Item, error) {
 			// Update the items in Sprintly.
 			_, err := addTag(client, productId, missingTag, itemReleaseTag)
 			if err != nil {
-				return nil, errs.NewError(task, err, nil)
+				return nil, errs.NewError(task, err)
 			}
 
 			// Update the local objects.

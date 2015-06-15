@@ -52,7 +52,7 @@ func SetForBranch(ver *Version, branch string) (act action.Action, err error) {
 	// Make sure the repository is clean (don't check untracked files).
 	task := "Make sure the repository is clean"
 	if err := git.EnsureCleanWorkingTree(false); err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Remember the current branch.
@@ -65,13 +65,13 @@ func SetForBranch(ver *Version, branch string) (act action.Action, err error) {
 	task = fmt.Sprintf("Remember the position of branch '%v'", branch)
 	originalPosition, err := git.Hexsha("refs/heads/" + branch)
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Checkout the target branch.
 	task = fmt.Sprintf("Checkout branch '%v'", branch)
 	if err := git.Checkout(branch); err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 	defer func() {
 		// Checkout the original branch on return.
@@ -80,7 +80,7 @@ func SetForBranch(ver *Version, branch string) (act action.Action, err error) {
 			if err == nil {
 				err = ex
 			} else {
-				errs.LogError(task, ex, nil)
+				errs.LogError(task, ex)
 			}
 		}
 	}()
@@ -101,7 +101,7 @@ func SetForBranch(ver *Version, branch string) (act action.Action, err error) {
 	if err != nil {
 		task := "Reset the working tree to the original state"
 		if err := git.Reset("--keep"); err != nil {
-			errs.LogError(task, err, nil)
+			errs.LogError(task, err)
 		}
 		return nil, err
 	}

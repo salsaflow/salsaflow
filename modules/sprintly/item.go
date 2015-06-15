@@ -47,7 +47,7 @@ func (item *item) AddAssignee(user common.User) *errs.Error {
 	// Load the Sprintly config.
 	config, err := LoadConfig()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Parse the user ID.
@@ -64,7 +64,7 @@ func (item *item) AddAssignee(user common.User) *errs.Error {
 		AssignedTo: userId,
 	})
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	return nil
 }
@@ -92,7 +92,7 @@ func (item *item) Start() *errs.Error {
 	// Load the Sprintly config.
 	config, err := LoadConfig()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Instantiate the Sprintly client.
@@ -103,7 +103,7 @@ func (item *item) Start() *errs.Error {
 		Status: sprintly.ItemStatusInProgress,
 	})
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	return nil
 }

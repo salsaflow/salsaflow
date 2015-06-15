@@ -2,7 +2,6 @@ package modules
 
 import (
 	// Stdlib
-	"bytes"
 	"fmt"
 
 	// Internal
@@ -49,15 +48,15 @@ func GetIssueTracker() (common.IssueTracker, error) {
 			ids = append(ids, id)
 		}
 
-		hint := new(bytes.Buffer)
-		fmt.Fprintf(hint, "\nAvailable issue trackers: %v\n\n", ids)
-		return nil, errs.NewError(task, fmt.Errorf("unknown issue tracker: '%v'", id), hint)
+		hint := fmt.Sprintf("\nAvailable issue trackers: %v\n\n", ids)
+		return nil, errs.NewErrorWithHint(
+			task, fmt.Errorf("unknown issue tracker: '%v'", id), hint)
 	}
 
 	// Try to instantiate the issue tracker.
 	tracker, err := factory()
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	return tracker, nil

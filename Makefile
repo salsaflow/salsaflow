@@ -1,4 +1,4 @@
-install: format
+install:
 	go install github.com/salsaflow/salsaflow
 	go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-commit-msg
 	go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-post-checkout
