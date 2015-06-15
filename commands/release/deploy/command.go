@@ -86,8 +86,8 @@ func runMain() (err error) {
 		return errs.NewError(task, err, nil)
 	}
 
-	// Make sure the current staging branch is releasable.
-	task = fmt.Sprintf("Make sure that branch '%v' is releasable", stagingBranch)
+	// Make sure the current staging branch can be released.
+	task = fmt.Sprintf("Make sure that branch '%v' can be released", stagingBranch)
 	log.Run(task)
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
