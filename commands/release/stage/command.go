@@ -94,7 +94,8 @@ func runMain() (err error) {
 	}
 
 	// Make sure the remote release branch exists.
-	task = "Make sure that the remote release branch exists"
+	task = fmt.Sprintf("Make sure that branch '%v' exists in remote '%v'", releaseBranch, remoteName)
+	log.Run(task)
 	exists, err := git.RemoteBranchExists(releaseBranch, remoteName)
 	if err != nil {
 		return errs.NewError(task, err, nil)
@@ -105,13 +106,14 @@ func runMain() (err error) {
 	}
 
 	// Make sure that the local release branch exists.
-	task = "Make sure that the local release branch exists"
+	task = fmt.Sprintf("Make sure that branch '%v' exists locally", releaseBranch)
+	log.Run(task)
 	if err := git.CreateTrackingBranchUnlessExists(releaseBranch, remoteName); err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
 	// Make sure that the release branch is up to date.
-	task = fmt.Sprintf("Make sure branch '%v' is up to date", releaseBranch)
+	task = fmt.Sprintf("Make sure that branch '%v' is up to date", releaseBranch)
 	log.Run(task)
 	if err := git.EnsureBranchSynchronized(releaseBranch, remoteName); err != nil {
 		return errs.NewError(task, err, nil)
