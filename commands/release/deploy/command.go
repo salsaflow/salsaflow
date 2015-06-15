@@ -69,13 +69,13 @@ func runMain() (err error) {
 	)
 
 	// Make sure the stable branch exists.
-	task := fmt.Sprintf("Make sure branch '%v' exists", stableBranch)
+	task := fmt.Sprintf("Make sure that branch '%v' exists", stableBranch)
 	if err := git.CreateTrackingBranchUnlessExists(stableBranch, remoteName); err != nil {
 		return errs.NewError(task, err, nil)
 	}
 
 	// Make sure we are not on the stable branch.
-	task = fmt.Sprintf("Make sure we are not on branch '%v'", stableBranch)
+	task = fmt.Sprintf("Make sure that branch '%v' is not checked out", stableBranch)
 	currentBranch, err := git.CurrentBranch()
 	if err != nil {
 		return errs.NewError(task, err, nil)
@@ -87,7 +87,7 @@ func runMain() (err error) {
 	}
 
 	// Make sure the current staging branch is releasable.
-	task = "Make sure the staging branch is releasable"
+	task = fmt.Sprintf("Make sure that branch '%v' is releasable", stagingBranch)
 	log.Run(task)
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
