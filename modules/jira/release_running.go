@@ -55,8 +55,10 @@ func (release *runningRelease) Stories() ([]common.Story, error) {
 }
 
 func (release *runningRelease) EnsureStageable() error {
+	versionString := release.releaseVersion.BaseString()
+
 	var task = fmt.Sprintf(
-		"Make sure release '%v' can be staged", release.releaseVersion.ReleaseTagString())
+		"Make sure that release %v can be staged", versionString)
 	log.Run(task)
 
 	var details bytes.Buffer
@@ -85,10 +87,11 @@ func (release *runningRelease) EnsureStageable() error {
 }
 
 func (release *runningRelease) Stage() (action.Action, error) {
+
 	var (
-		api       = newClient(release.tracker.config)
-		tag       = release.releaseVersion.ReleaseTagString()
-		stageTask = fmt.Sprintf("Stage JIRA release '%v'", tag)
+		api           = newClient(release.tracker.config)
+		versionString = release.releaseVersion.BaseString()
+		stageTask     = fmt.Sprintf("Stage JIRA issues associated with release %v", versionString)
 	)
 	log.Run(stageTask)
 
@@ -108,7 +111,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 
 	return action.ActionFunc(func() error {
 		log.Rollback(stageTask)
-		unstageTask := fmt.Sprintf("Unstage JIRA release %v", tag)
+		unstageTask := fmt.Sprintf("Unstage JIRA issues associated with release %v", versionString)
 		if err := performBulkTransition(api, issuesToStage, transitionIdUnstage, ""); err != nil {
 			return errs.NewError(unstageTask, err, nil)
 		}
@@ -146,10 +149,11 @@ IssueLoop:
 	fmt.Fprintf(tw, "\n")
 	tw.Flush()
 
+	versionString := release.releaseVersion.BaseString()
 	return &common.ErrNotReleasable{
 		errs.NewError(
-			fmt.Sprintf("Make sure release '%v' can be released", release.releaseVersion),
-			fmt.Errorf("release '%v' is not releasable"),
+			fmt.Sprintf("Make sure release %v can be released", versionString),
+			fmt.Errorf("release %v cannot be released", versionString),
 			&hint),
 	}
 }

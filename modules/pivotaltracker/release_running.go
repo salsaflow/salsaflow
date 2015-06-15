@@ -133,7 +133,7 @@ func (release *runningRelease) EnsureReleasable() error {
 	versionString := release.version.BaseString()
 
 	task := fmt.Sprintf(
-		"Make sure the stories associated with release %v are releasable", versionString)
+		"Make sure that the stories associated with release %v can be released", versionString)
 	log.Run(task)
 
 	// Make sure the stories are loaded.
@@ -170,8 +170,8 @@ func (release *runningRelease) EnsureReleasable() error {
 
 	return &common.ErrNotReleasable{
 		errs.NewError(
-			fmt.Sprintf("Make sure release '%v' can be released", versionString),
-			fmt.Errorf("release '%v' cannot be released", versionString),
+			fmt.Sprintf("Make sure release %v can be released", versionString),
+			fmt.Errorf("release %v cannot be released", versionString),
 			&hint),
 	}
 }
