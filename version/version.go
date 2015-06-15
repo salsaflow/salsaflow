@@ -91,7 +91,7 @@ func (v *Version) toVersion(kind versionKind) (*Version, error) {
 }
 
 func (v *Version) ReleaseTagString() string {
-	return "v" + v.String()
+	return "v" + v.BaseString()
 }
 
 func Parse(versionString string) (*Version, error) {

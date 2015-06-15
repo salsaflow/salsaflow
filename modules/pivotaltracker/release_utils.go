@@ -9,5 +9,5 @@ import (
 )
 
 func getReleaseLabel(ver *version.Version) string {
-	return fmt.Sprintf("release-%v", ver)
+	return fmt.Sprintf("release-%v", ver.BaseString())
 }
