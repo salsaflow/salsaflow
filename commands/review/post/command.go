@@ -773,7 +773,7 @@ func promptForStory(
 	)
 
 	msgFormat := `Choose a story by inserting its index. You can also:
-  - insert 'u' not to choose any story, or
+  - insert 'u' to not choose any story, or
   - insert 'r' to select a story that is %v, or
   - press Enter to abort.
 Your choice: `
