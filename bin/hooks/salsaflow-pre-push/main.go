@@ -3,7 +3,6 @@ package main
 import (
 	// Stdlib
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -97,7 +96,7 @@ func run(remoteName, pushURL string) error {
 			parts = strings.Split(line, " ")
 		)
 		if len(parts) != 4 {
-			return errs.NewError(parseTask, errors.New("invalid input line: "+line), nil)
+			return errs.NewError(parseTask, errors.New("invalid input line: "+line))
 		}
 
 		localRef, localSha, remoteRef, remoteSha := parts[0], parts[1], parts[2], parts[3]
@@ -132,7 +131,7 @@ Please update the reference from the remote repository,
 perhaps by executing 'git pull'.
 
 `, remoteSha, remoteRef)
-				return errs.NewError(task, err, bytes.NewBufferString(hint))
+				return errs.NewErrorWithHint(task, err, hint)
 			}
 		}
 
@@ -149,7 +148,7 @@ perhaps by executing 'git pull'.
 		revRanges = append(revRanges, revRange)
 	}
 	if err := scanner.Err(); err != nil {
-		return errs.NewError(parseTask, err, nil)
+		return errs.NewError(parseTask, err)
 	}
 
 	// Check the missing Story-Id tags.
@@ -160,7 +159,7 @@ perhaps by executing 'git pull'.
 		task := "Get the commit objects to be pushed"
 		commits, err := git.ShowCommitRange(fmt.Sprintf("%v..%v", revRange.From, revRange.To))
 		if err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 
 		// Check every commit in the range.
@@ -193,7 +192,7 @@ perhaps by executing 'git pull'.
 		task := "Prompt the user for confirmation"
 		confirmed, err := promptUserForConfirmation(missing)
 		if err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		if !confirmed {
 			return prompt.ErrCanceled

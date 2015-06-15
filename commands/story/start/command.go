@@ -86,10 +86,10 @@ func runMain() error {
 	log.Run(task)
 	stories, err := tracker.StartableStories()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if len(stories) == 0 {
-		return errs.NewError(task, errors.New("no startable stories found"), nil)
+		return errs.NewError(task, errors.New("no startable stories found"))
 	}
 
 	// Filter out the stories that are not relevant,
@@ -97,7 +97,7 @@ func runMain() error {
 	task = "Fetch the current user record from the issue tracker"
 	user, err := tracker.CurrentUser()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	var filteredStories []common.Story
@@ -152,12 +152,12 @@ StoryLoop:
 	log.Run(task)
 	originalAssignees := story.Assignees()
 	if err := story.AddAssignee(user); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	defer action.RollbackTaskOnError(&err, task, action.ActionFunc(func() error {
 		task := "Reset the list of story assignees"
 		if err := story.SetAssignees(originalAssignees); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		return nil
 	}))
@@ -166,7 +166,7 @@ StoryLoop:
 	task = "Start the selected story"
 	log.Run(task)
 	if err := story.Start(); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	return nil
@@ -185,7 +185,7 @@ func createBranch() (action.Action, error) {
 
 	gitConfig, err := git.LoadConfig()
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	var (
@@ -193,14 +193,14 @@ func createBranch() (action.Action, error) {
 		trunkBranch = gitConfig.TrunkBranchName()
 	)
 	if err := git.UpdateRemotes(remoteName); err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Make sure the trunk branch is up to date.
 	task = fmt.Sprintf("Make sure branch '%v' is up to date", trunkBranch)
 	log.Run(task)
 	if err := git.EnsureBranchSynchronized(trunkBranch, remoteName); err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Prompt the user for the branch name.
@@ -209,7 +209,7 @@ func createBranch() (action.Action, error) {
 Please insert the branch slug now.
 Insert an empty string to skip the branch creation step: `)
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	sluggedLine := slug.Slug(line)
@@ -223,7 +223,7 @@ Insert an empty string to skip the branch creation step: `)
 	ok, err := prompt.Confirm(
 		fmt.Sprintf("\nThe branch that is going to be created will be called '%s'.\nIs that alright?", branchName))
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 	if !ok {
 		panic(prompt.ErrCanceled)
@@ -234,7 +234,7 @@ Insert an empty string to skip the branch creation step: `)
 		"Create branch '%v' on top of branch '%v'", branchName, trunkBranch)
 	log.Run(createTask)
 	if err := git.Branch(branchName, trunkBranch); err != nil {
-		return nil, errs.NewError(createTask, err, nil)
+		return nil, errs.NewError(createTask, err)
 	}
 
 	deleteTask := fmt.Sprintf("Delete branch '%v'", branchName)
@@ -242,7 +242,7 @@ Insert an empty string to skip the branch creation step: `)
 		// Roll back and delete the newly created branch.
 		log.Rollback(createTask)
 		if err := git.Branch("-D", branchName); err != nil {
-			return errs.NewError(deleteTask, err, nil)
+			return errs.NewError(deleteTask, err)
 		}
 		return nil
 	}
@@ -254,7 +254,7 @@ Insert an empty string to skip the branch creation step: `)
 		if err := deleteBranch(); err != nil {
 			errs.Log(err)
 		}
-		return nil, errs.NewError(checkoutTask, err, nil)
+		return nil, errs.NewError(checkoutTask, err)
 	}
 
 	// Push the newly created branch unless -no_push.
@@ -265,7 +265,7 @@ Insert an empty string to skip the branch creation step: `)
 			if err := deleteBranch(); err != nil {
 				errs.Log(err)
 			}
-			return nil, errs.NewError(pushTask, err, nil)
+			return nil, errs.NewError(pushTask, err)
 		}
 	}
 
@@ -274,7 +274,7 @@ Insert an empty string to skip the branch creation step: `)
 		log.Rollback(checkoutTask)
 		if err := git.Checkout(originalBranch); err != nil {
 			return errs.NewError(
-				fmt.Sprintf("Checkout the original branch '%v'", originalBranch), err, nil)
+				fmt.Sprintf("Checkout the original branch '%v'", originalBranch), err)
 		}
 
 		// Delete the newly created branch.
@@ -295,8 +295,7 @@ Insert an empty string to skip the branch creation step: `)
 			}
 
 			return errs.NewError(
-				fmt.Sprintf("Delete branch '%v' from remote '%v'", branchName, remoteName),
-				err, nil)
+				fmt.Sprintf("Delete branch '%v' from remote '%v'", branchName, remoteName), err)
 		}
 
 		// Return deleteErr to make sure it propagates up.

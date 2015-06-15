@@ -46,7 +46,7 @@ func runMain(storyId string) error {
 	task := fmt.Sprintf("Open story %s", storyId)
 	log.Run(task)
 	if err := tracker.OpenStory(storyId); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	return nil
 }

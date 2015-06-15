@@ -68,7 +68,7 @@ func CheckAndUpsert(hookType HookType, force bool) error {
 	task := "Get the executable folder absolute path"
 	binDir, err := osext.ExecutableFolder()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	hookExecutable := filepath.Join(binDir, getHookFileName(hookType))
 
@@ -80,7 +80,7 @@ func CheckAndUpsert(hookType HookType, force bool) error {
 		if os.IsNotExist(err) {
 			return copyHook(hookType, hookExecutable, hookDestPath)
 		}
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if installedVersion != nil || force {
 		return copyHook(hookType, hookExecutable, hookDestPath)
@@ -93,7 +93,7 @@ I need my own git ` + string(hookType) + ` hook to be placed in the repository.
 Shall I create or replace your current ` + string(hookType) + ` hook?`)
 	fmt.Println()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if !confirmed {
 		// User stubbornly refuses to let us overwrite their webhook.
@@ -107,7 +107,7 @@ Please make sure the executable located at
 runs as your `+string(hookType)+` hook and run me again!
 
 `, hookExecutable)
-		return errs.NewError(task, fmt.Errorf("SalsaFlow git %v hook not detected", hookType), nil)
+		return errs.NewError(task, fmt.Errorf("SalsaFlow git %v hook not detected", hookType))
 	}
 
 	return copyHook(hookType, hookExecutable, hookDestPath)
@@ -118,7 +118,7 @@ runs as your `+string(hookType)+` hook and run me again!
 func copyHook(hookType HookType, hookExecutable, hookDestPath string) error {
 	task := fmt.Sprintf("Install the SalsaFlow git %v hook", hookType)
 	if err := CopyFile(hookExecutable, hookDestPath); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	log.Log(fmt.Sprintf("SalsaFlow git %v hook installed", hookType))
 	return nil

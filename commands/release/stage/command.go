@@ -83,14 +83,14 @@ func runMain() (err error) {
 	task = "Make sure that the release branch is not checked out"
 	if currentBranch == releaseBranch {
 		return errs.NewError(
-			task, errors.New("cannot stage the release while on the release branch"), nil)
+			task, errors.New("cannot stage the release while on the release branch"))
 	}
 
 	// Fetch the remote repository.
 	task = "Fetch the remote repository"
 	log.Run(task)
 	if err := git.UpdateRemotes(remoteName); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Make sure the remote release branch exists.
@@ -98,32 +98,32 @@ func runMain() (err error) {
 	log.Run(task)
 	exists, err := git.RemoteBranchExists(releaseBranch, remoteName)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if !exists {
 		return errs.NewError(task,
-			fmt.Errorf("branch '%v' not found in remote '%v'", releaseBranch, remoteName), nil)
+			fmt.Errorf("branch '%v' not found in remote '%v'", releaseBranch, remoteName))
 	}
 
 	// Make sure that the local release branch exists.
 	task = fmt.Sprintf("Make sure that branch '%v' exists locally", releaseBranch)
 	log.Run(task)
 	if err := git.CreateTrackingBranchUnlessExists(releaseBranch, remoteName); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Make sure that the release branch is up to date.
 	task = fmt.Sprintf("Make sure that branch '%v' is up to date", releaseBranch)
 	log.Run(task)
 	if err := git.EnsureBranchSynchronized(releaseBranch, remoteName); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Read the current release version.
 	task = "Read the current release version"
 	releaseVersion, err := version.GetByBranch(releaseBranch)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Make sure the release is stageable.
@@ -147,7 +147,7 @@ func runMain() (err error) {
 	log.Run(task)
 	act, err := git.CreateOrResetBranch(stagingBranch, releaseBranch)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	defer action.RollbackTaskOnError(&err, task, act)
 
@@ -155,7 +155,7 @@ func runMain() (err error) {
 	task = fmt.Sprintf("Delete branch '%v'", releaseBranch)
 	log.Run(task)
 	if err := git.Branch("-d", releaseBranch); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	defer action.RollbackTaskOnError(&err, task, action.ActionFunc(func() error {
 		task := fmt.Sprintf("Recreate branch '%v'", releaseBranch)
@@ -167,7 +167,7 @@ func runMain() (err error) {
 		// Not sure why and how that is happening.
 		exists, err := git.LocalBranchExists(releaseBranch)
 		if err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		if exists {
 			return nil
@@ -175,7 +175,7 @@ func runMain() (err error) {
 
 		// In case the branch indeed does not exist, create it.
 		if err := git.Branch(releaseBranch, remoteName+"/"+releaseBranch); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		return nil
 	}))
@@ -190,7 +190,7 @@ func runMain() (err error) {
 	log.Run(task)
 	act, err = version.SetForBranch(stagingVersion, stagingBranch)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	defer action.RollbackTaskOnError(&err, task, act)
 
@@ -234,7 +234,7 @@ func checkCommits(
 
 	stories, err := release.Stories()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if len(stories) == 0 {
 		return nil
@@ -242,12 +242,12 @@ func checkCommits(
 
 	groups, err := changes.StoryChanges(stories)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	toCherryPick, err := releases.StoryChangesToCherryPick(groups)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// In case there are some changes being left behind,
@@ -269,7 +269,7 @@ have not been cherry-picked onto the release branch yet.
 
 	confirmed, err := prompt.Confirm("Are you sure you really want to stage the release?")
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if !confirmed {
 		prompt.PanicCancel()

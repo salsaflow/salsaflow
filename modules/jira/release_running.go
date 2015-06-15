@@ -39,7 +39,7 @@ func newRunningRelease(
 	log.Run(task)
 	issues, err := issuesByLabel(newClient(tracker.config), key, releaseLabel)
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Return a new release instance.
@@ -81,7 +81,7 @@ func (release *runningRelease) EnsureStageable() error {
 	if err != nil {
 		io.WriteString(tw, "\n")
 		tw.Flush()
-		return errs.NewError(task, err, &details)
+		return errs.NewErrorWithHint(task, err, details.String())
 	}
 	return nil
 }
@@ -106,14 +106,14 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	// Perform the transition.
 	err := performBulkTransition(api, issuesToStage, transitionIdStage, transitionIdUnstage)
 	if err != nil {
-		return nil, errs.NewError(stageTask, err, nil)
+		return nil, errs.NewError(stageTask, err)
 	}
 
 	return action.ActionFunc(func() error {
 		log.Rollback(stageTask)
 		unstageTask := fmt.Sprintf("Unstage JIRA issues associated with release %v", versionString)
 		if err := performBulkTransition(api, issuesToStage, transitionIdUnstage, ""); err != nil {
-			return errs.NewError(unstageTask, err, nil)
+			return errs.NewError(unstageTask, err)
 		}
 		return nil
 	}), nil
@@ -151,10 +151,10 @@ IssueLoop:
 
 	versionString := release.releaseVersion.BaseString()
 	return &common.ErrNotReleasable{
-		errs.NewError(
+		errs.NewErrorWithHint(
 			fmt.Sprintf("Make sure release %v can be released", versionString),
 			fmt.Errorf("release %v cannot be released", versionString),
-			&hint),
+			hint.String()),
 	}
 }
 

@@ -114,7 +114,7 @@ func updateIssues(
 			}
 		}
 		// Return the aggregate error.
-		return errs.NewError("Update JIRA issues", err, stderr)
+		return errs.NewErrorWithHint("Update JIRA issues", err, stderr.String())
 	}
 	return nil
 }

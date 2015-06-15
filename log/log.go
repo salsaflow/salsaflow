@@ -1,7 +1,6 @@
 package log
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -231,8 +230,8 @@ func (l Logger) UnsafeNewLine(msg string) {
 	l.unsafeLogf("           %v\n", msg)
 }
 
-func (l Logger) Stderr(stderr *bytes.Buffer) {
-	if stderr != nil && stderr.Len() != 0 {
+func (l Logger) Stderr(stderr string) {
+	if stderr != "" {
 		lock.Lock()
 		defer lock.Unlock()
 		l.UnsafePrintln("<<<<< stderr")
@@ -241,8 +240,8 @@ func (l Logger) Stderr(stderr *bytes.Buffer) {
 	}
 }
 
-func (l Logger) UnsafeStderr(stderr *bytes.Buffer) {
-	if stderr != nil && stderr.Len() != 0 {
+func (l Logger) UnsafeStderr(stderr string) {
+	if stderr != "" {
 		l.UnsafePrintln("<<<<< stderr")
 		l.UnsafePrint(stderr)
 		l.UnsafePrintln(">>>>> stderr")
@@ -261,7 +260,7 @@ func (l Logger) UnsafeDie(msg string, err error) {
 	l.UnsafeFatalln("\nError:", err)
 }
 
-func (l Logger) FailWithDetails(msg string, details *bytes.Buffer) {
+func (l Logger) FailWithDetails(msg string, details string) {
 	if msg != "" {
 		l.Fail(msg)
 	}
@@ -388,15 +387,15 @@ func UnsafeNewLine(msg string) {
 	V(Info).UnsafeNewLine(msg)
 }
 
-func FailWithDetails(msg string, details *bytes.Buffer) {
+func FailWithDetails(msg string, details string) {
 	V(Info).FailWithDetails(msg, details)
 }
 
-func Stderr(stderr *bytes.Buffer) {
+func Stderr(stderr string) {
 	V(Info).Stderr(stderr)
 }
 
-func UnsafeStderr(stderr *bytes.Buffer) {
+func UnsafeStderr(stderr string) {
 	V(Info).UnsafeStderr(stderr)
 }
 

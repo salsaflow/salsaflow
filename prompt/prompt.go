@@ -45,14 +45,14 @@ func Confirm(question string) (bool, error) {
 	task := "Open console for reading"
 	stdin, err := OpenConsole(os.O_RDONLY)
 	if err != nil {
-		return false, errs.NewError(task, err, nil)
+		return false, errs.NewError(task, err)
 	}
 	defer stdin.Close()
 
 	task = "Open console for writing"
 	stdout, err := OpenConsole(os.O_WRONLY)
 	if err != nil {
-		return false, errs.NewError(task, err, nil)
+		return false, errs.NewError(task, err)
 	}
 	defer stdout.Close()
 
@@ -166,7 +166,7 @@ or you can press Enter to abort: `, 0, len(stories))
 		if err == ErrCanceled {
 			return nil, ErrCanceled
 		}
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 	// No need to check allowNone since index can be 0 only if allowNone.
 	if index == 0 {

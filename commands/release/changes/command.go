@@ -87,14 +87,14 @@ func runMain() error {
 	task := "Make sure that the local release branch exists"
 	err = git.CreateTrackingBranchUnlessExists(releaseBranch, remoteName)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Get the current release version string.
 	task = "Get the release branch version string"
 	releaseVersion, err := version.GetByBranch(releaseBranch)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Get the stories associated with the current release.
@@ -102,19 +102,19 @@ func runMain() error {
 	log.Run(task)
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	release, err := tracker.RunningRelease(releaseVersion)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	stories, err := release.Stories()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	if len(stories) == 0 {
-		return errs.NewError(task, errors.New("no relevant stories found"), nil)
+		return errs.NewError(task, errors.New("no relevant stories found"))
 	}
 
 	// Get the story changes.
@@ -122,12 +122,12 @@ func runMain() error {
 	log.Run(task)
 	groups, err := changes.StoryChanges(stories)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Just return in case there are no relevant commits found.
 	if len(groups) == 0 {
-		return errs.NewError(task, errors.New("no relevant commits found"), nil)
+		return errs.NewError(task, errors.New("no relevant commits found"))
 	}
 
 	// Sort the change groups.
@@ -136,7 +136,7 @@ func runMain() error {
 	if flagToCherryPick {
 		groups, err = releases.StoryChangesToCherryPick(groups)
 		if err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 	}
 

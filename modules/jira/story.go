@@ -80,7 +80,7 @@ func (story *story) SetAssignees(users []common.User) error {
 	data.Fields.Assignee.Name = name
 	_, err := api.Issues.Update(story.Id(), data)
 	if err != nil {
-		return errs.NewError(fmt.Sprintf("Set assignees for story %v", story.Issue.Key), err, nil)
+		return errs.NewError(fmt.Sprintf("Set assignees for story %v", story.Issue.Key), err)
 	}
 	return nil
 }
@@ -90,7 +90,7 @@ func (story *story) Start() error {
 
 	_, err := api.Issues.PerformTransition(story.Issue.Id, transitionIdStartImplementing)
 	if err != nil {
-		return errs.NewError(fmt.Sprintf("Start story %v", story.Issue.Key), err, nil)
+		return errs.NewError(fmt.Sprintf("Start story %v", story.Issue.Key), err)
 	}
 	return nil
 }

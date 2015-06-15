@@ -30,13 +30,13 @@ func (local *LocalConfig) validate() error {
 	)
 	switch {
 	case jr.ServerURL == "":
-		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".server_url"}, nil)
+		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".server_url"})
 	case jr.ProjectKey == "":
-		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".project_key"}, nil)
+		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".project_key"})
 	}
 
 	if _, err := url.Parse(jr.ServerURL); err != nil {
-		return errs.NewError(task, &config.ErrKeyInvalid{Id + ".server_url", jr.ServerURL}, nil)
+		return errs.NewError(task, &config.ErrKeyInvalid{Id + ".server_url", jr.ServerURL})
 	}
 
 	return nil
@@ -57,13 +57,13 @@ func (cred *Credentials) validate() error {
 	switch {
 	case cred.ServerPrefix == "":
 		key := fmt.Sprintf("%v.credentials[%v].server_prefix", Id, cred.index)
-		return errs.NewError(task, &config.ErrKeyNotSet{key}, nil)
+		return errs.NewError(task, &config.ErrKeyNotSet{key})
 	case cred.Username == "":
 		key := fmt.Sprintf("%v.credentials[%v].username", Id, cred.index)
-		return errs.NewError(task, &config.ErrKeyNotSet{key}, nil)
+		return errs.NewError(task, &config.ErrKeyNotSet{key})
 	case cred.Password == "":
 		key := fmt.Sprintf("%v.credentials[%v].password", Id, cred.index)
-		return errs.NewError(task, &config.ErrKeyNotSet{key}, nil)
+		return errs.NewError(task, &config.ErrKeyNotSet{key})
 	}
 	return nil
 }

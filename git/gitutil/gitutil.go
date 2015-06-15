@@ -20,7 +20,7 @@ func Run(args ...string) (stdout *bytes.Buffer, err error) {
 	task := fmt.Sprintf("Run git with args = %#v", args)
 	stdout, stderr, err := shell.Run("git", argsList...)
 	if err != nil {
-		return nil, errs.NewError(task, err, stderr)
+		return nil, errs.NewErrorWithHint(task, err, stderr.String())
 	}
 	return stdout, nil
 }
@@ -33,7 +33,7 @@ func RunCommand(command string, args ...string) (stdout *bytes.Buffer, err error
 	task := fmt.Sprintf("Run 'git %v' with args = %#v", command, args)
 	stdout, stderr, err := shell.Run("git", argsList...)
 	if err != nil {
-		return nil, errs.NewError(task, err, stderr)
+		return nil, errs.NewErrorWithHint(task, err, stderr.String())
 	}
 	return stdout, nil
 }
@@ -42,7 +42,7 @@ func RepositoryRootAbsolutePath() (path string, err error) {
 	task := "Get the repository root absolute path"
 	stdout, err := Run("rev-parse", "--show-toplevel")
 	if err != nil {
-		return "", errs.NewError(task, err, nil)
+		return "", errs.NewError(task, err)
 	}
 	return string(bytes.TrimSpace(stdout.Bytes())), nil
 }
@@ -56,18 +56,18 @@ func RelativePath(pathFromRoot string) (relativePath string, err error) {
 
 	root, err := RepositoryRootAbsolutePath()
 	if err != nil {
-		return "", errs.NewError(task, err, nil)
+		return "", errs.NewError(task, err)
 	}
 	absolutePath := filepath.Join(root, pathFromRoot)
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", errs.NewError(task, err, nil)
+		return "", errs.NewError(task, err)
 	}
 
 	relativePath, err = filepath.Rel(cwd, absolutePath)
 	if err != nil {
-		return "", errs.NewError(task, err, nil)
+		return "", errs.NewError(task, err)
 	}
 
 	return relativePath, nil

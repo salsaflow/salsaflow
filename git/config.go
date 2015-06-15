@@ -70,14 +70,14 @@ func LoadConfig() (Config, error) {
 		local: &LocalConfig{},
 	}
 	if err := config.UnmarshalLocalConfig(proxy.local); err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 	proxy.local.fillDefaults()
 
 	// Consult git config for the project remote name.
 	remote, err := GetConfigString(ConfigKeyRemote)
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 	if remote == "" {
 		remote = DefaultRemoteName

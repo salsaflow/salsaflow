@@ -155,9 +155,9 @@ func postReviewRequestForCommit(
 		// rbt is retarded and sometimes prints stderr to stdout.
 		// That is why we return stdout when stderr is empty.
 		if stderr.Len() == 0 {
-			return errs.NewError(task, err, stdout)
+			return errs.NewErrorWithHint(task, err, stdout.String())
 		} else {
-			return errs.NewError(task, err, stderr)
+			return errs.NewErrorWithHint(task, err, stderr.String())
 		}
 	}
 	logger := log.V(log.Info)
@@ -194,14 +194,15 @@ func formatOptInteger(value interface{}) string {
 }
 
 func ensureRbtVersion() error {
-	hint := bytes.NewBufferString(`
+	hint := `
 You need to install RBTools version 0.7. Please run
 
   $ pip install rbtools==0.7 --allow-external rbtools --allow-unverified rbtools
 
 to install the correct version.
 
-`)
+`
+
 	// Load configuration and check the RBTools version only if Review Board is being used.
 	config, err := common.LoadConfig()
 	if err != nil {
@@ -221,7 +222,7 @@ to install the correct version.
 	if err != nil {
 		// Return the hint instead of stderr.
 		// Failing to run rbt --version probably means that it's not installed.
-		return errs.NewError(task, err, hint)
+		return errs.NewErrorWithHint(task, err, hint)
 	}
 
 	var outputBuffer *bytes.Buffer
@@ -236,7 +237,7 @@ to install the correct version.
 	parts := pattern.FindStringSubmatch(output)
 	if len(parts) != 4 {
 		err := fmt.Errorf("failed to parse 'rbt --version' output: %v", output)
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	rbtVersion := parts[1]
 	// No need to check errors, we know the format is correct.
@@ -244,7 +245,7 @@ to install the correct version.
 	minor, _ := strconv.Atoi(parts[3])
 
 	if !(major == 0 && minor == 7) {
-		return errs.NewError(
+		return errs.NewErrorWithHint(
 			task, errors.New("unsupported rbt version detected: "+rbtVersion), hint)
 	}
 

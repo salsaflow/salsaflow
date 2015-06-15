@@ -51,8 +51,8 @@ func UnmarshalLocalConfig(v interface{}) error {
 	// Unmarshall the local config file.
 	task := "Unmarshal the local config file"
 	if err := yaml.Unmarshal(localContentCache, v); err != nil {
-		return errs.NewError(
-			task, err, bytes.NewBufferString("Make sure the configuration file is valid YAML\n"))
+		return errs.NewErrorWithHint(
+			task, err, "Make sure the configuration file is valid YAML\n")
 	}
 	return nil
 }
@@ -78,14 +78,14 @@ func readLocalConfig() (content *bytes.Buffer, err error) {
 	contentBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			hint := bytes.NewBufferString(`
+			hint := `
 The local configuration file was not found.
 Check 'repo bootstrap' to see how to generate it.
 
-`)
-			return nil, errs.NewError(task, err, hint)
+`
+			return nil, errs.NewErrorWithHint(task, err, hint)
 		}
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 	return bytes.NewBuffer(contentBytes), nil
 }
@@ -107,8 +107,8 @@ func UnmarshalGlobalConfig(v interface{}) error {
 	// Unmarshal the global config file.
 	task := "Unmarshal the global configuration file"
 	if err := yaml.Unmarshal(globalContentCache, v); err != nil {
-		return errs.NewError(
-			task, err, bytes.NewBufferString("Make sure the configuration file is valid YAML\n"))
+		return errs.NewErrorWithHint(
+			task, err, "Make sure the configuration file is valid YAML\n")
 	}
 	return nil
 }
@@ -117,7 +117,7 @@ func GlobalConfigFileAbsolutePath() (string, error) {
 	task := "Get the global configuration file absolute path"
 	me, err := user.Current()
 	if err != nil {
-		return "", errs.NewError(task, err, nil)
+		return "", errs.NewError(task, err)
 	}
 	return filepath.Join(me.HomeDir, GlobalConfigFilename), nil
 }
@@ -133,7 +133,7 @@ func readGlobalConfig() (content *bytes.Buffer, err error) {
 	task := "Read the global config file"
 	contentBytes, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 	return bytes.NewBuffer(contentBytes), nil
 }

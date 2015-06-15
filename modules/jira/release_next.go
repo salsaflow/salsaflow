@@ -43,7 +43,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	log.Run(task)
 	ids, err := releases.ListStoryIdsToBeAssigned(release.tracker)
 	if err != nil {
-		return false, errs.NewError(task, err, nil)
+		return false, errs.NewError(task, err)
 	}
 
 	// Fetch the additional issues from JIRA.
@@ -51,7 +51,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	log.Run(task)
 	issues, err := listStoriesById(newClient(release.tracker.config), ids)
 	if len(issues) == 0 && err != nil {
-		return false, errs.NewError(task, err, nil)
+		return false, errs.NewError(task, err)
 	}
 	if len(issues) != len(ids) {
 		log.Warn("Some issues were dropped since they were not found in JIRA")
@@ -105,7 +105,7 @@ func (release *nextRelease) Start() (action.Action, error) {
 
 	api := newClient(release.tracker.config)
 	if err := addLabel(api, release.additionalIssues, releaseLabel); err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	return action.ActionFunc(func() error {

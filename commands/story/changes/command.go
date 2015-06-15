@@ -66,7 +66,7 @@ func runMain(storyIdPattern string) (err error) {
 	task := "Get the list of relevant story commits"
 	groups, err := collectChanges(storyIdPattern)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Dump the changes to stdout.

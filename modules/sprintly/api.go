@@ -40,7 +40,7 @@ func listItems(
 		// Fetch another page of items.
 		itms, _, err := client.Items.List(productId, args)
 		if err != nil {
-			return nil, errs.NewError(task, err, nil)
+			return nil, errs.NewError(task, err)
 		}
 
 		// Append the items to the final set of items.
@@ -83,7 +83,7 @@ func listItemsByNumber(
 		},
 	})
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Build necessary data structures.
@@ -108,7 +108,7 @@ func listItemsByNumber(
 		// Add the item in case it is a sub-item of an item that is requested.
 		number, err := item.ParentNumber()
 		if err != nil {
-			return nil, errs.NewError(task, err, nil)
+			return nil, errs.NewError(task, err)
 		}
 		if number != 0 {
 			if _, ok := numberIndex[number]; ok {
@@ -184,7 +184,7 @@ func listItemsByTag(
 		// but only if the item is not there yet.
 		number, err := item.ParentNumber()
 		if err != nil {
-			return nil, errs.NewError(task, err, nil)
+			return nil, errs.NewError(task, err)
 		}
 		if number != 0 {
 			if _, ok := itemIndex[number]; ok {
@@ -196,7 +196,7 @@ func listItemsByTag(
 	}
 
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 	return items, nil
 }

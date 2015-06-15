@@ -2,103 +2,115 @@ package errs
 
 import (
 	// Stdlib
-	"bytes"
 	"fmt"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/log"
 )
 
-type Err struct {
-	taskName string
-	err      error
-	errHint  *bytes.Buffer
+type Error interface {
+	error
+	Task() string
+	Err() error
+	Hint() string
 }
 
-func NewError(taskName string, err error, errHint *bytes.Buffer) *Err {
+type Err struct {
+	task string
+	err  error
+	hint string
+}
+
+func NewError(task string, err error) Error {
+	return NewErrorWithHint(task, err, "")
+}
+
+func NewErrorWithHint(task string, err error, hint string) Error {
 	// The task name and the error must be set, always. Only the error hint is optional.
 	switch {
-	case taskName == "":
-		panic("errs.NewError: argument 'taskName' is empty")
+	case task == "":
+		panic("errs.NewErrorWithHint: argument 'task' is empty")
 	case err == nil:
-		panic("errs.NewError: argument 'err' is empty")
+		panic("errs.NewErrorWithHint: argument 'err' is empty")
 	}
 
-	// We are cool now, return the new Err instance.
-	return &Err{taskName, err, errHint}
-}
-
-func (err *Err) Log(logger log.Logger) *Err {
-	logger.Lock()
-	defer logger.Unlock()
-	return err.unsafeLog(logger)
-}
-
-func (err *Err) LogAndDie(logger log.Logger) {
-	logger.Lock()
-	defer logger.Unlock()
-	err.unsafeLog(logger)
-	logger.Fatalln("\nFatal error: " + err.Error())
-}
-
-func (err *Err) unsafeLog(logger log.Logger) *Err {
-	// Check whether err.err is also an Err.
-	// In case it is, print that error first so that format the output
-	// in a similar way to an unrolling stack, i.e. deeper error first.
-	if err.err != nil {
-		if next, ok := err.err.(*Err); ok && next != nil {
-			next.unsafeLog(logger)
-		}
+	// We are cool now, return a new Err instance.
+	return &Err{
+		task: task,
+		err:  err,
+		hint: hint,
 	}
-
-	// Print the error saved in this Err struct.
-	logger.UnsafeFail(err.taskName)
-	if err.err != nil {
-		logger.UnsafeNewLine(fmt.Sprintf("(error = %v)", err.err))
-	}
-	if err.errHint != nil {
-		logger.UnsafeStderr(err.errHint)
-	}
-
-	// Return self to be able to chain calls or return.
-	return err
-}
-
-// RootCause returns the deepest error, in other words, the error that started the error chain.
-func (err *Err) RootCause() error {
-	if next, ok := err.err.(*Err); ok && next != nil {
-		return next.RootCause()
-	}
-	return err.err
 }
 
 func (err *Err) Error() string {
 	return err.err.Error()
 }
 
+func (err *Err) Hint() string {
+	return err.hint
+}
+
+func (err *Err) Task() string {
+	return err.task
+}
+
+func (err *Err) Err() error {
+	return err.err
+}
+
+// LogWith logs the given error using the given logger.
+func LogWith(err error, logger log.Logger) error {
+	logger.Lock()
+	defer logger.Unlock()
+	return unsafeLogWith(err, logger)
+}
+
+func unsafeLogWith(err error, logger log.Logger) error {
+	// Implementing Error inteface.
+	if ex, ok := err.(Error); ok {
+		logger.UnsafeFail(ex.Task())
+
+		hint := ex.Hint()
+		if next, ok := ex.Err().(Error); ok {
+			logger.UnsafeStderr(hint)
+			return unsafeLogWith(next, logger)
+		} else {
+			last := ex.Err()
+			logger.UnsafeNewLine(fmt.Sprintf("(error = %v)", last))
+			logger.UnsafeStderr(hint)
+			return last
+		}
+	}
+
+	// Regular errors.
+	return err
+}
+
+// Log just calls LogWith(err, log.V(log.Info)).
 func Log(err error) error {
-	if ex, ok := err.(*Err); ok {
-		return ex.Log(log.V(log.Info))
-	} else {
-		return NewError("unknown task", err, nil).Log(log.V(log.Info))
-	}
+	return LogWith(err, log.V(log.Info))
 }
 
-func LogError(taskName string, err error, errHint *bytes.Buffer) {
-	Log(NewError(taskName, err, errHint))
+// LogError is a wrapper that calls Log(NewError(task, err)).
+func LogError(task string, err error) error {
+	return Log(NewError(task, err))
 }
 
+// LogErrorWithHint is a wrapper that calls Log(NewErrorWithHint(task, err, hint)).
+func LogErrorWithHint(task string, err error, hint string) error {
+	return Log(NewErrorWithHint(task, err, hint))
+}
+
+// Fatal logs the error and exists the program with os.Exit(1).
 func Fatal(err error) {
-	if ex, ok := err.(*Err); ok {
-		ex.Log(log.V(log.Info))
-	}
+	Log(err)
 	log.Fatalln("\nFatal error: " + err.Error())
 }
 
+// RootCause returns the error deepest in the error chain.
 func RootCause(err error) error {
-	ex, ok := err.(*Err)
-	if ok {
-		return ex.RootCause()
+	if ex, ok := err.(Error); ok {
+		return RootCause(ex.Err())
 	}
 	return err
 }

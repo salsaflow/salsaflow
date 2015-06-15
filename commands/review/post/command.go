@@ -121,7 +121,7 @@ func postRevision(revision string) error {
 	task := "Get the commit to be posted for code review"
 	commits, err := git.ShowCommits(revision)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Assert that things are consistent.
@@ -161,21 +161,21 @@ func postBranch(parentBranch string) error {
 		log.Run(task)
 
 		if err := git.UpdateRemotes(remoteName); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 
 		// Make sure the parent branch is up to date.
 		task = fmt.Sprintf("Make sure reference '%v' is up to date", parentBranch)
 		log.Run(task)
 		if err := git.EnsureBranchSynchronized(parentBranch, remoteName); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 
 		// Make sure the current branch is up to date.
 		task = fmt.Sprintf("Make sure branch '%v' is up to date", currentBranch)
 		log.Run(task)
 		if err = git.EnsureBranchSynchronized(currentBranch, remoteName); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 	}
 
@@ -184,7 +184,7 @@ func postBranch(parentBranch string) error {
 		task := fmt.Sprintf("Rebase branch '%v' onto '%v'", currentBranch, parentBranch)
 		log.Run(task)
 		if err := git.Rebase(parentBranch); err != nil {
-			ex := errs.Log(errs.NewError(task, err, nil))
+			ex := errs.Log(errs.NewError(task, err))
 			asciiart.PrintGrimReaper("GIT REBASE FAILED")
 			fmt.Printf(`Git failed to rebase your branch onto '%v'.
 
@@ -207,7 +207,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	task := "Get the commits to be posted for code review"
 	commits, err := git.ShowCommitRange(parentBranch + "..")
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Post the review requests.
@@ -228,7 +228,7 @@ func postReviewRequests(commits []*git.Commit, canAmend bool) error {
 	// Make sure there are actually some commits to be posted.
 	task := "Make sure there are actually some commits to be posted"
 	if len(commits) == 0 {
-		return errs.NewError(task, ErrNoCommits, nil)
+		return errs.NewError(task, ErrNoCommits)
 	}
 
 	// Tell the user what is going to happen.
@@ -242,7 +242,7 @@ You are about to post review requests for the following commits:
 	task = "Prompt the user for confirmation"
 	confirmed, err := prompt.Confirm("\nYou cool with that?")
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if !confirmed {
 		prompt.PanicCancel()
@@ -254,7 +254,7 @@ You are about to post review requests for the following commits:
 	if isStoryIdMissing(commits) {
 		commits, err = rewriteCommits(commits, canAmend)
 		if err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 	} else {
 		log.Log("Commit check passed")
@@ -293,7 +293,7 @@ You are about to post review requests for the following commits:
 			}
 			log.Log(msg)
 			if _, err = git.RunCommand("push", args...); err != nil {
-				return errs.NewError("Push the current branch", err, nil)
+				return errs.NewError("Push the current branch", err)
 			}
 		}
 	}
@@ -306,13 +306,13 @@ You are about to post review requests for the following commits:
 	log.Run(task)
 	ctxs, err := commitsToReviewContexts(commits)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Post the review requests.
 	task = "Post the review requests"
 	if err := sendReviewRequests(ctxs); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	return nil
@@ -366,10 +366,9 @@ available, execute
 and read the DESCRIPTION section.
 
 `
-		return nil, errs.NewError(
+		return nil, errs.NewErrorWithHint(
 			"Make sure the commits can be amended",
-			errors.New("Story-Id tag missing"),
-			bytes.NewBufferString(hint))
+			errors.New("Story-Id tag missing"), hint)
 	}
 
 	// Fetch the stories in progress from the issue tracker.
@@ -378,23 +377,23 @@ and read the DESCRIPTION section.
 
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
-		return nil, errs.NewError(storiesTask, err, nil)
+		return nil, errs.NewError(storiesTask, err)
 	}
 
 	task := "Fetch the user record from the issue tracker"
 	me, err := tracker.CurrentUser()
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	stories, err := tracker.StoriesInDevelopment()
 	if err != nil {
-		return nil, errs.NewError(storiesTask, err, nil)
+		return nil, errs.NewError(storiesTask, err)
 	}
 
 	reviewedStories, err := tracker.ReviewedStories()
 	if err != nil {
-		return nil, errs.NewError(storiesTask, err, nil)
+		return nil, errs.NewError(storiesTask, err)
 	}
 
 	// Show only the stories owned by the current user.
@@ -423,33 +422,33 @@ StoryLoop:
 	task = "Get the parent commit of the commit chain to be posted"
 	stdout, err := git.Log("--pretty=%P", "-n", "1", commits[0].SHA)
 	if err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 	parentSHA := strings.Fields(stdout.String())[0]
 
 	// Prepare a temporary branch that will be used to amend commit messages.
 	task = "Create a temporary branch to rewrite commit messages"
 	if err := git.Branch("-f", constants.TempBranchName, parentSHA); err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 	defer func() {
 		// Delete the temporary branch on exit.
 		task := "Delete the temporary branch"
 		if err := git.Branch("-D", constants.TempBranchName); err != nil {
-			errs.LogError(task, err, nil)
+			errs.LogError(task, err)
 		}
 	}()
 
 	// Checkout the temporary branch.
 	task = "Checkout the temporary branch"
 	if err := git.Checkout(constants.TempBranchName); err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 	defer func() {
 		// Checkout the original branch on exit.
 		task := fmt.Sprintf("Checkout branch '%v'", currentBranch)
 		if err := git.Checkout(currentBranch); err != nil {
-			errs.LogError(task, err, nil)
+			errs.LogError(task, err)
 		}
 	}()
 
@@ -471,7 +470,7 @@ You can also insert 'u' to mark the commits as unassigned:`
 		// Cherry-pick the commit.
 		task := fmt.Sprintf("Move commit %v onto the temporary branch", commit.SHA)
 		if err := git.CherryPick(commit.SHA); err != nil {
-			return nil, errs.NewError(task, err, nil)
+			return nil, errs.NewError(task, err)
 		}
 
 		if commit.StoryIdTag == "" {
@@ -510,7 +509,7 @@ Inserting 'u' will mark the commit as unassigned:`, commit.SHA, commitMessageTit
 			cmd.Stdin = bytes.NewBufferString(commitMessage)
 			cmd.Stderr = stderr
 			if err := cmd.Run(); err != nil {
-				return nil, errs.NewError(task, err, stderr)
+				return nil, errs.NewErrorWithHint(task, err, stderr.String())
 			}
 		}
 	}
@@ -518,7 +517,7 @@ Inserting 'u' will mark the commit as unassigned:`, commit.SHA, commitMessageTit
 	// Reset the current branch to point to the new branch.
 	task = "Reset the current branch to point to the temporary branch"
 	if err := git.ResetKeep(currentBranch, constants.TempBranchName); err != nil {
-		return nil, errs.NewError(task, err, nil)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Parse the commits again since the commit hashes have changed.
@@ -642,7 +641,7 @@ func sendReviewRequests(ctxs []*common.ReviewContext) error {
 		task := "Post review request for commit " + ctxs[0].Commit.SHA
 		log.Run(task)
 		if err := tool.PostReviewRequests(ctxs, postOpts); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		return nil
 	}
@@ -655,7 +654,7 @@ func sendReviewRequests(ctxs []*common.ReviewContext) error {
 
 	task := fmt.Sprintf("Post review request for branch '%v'", currentBranch)
 	if err := tool.PostReviewRequests(ctxs, postOpts); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	return nil
@@ -665,7 +664,7 @@ func printFollowup() error {
 	task := "Print the followup message"
 	tool, err := modules.GetCodeReviewTool()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	log.Println("\n----------")
@@ -727,7 +726,7 @@ Now that the trunk branch has been modified, you might want to push it, right?
 		log.Run(task)
 		err := git.Push(remoteName, fmt.Sprintf("%v:%v", trunkBranch, trunkBranch))
 		if err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 	}
 
@@ -741,22 +740,22 @@ func merge(commit, branch string, flags ...string) error {
 
 	currentBranch, err := git.CurrentBranch()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	if err := git.Checkout(branch); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	args := make([]string, 1, 1+len(flags))
 	args[0] = commit
 	args = append(args, flags...)
 	if _, err := git.RunCommand("merge", args...); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	if err := git.Checkout(currentBranch); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	return nil
 }
@@ -798,7 +797,7 @@ Your choice: `
 		// Present the stories to the user.
 		fmt.Println()
 		if err := prompt.ListStories(ss, os.Stdout); err != nil {
-			return nil, errs.NewError(task, err, nil)
+			return nil, errs.NewError(task, err)
 		}
 		fmt.Println()
 
@@ -812,11 +811,11 @@ There are no stories that the unassigned commits can be assigned to.
 In other words, there are no stories in the right state for that.
 
 `
-				return nil, errs.NewError(task, err, bytes.NewBufferString(hint))
+				return nil, errs.NewErrorWithHint(task, err, hint)
 			case prompt.ErrCanceled:
 				prompt.PanicCancel()
 			default:
-				return nil, errs.NewError(task, err, nil)
+				return nil, errs.NewError(task, err)
 			}
 		}
 

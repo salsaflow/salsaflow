@@ -16,9 +16,9 @@ func (local *LocalConfig) validate() error {
 	task := "Validate the local modules config"
 	switch {
 	case local.IssueTrackerId == "":
-		return errs.NewError(task, &config.ErrKeyNotSet{"issue_tracker"}, nil)
+		return errs.NewError(task, &config.ErrKeyNotSet{"issue_tracker"})
 	case local.CodeReviewToolId == "":
-		return errs.NewError(task, &config.ErrKeyNotSet{"code_review_tool"}, nil)
+		return errs.NewError(task, &config.ErrKeyNotSet{"code_review_tool"})
 	}
 	return nil
 }
@@ -43,7 +43,7 @@ func LoadConfig() (Config, error) {
 		task := "Load modules-related SalsaFlow config"
 		proxy := &configProxy{&LocalConfig{}}
 		if err := config.UnmarshalLocalConfig(proxy.local); err != nil {
-			return nil, errs.NewError(task, err, nil)
+			return nil, errs.NewError(task, err)
 		}
 		configCache = proxy
 		err = proxy.local.validate()

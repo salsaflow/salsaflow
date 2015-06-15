@@ -51,7 +51,7 @@ func (local *LocalConfig) validate() error {
 		err = &config.ErrKeyNotSet{Id + ".environments.production"}
 	}
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	return nil
 }
@@ -78,7 +78,7 @@ func (global *GlobalConfig) validate() error {
 		err = &config.ErrKeyNotSet{Id + ".token"}
 	}
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	return nil
 }

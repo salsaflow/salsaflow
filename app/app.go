@@ -37,7 +37,7 @@ func Init(force bool) error {
 
 func InitOrDie() {
 	if err := Init(false); err != nil {
-		if ex, ok := err.(*errs.Err); !ok || ex.RootCause() != repo.ErrInitialised {
+		if errs.RootCause(err) != repo.ErrInitialised {
 			errs.Fatal(err)
 		}
 	}

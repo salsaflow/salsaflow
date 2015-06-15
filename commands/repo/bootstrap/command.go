@@ -124,12 +124,12 @@ func runMain() error {
 	task := "Check whether the global configuration file exists"
 	globalPath, err := config.GlobalConfigFileAbsolutePath()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	if _, err := os.Stat(globalPath); err != nil {
 		if !os.IsNotExist(err) {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		log.Warn("Global configuration file not found")
 	}
@@ -138,7 +138,7 @@ func runMain() error {
 	if flagSkeleton != "" {
 		task := "Fetch or update the given skeleton"
 		if err := fetchOrUpdateSkeleton(flagSkeleton); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 	}
 
@@ -147,10 +147,10 @@ func runMain() error {
 	log.Run(task)
 	configDir, err := config.LocalConfigDirectoryAbsolutePath()
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	if err := os.MkdirAll(configDir, 0755); err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 
 	// Write the local configuration file.
@@ -159,7 +159,7 @@ func runMain() error {
 	configPath := filepath.Join(configDir, config.LocalConfigFilename)
 	file, err := os.OpenFile(configPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0640)
 	if err != nil {
-		return errs.NewError(task, err, nil)
+		return errs.NewError(task, err)
 	}
 	defer file.Close()
 
@@ -178,7 +178,7 @@ func runMain() error {
 		log.Go(task)
 		log.NewLine("")
 		if err := pourSkeleton(flagSkeleton, configDir); err != nil {
-			return errs.NewError(task, err, nil)
+			return errs.NewError(task, err)
 		}
 		log.NewLine("")
 		log.Ok(task)
