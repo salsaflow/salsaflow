@@ -47,7 +47,8 @@ func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action
 	}
 
 	// Create the review milestone.
-	milestoneTask := fmt.Sprintf("Create code review milestone for release %v", v)
+	releaseString := v.BaseString()
+	milestoneTask := fmt.Sprintf("Create code review milestone for release %v", releaseString)
 	log.Run(milestoneTask)
 	milestone, _, err := client.Issues.CreateMilestone(owner, repo, &github.Milestone{
 		Title: github.String(milestoneTitle(v)),
@@ -59,7 +60,7 @@ func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action
 	// Return a rollback function.
 	return action.ActionFunc(func() error {
 		log.Rollback(milestoneTask)
-		task := fmt.Sprintf("Delete code review milestone '%v'", *milestone.Title)
+		task := fmt.Sprintf("Delete code review milestone for release %v", releaseString)
 		_, err := client.Issues.DeleteMilestone(owner, repo, *milestone.Number)
 		if err != nil {
 			return errs.NewError(task, err, nil)
@@ -82,7 +83,8 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 	}
 
 	// Get the relevant review milestone.
-	task := fmt.Sprintf("Get code review milestone for release %v", v)
+	releaseString := v.BaseString()
+	task := fmt.Sprintf("Get code review milestone for release %v", releaseString)
 	log.Run(task)
 	milestone, err := milestoneForVersion(config, owner, repo, v)
 	if err != nil {
@@ -94,13 +96,17 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 	}
 
 	// Close the milestone unless there are some issues open.
-	task = fmt.Sprintf("Make sure review milestone for release %v can be closed", v)
+	task = fmt.Sprintf("Make sure review milestone for release %v can be closed", releaseString)
 	if num := *milestone.OpenIssues; num != 0 {
-		return nil, errs.NewError(task,
-			fmt.Errorf("review milestone for release %v cannot be closed: %v issue(s) open", v, num), nil)
+		return nil, errs.NewError(
+			task,
+			fmt.Errorf(
+				"review milestone for release %v cannot be closed: %v issue(s) open",
+				releaseString, num),
+			nil)
 	}
 
-	milestoneTask := fmt.Sprintf("Close review milestone for release %v", v)
+	milestoneTask := fmt.Sprintf("Close review milestone for release %v", releaseString)
 	log.Run(milestoneTask)
 	milestone, _, err = client.Issues.EditMilestone(owner, repo, *milestone.Number, &github.Milestone{
 		State: github.String("closed"),
@@ -112,7 +118,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 	// Return a rollback function.
 	return action.ActionFunc(func() error {
 		log.Rollback(milestoneTask)
-		task := fmt.Sprintf("Reopen review milestone for release %v", v)
+		task := fmt.Sprintf("Reopen review milestone for release %v", releaseString)
 		_, _, err := client.Issues.EditMilestone(owner, repo, *milestone.Number, &github.Milestone{
 			State: github.String("open"),
 		})
