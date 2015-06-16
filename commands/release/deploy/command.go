@@ -63,7 +63,6 @@ func runMain() (err error) {
 
 	var (
 		remoteName    = gitConfig.RemoteName()
-		releaseBranch = gitConfig.ReleaseBranchName()
 		stagingBranch = gitConfig.StagingBranchName()
 		stableBranch  = gitConfig.StableBranchName()
 	)
@@ -146,34 +145,13 @@ func runMain() (err error) {
 		return nil
 	}))
 
-	// Reset stage to point to the release branch in case that one exists
-	// so that the next release is immediately available for the client.
-	toPush := []string{"--tags"}
-
-	exists, err := git.RemoteBranchExists(releaseBranch, remoteName)
-	if err != nil {
-		return errs.NewError(task, err)
-	}
-	if exists {
-		task = fmt.Sprintf(
-			"Reset branch '%v' to point to branch '%v'", stagingBranch, releaseBranch)
-		log.Run(task)
-
-		remoteReleaseBranch := fmt.Sprintf("%v/%v", remoteName, releaseBranch)
-		act, err = git.CreateOrResetBranch(stagingBranch, remoteReleaseBranch)
-		if err != nil {
-			return errs.NewError(task, err)
-		}
-		defer action.RollbackTaskOnError(&err, task, act)
-
-		toPush = append(toPush, fmt.Sprintf("%v:%v", stagingBranch, stagingBranch))
-	}
-
 	// Push the changes to the remote repository.
 	task = "Push changes to the remote repository"
 	log.Run(task)
-
-	toPush = append(toPush, fmt.Sprintf("%v:%v", stableBranch, stableBranch))
+	toPush := []string{
+		"--tags",
+		fmt.Sprintf("%v:%v", stableBranch, stableBranch),
+	}
 	if err := git.PushForce(remoteName, toPush...); err != nil {
 		return errs.NewError(task, err)
 	}
