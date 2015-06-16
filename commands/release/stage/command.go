@@ -154,7 +154,7 @@ func runMain() (err error) {
 	// Delete the local release branch.
 	task = fmt.Sprintf("Delete branch '%v'", releaseBranch)
 	log.Run(task)
-	if err := git.Branch("-d", releaseBranch); err != nil {
+	if err := git.Branch("-D", releaseBranch); err != nil {
 		return errs.NewError(task, err)
 	}
 	defer action.RollbackTaskOnError(&err, task, action.ActionFunc(func() error {
