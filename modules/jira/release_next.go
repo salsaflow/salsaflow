@@ -98,6 +98,11 @@ IssueLoop:
 }
 
 func (release *nextRelease) Start() (action.Action, error) {
+	// In case there are no additional stories, we are done.
+	if len(release.additionalIssues) == 0 {
+		return action.Noop, nil
+	}
+
 	// Add the release label to the stories that were assigned automatically.
 	releaseLabel := release.trunkVersion.ReleaseTagString()
 	task := fmt.Sprintf("Label the newly added issues with the release label (%v)", releaseLabel)

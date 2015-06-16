@@ -130,13 +130,18 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 }
 
 func (release *nextRelease) Start() (action.Action, error) {
+	// In case there are no additional stories, we are done.
+	if len(release.additionalStories) == 0 {
+		return action.Noop, nil
+	}
+
+	// Add release labels to the relevant stories.
 	var (
 		config    = release.tracker.config
 		client    = pivotal.NewClient(config.UserToken())
 		projectId = config.ProjectId()
 	)
 
-	// Add release labels to the relevant stories.
 	task := "Label the stories with the release label"
 	log.Run(task)
 	releaseLabel := getReleaseLabel(release.trunkVersion)
