@@ -83,7 +83,6 @@ IssueLoop:
 		if err != nil {
 			return false, err
 		}
-		fmt.Println()
 	}
 
 	// Ask the user to confirm.
