@@ -22,7 +22,8 @@ func RollbackOnError(err *error, action Action) {
 // but it also informs the user that the given task is being reverted.
 func RollbackTaskOnError(err *error, task string, action Action) {
 	// Do nothing unless there is an error.
-	if *err == nil {
+	// In case action is nil, this is a noop.
+	if *err == nil || action == nil {
 		return
 	}
 

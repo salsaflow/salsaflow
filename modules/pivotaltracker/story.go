@@ -6,7 +6,9 @@ import (
 	"strconv"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules/common"
 
 	// Other
@@ -105,6 +107,48 @@ func (story *story) Start() error {
 	}
 	story.Story = updatedStory
 	return nil
+}
+
+func (story *story) MarkAsImplemented() (action.Action, error) {
+	var (
+		config    = story.tracker.config
+		client    = pivotal.NewClient(config.UserToken())
+		projectId = config.ProjectId()
+		label     = config.ReviewedLabel()
+	)
+
+	var alreadyThere bool
+	ls := make([]*pivotal.Label, 0, len(*story.Labels))
+	for _, l := range *story.Labels {
+		if l.Name == label {
+			alreadyThere = true
+		}
+		ls = append(ls, &pivotal.Label{Name: l.Name})
+	}
+	if alreadyThere {
+		return nil, nil
+	}
+	ls = append(ls, &pivotal.Label{Name: label})
+
+	updateTask := fmt.Sprintf("Update Pivotal Tracker story (id = %v)", story.Story.Id)
+	updateRequest := &pivotal.Story{Labels: &ls}
+	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
+	if err != nil {
+		return nil, errs.NewError(updateTask, err)
+	}
+	originalStory := story.Story
+	story.Story = updatedStory
+
+	return action.ActionFunc(func() error {
+		log.Rollback(updateTask)
+		updateRequest := &pivotal.Story{Labels: originalStory.Labels}
+		updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
+		if err != nil {
+			return err
+		}
+		story.Story = updatedStory
+		return nil
+	}), nil
 }
 
 func (s *story) LessThan(otherStory common.Story) bool {

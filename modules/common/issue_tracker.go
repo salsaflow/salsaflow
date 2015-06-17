@@ -90,6 +90,9 @@ type Story interface {
 	// Start can be used to start the story in the issue tracker.
 	Start() error
 
+	// MarkAsImplemented marks the story as implemented.
+	MarkAsImplemented() (action.Action, error)
+
 	// LessThan is being used for sorting stories for output.
 	// Stories are printed in the order they are sorted by this function.
 	LessThan(Story) bool

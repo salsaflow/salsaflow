@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/modules/common"
 
@@ -97,6 +98,14 @@ func (story *story) Start() error {
 		return errs.NewError(fmt.Sprintf("Start story %v", story.Issue.Key), err)
 	}
 	return nil
+}
+
+func (story *story) MarkAsImplemented() (action.Action, error) {
+	fmt.Println(`SalsaFlow cannot mark a JIRA issue as implemented
+since there are some manual steps involved. It will, however,
+open the web page when the issue can be marked as implemented.`)
+
+	return nil, story.tracker.OpenStory(story.Issue.Key)
 }
 
 func (s *story) LessThan(commonStory common.Story) bool {

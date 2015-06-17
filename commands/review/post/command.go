@@ -13,6 +13,7 @@ import (
 	"text/tabwriter"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/app"
 	"github.com/salsaflow/salsaflow/asciiart"
 	"github.com/salsaflow/salsaflow/commands/review/post/constants"
@@ -130,9 +131,11 @@ func postRevision(revision string) error {
 	}
 
 	// Post the review requests, in this case it will be only one.
-	if err := postReviewRequests(commits, headMode); err != nil {
+	act, err := postReviewRequests(commits, headMode)
+	if err != nil {
 		return err
 	}
+	defer action.RollbackOnError(&err, act)
 
 	// In case there is no error, tell the user what to do next.
 	return printFollowup()
@@ -211,9 +214,11 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	}
 
 	// Post the review requests.
-	if err := postReviewRequests(commits, true); err != nil {
+	act, err := postReviewRequests(commits, true)
+	if err != nil {
 		return err
 	}
+	defer action.RollbackOnError(&err, act)
 
 	// Just print the regular followup in case the dialog is disabled.
 	if flagNoDialog {
@@ -224,11 +229,11 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	return parentFollowupDialog(currentBranch, remoteName, trunkBranch)
 }
 
-func postReviewRequests(commits []*git.Commit, canAmend bool) error {
+func postReviewRequests(commits []*git.Commit, canAmend bool) (action.Action, error) {
 	// Make sure there are actually some commits to be posted.
 	task := "Make sure there are actually some commits to be posted"
 	if len(commits) == 0 {
-		return errs.NewError(task, ErrNoCommits)
+		return nil, errs.NewError(task, ErrNoCommits)
 	}
 
 	// Tell the user what is going to happen.
@@ -242,7 +247,7 @@ You are about to post review requests for the following commits:
 	task = "Prompt the user for confirmation"
 	confirmed, err := prompt.Confirm("\nYou cool with that?")
 	if err != nil {
-		return errs.NewError(task, err)
+		return nil, errs.NewError(task, err)
 	}
 	if !confirmed {
 		prompt.PanicCancel()
@@ -254,7 +259,7 @@ You are about to post review requests for the following commits:
 	if isStoryIdMissing(commits) {
 		commits, err = rewriteCommits(commits, canAmend)
 		if err != nil {
-			return errs.NewError(task, err)
+			return nil, errs.NewError(task, err)
 		}
 	} else {
 		log.Log("Commit check passed")
@@ -267,25 +272,25 @@ You are about to post review requests for the following commits:
 		// Get the current branch name.
 		current, err := git.CurrentBranch()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// Push only if the branch is not in sync.
 		gitConfig, err := git.LoadConfig()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		upToDate, err := git.IsBranchSynchronized(current, gitConfig.RemoteName())
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if !upToDate {
 			args := make([]string, 0, 1)
 			msg := "Pushing the current branch to synchronize"
 			isCore, err := git.IsCoreBranch(current)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			if !isCore {
 				args = append(args, "-f")
@@ -293,7 +298,7 @@ You are about to post review requests for the following commits:
 			}
 			log.Log(msg)
 			if _, err = git.RunCommand("push", args...); err != nil {
-				return errs.NewError("Push the current branch", err)
+				return nil, errs.NewError("Push the current branch", err)
 			}
 		}
 	}
@@ -306,16 +311,22 @@ You are about to post review requests for the following commits:
 	log.Run(task)
 	ctxs, err := commitsToReviewContexts(commits)
 	if err != nil {
-		return errs.NewError(task, err)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Post the review requests.
 	task = "Post the review requests"
 	if err := sendReviewRequests(ctxs); err != nil {
-		return errs.NewError(task, err)
+		return nil, errs.NewError(task, err)
 	}
 
-	return nil
+	// Mark the stories as implemented, potentially.
+	task = "Mark the stories as implemented, optionally"
+	act, err := implementedDialog(ctxs)
+	if err != nil {
+		return nil, errs.NewError(task, err)
+	}
+	return act, nil
 }
 
 func isStoryIdMissing(commits []*git.Commit) bool {
@@ -559,7 +570,34 @@ func commitsToReviewContexts(commits []*git.Commit) ([]*common.ReviewContext, er
 		return nil, err
 	}
 
-	// Collect the Story-Id tags.
+	// Fetch the stories from the issue tracker.
+	stories, err := tracker.ListStoriesByTag(storyTags(tracker, commits))
+	if err != nil {
+		return nil, err
+	}
+
+	// Build the story map.
+	storiesByTag := make(map[string]common.Story, 1)
+	for _, story := range stories {
+		storiesByTag[story.Tag()] = story
+	}
+
+	// Build the final list of review contexts.
+	ctxs := make([]*common.ReviewContext, 0, len(commits))
+	for _, commit := range commits {
+		// Story can be set to nil here in case the story is unassigned.
+		// In that case there will be, obviously, no story object in the map.
+		ctxs = append(ctxs, &common.ReviewContext{
+			Commit: commit,
+			Story:  storiesByTag[commit.StoryIdTag],
+		})
+	}
+
+	// Return the commit review contexts.
+	return ctxs, nil
+}
+
+func storyTags(tracker common.IssueTracker, commits []*git.Commit) (tags []string) {
 	var (
 		storyTagSet  = make(map[string]struct{}, 1)
 		storyTagList = make([]string, 0, 1)
@@ -585,31 +623,7 @@ func commitsToReviewContexts(commits []*git.Commit) ([]*common.ReviewContext, er
 		storyTagList = append(storyTagList, tag)
 	}
 
-	// Fetch the stories from the issue tracker.
-	stories, err := tracker.ListStoriesByTag(storyTagList)
-	if err != nil {
-		return nil, err
-	}
-
-	// Build the story map.
-	storiesByTag := make(map[string]common.Story, 1)
-	for _, story := range stories {
-		storiesByTag[story.Tag()] = story
-	}
-
-	// Build the final list of review contexts.
-	ctxs := make([]*common.ReviewContext, 0, len(commits))
-	for _, commit := range commits {
-		// Story can be set to nil here in case the story is unassigned.
-		// In that case there will be, obviously, no story object in the map.
-		ctxs = append(ctxs, &common.ReviewContext{
-			Commit: commit,
-			Story:  storiesByTag[commit.StoryIdTag],
-		})
-	}
-
-	// Return the commit review contexts.
-	return ctxs, nil
+	return storyTagList
 }
 
 func sendReviewRequests(ctxs []*common.ReviewContext) error {
@@ -679,10 +693,10 @@ func parentFollowupDialog(currentBranch, remoteName, trunkBranch string) error {
 You might want to merge the current branch (%v) into trunk, right?
 
   1) do nothing
-  2) merge into trunk
-  3) merge into trunk (--no-ff)
+  2) merge into '%v'
+  3) merge into '%v' (--no-ff)
 
-`, currentBranch)
+`, currentBranch, trunkBranch, trunkBranch)
 	index, err := prompt.PromptIndex("Choose [1-3]: ", 1, 3)
 	if err != nil {
 		return err
@@ -731,6 +745,68 @@ Now that the trunk branch has been modified, you might want to push it, right?
 	}
 
 	return nil
+}
+
+func implementedDialog(ctxs []*common.ReviewContext) (action.Action, error) {
+	// Collect the affected stories.
+	var (
+		stories  = make([]common.Story, 0, len(ctxs))
+		storySet = make(map[string]struct{}, len(ctxs))
+	)
+	for _, ctx := range ctxs {
+		rid := ctx.Story.ReadableId()
+		if _, ok := storySet[rid]; ok {
+			continue
+		}
+		storySet[rid] = struct{}{}
+		stories = append(stories, ctx.Story)
+	}
+
+	fmt.Println("\nIt is possible to mark the stories as implemented now.")
+	fmt.Println("The following stories were associated with one or more commits:\n")
+	prompt.ListStories(stories, os.Stdout)
+	fmt.Println()
+	confirmed, err := prompt.Confirm(
+		"Do you wish to mark these stories as implemented?")
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println()
+	if !confirmed {
+		return nil, nil
+	}
+
+	errUpdateFailed := errors.New("failed to update stories in the issue tracker")
+
+	// Always update as many stories as possible.
+	acts := make([]action.Action, 0, len(stories))
+	doRollback := func() error {
+		var ex error
+		for _, act := range acts {
+			if err := act.Rollback(); err != nil {
+				errs.Log(err)
+				ex = errUpdateFailed
+			}
+		}
+		return ex
+	}
+
+	var ex error
+	for _, story := range stories {
+		act, err := story.MarkAsImplemented()
+		if err != nil {
+			errs.Log(err)
+			ex = errUpdateFailed
+			continue
+		}
+		acts = append(acts, act)
+	}
+	if ex != nil {
+		doRollback()
+		return nil, ex
+	}
+
+	return action.ActionFunc(doRollback), nil
 }
 
 // merge merges commit into branch.
