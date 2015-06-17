@@ -52,12 +52,13 @@ type Issue struct {
 			Subtask     bool   `json:"subtask,omitempty"`
 			IconURL     string `json:"iconUrl,omitempty"`
 		} `json:"issuetype,omitempty"`
-		Parent      *Issue       `json:"parent,omitempty"`
-		Subtasks    []*Issue     `json:"subtasks,omitempty"`
-		Assignee    *User        `json:"assignee,omitempty"`
-		FixVersions []*Version   `json:"fixVersions,omitempty"`
-		Labels      []string     `json:"labels,omitempty"`
-		Status      *IssueStatus `json:"status,omitempty"`
+		Parent      *Issue           `json:"parent,omitempty"`
+		Subtasks    []*Issue         `json:"subtasks,omitempty"`
+		Assignee    *User            `json:"assignee,omitempty"`
+		FixVersions []*Version       `json:"fixVersions,omitempty"`
+		Labels      []string         `json:"labels,omitempty"`
+		Status      *IssueStatus     `json:"status,omitempty"`
+		Resolution  *IssueResolution `json:"resolution,omitempty"`
 	} `json:"fields,omitempty"`
 }
 
@@ -68,6 +69,14 @@ type IssueStatus struct {
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`
 	IconURL     string `json:"iconUrl,omitempty"`
+}
+
+// IssueResolution represents an issue resolution, e.g. "Cannot Reproduce".
+type IssueResolution struct {
+	Id          string `json:"id,omitempty"`
+	Self        string `json:"self,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 // The service -----------------------------------------------------------------
@@ -141,17 +150,11 @@ func (service *IssueService) Update(issueIdOrKey string, body interface{}) (*htt
 // PerformTransition performs the requested transition for the chosen issue.
 func (service *IssueService) PerformTransition(
 	issueIdOrKey string,
-	transitionId string,
+	transition interface{},
 ) (*http.Response, error) {
 
 	u := fmt.Sprintf("issue/%v/transitions", issueIdOrKey)
-	p := M{
-		"transition": M{
-			"id": transitionId,
-		},
-	}
-
-	req, err := service.client.NewRequest("POST", u, p)
+	req, err := service.client.NewRequest("POST", u, transition)
 	if err != nil {
 		return nil, err
 	}
