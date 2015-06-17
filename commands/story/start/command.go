@@ -208,7 +208,7 @@ func createBranch() (action.Action, error) {
 	line, err := prompt.Prompt(`
 Please insert the branch slug now.
 Insert an empty string to skip the branch creation step: `)
-	if err != nil {
+	if err != nil && err != prompt.ErrCanceled {
 		return nil, errs.NewError(task, err)
 	}
 
