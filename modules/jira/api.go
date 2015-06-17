@@ -179,14 +179,22 @@ func performBulkTransition(
 	var rollbackFunc issueUpdateFunc
 	if rollbackTransitionId != "" {
 		rollbackFunc = func(api *jira.Client, issue *jira.Issue) error {
-			_, err := api.Issues.PerformTransition(issue.Id, rollbackTransitionId)
+			_, err := api.Issues.PerformTransition(issue.Id, jira.M{
+				"transition": jira.M{
+					"id": rollbackTransitionId,
+				},
+			})
 			return err
 		}
 	}
 
 	return updateIssues(api, issues,
 		func(api *jira.Client, issue *jira.Issue) error {
-			_, err := api.Issues.PerformTransition(issue.Id, transitionId)
+			_, err := api.Issues.PerformTransition(issue.Id, jira.M{
+				"transition": jira.M{
+					"id": transitionId,
+				},
+			})
 			return err
 		},
 		rollbackFunc)

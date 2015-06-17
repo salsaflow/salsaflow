@@ -88,7 +88,11 @@ func (story *story) SetAssignees(users []common.User) error {
 func (story *story) Start() error {
 	api := newClient(story.tracker.config)
 
-	_, err := api.Issues.PerformTransition(story.Issue.Id, transitionIdStartImplementing)
+	_, err := api.Issues.PerformTransition(story.Issue.Id, jira.M{
+		"transition": jira.M{
+			"id": transitionIdStartImplementing,
+		},
+	})
 	if err != nil {
 		return errs.NewError(fmt.Sprintf("Start story %v", story.Issue.Key), err)
 	}
