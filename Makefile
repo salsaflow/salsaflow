@@ -11,20 +11,12 @@ godep-install:
 	godep go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-pre-push
 
 deps.fetch:
-	go get -d -u github.com/blang/semver
-	go get -d -u github.com/extemporalgenome/slug
-	go get -d -u github.com/fatih/color
-	go get -d -u github.com/kardianos/osext
-	go get -d -u github.com/google/go-github/github
-	go get -d -u github.com/google/go-querystring/query
-	go get -d -u github.com/salsita/go-jira/v2/jira
-	go get -d -u github.com/salsita/go-pivotaltracker/v5/pivotal
-	go get -d -u github.com/salsita/go-sprintly/sprintly
-	go get -d -u github.com/shiena/ansicolor
-	go get -d -u github.com/toqueteos/webbrowser
-	go get -d -u golang.org/x/oauth2
-	go get -d -u gopkg.in/tchap/gocli.v2
-	go get -d -u gopkg.in/yaml.v2
+	@cat Godeps/Godeps.json | \
+		grep ImportPath | \
+		tail -n +2 | \
+		awk '{ print $$2 }' | \
+		tr -d '",' | \
+		xargs go get -d -u
 
 deps.save:
 	godep save ./...
