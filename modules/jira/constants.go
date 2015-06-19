@@ -47,6 +47,7 @@ var stageableStateIds = []string{
 	stateIdTested,
 	stateIdStaged,
 	stateIdAccepted,
+	stateIdReleased,
 	stateIdDone,
 	stateIdComplete,
 	stateIdClosed,
