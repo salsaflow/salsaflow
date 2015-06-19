@@ -13,9 +13,10 @@ import (
 const (
 	Id = "pivotal_tracker"
 
-	DefaultPointMeLabel  = "point me"
-	DefaultNoReviewLabel = "no review"
-	DefaultReviewedLabel = "reviewed"
+	DefaultPointMeLabel     = "point me"
+	DefaultImplementedLabel = "implemented"
+	DefaultNoReviewLabel    = "no review"
+	DefaultReviewedLabel    = "reviewed"
 )
 
 var DefaultSkipCheckLabels = []string{"dupe", "wontfix"}
@@ -26,10 +27,11 @@ type LocalConfig struct {
 	PT struct {
 		ProjectId int `yaml:"project_id"`
 		Labels    struct {
-			PointMeLabel    string   `yaml:"point_me"`
-			NoReviewLabel   string   `yaml:"no_review"`
-			ReviewedLabel   string   `yaml:"reviewed"`
-			SkipCheckLabels []string `yaml:"skip_check_labels"`
+			PointMeLabel     string   `yaml:"point_me"`
+			ImplementedLabel string   `yaml:"implemented"`
+			NoReviewLabel    string   `yaml:"no_review"`
+			ReviewedLabel    string   `yaml:"reviewed"`
+			SkipCheckLabels  []string `yaml:"skip_check_labels"`
 		} `yaml:"labels"`
 	} `yaml:"pivotal_tracker"`
 }
@@ -45,6 +47,8 @@ func (local *LocalConfig) validate() error {
 		err = &config.ErrKeyNotSet{Id + ".project_id"}
 	case pt.Labels.PointMeLabel == "":
 		err = &config.ErrKeyNotSet{Id + ".labels.point_me"}
+	case pt.Labels.ImplementedLabel == "":
+		err = &config.ErrKeyNotSet{Id + ".labels.implemented"}
 	case pt.Labels.NoReviewLabel == "":
 		err = &config.ErrKeyNotSet{Id + ".labels.no_review"}
 	case pt.Labels.ReviewedLabel == "":
@@ -85,6 +89,7 @@ func (global *GlobalConfig) validate() error {
 type Config interface {
 	ProjectId() int
 	PointMeLabel() string
+	ImplementedLabel() string
 	NoReviewLabel() string
 	ReviewedLabel() string
 	SkipCheckLabels() []string
@@ -109,6 +114,9 @@ func LoadConfig() (Config, error) {
 	labels := &local.PT.Labels
 	if labels.PointMeLabel == "" {
 		labels.PointMeLabel = DefaultPointMeLabel
+	}
+	if labels.ImplementedLabel == "" {
+		labels.ImplementedLabel = DefaultImplementedLabel
 	}
 	if labels.NoReviewLabel == "" {
 		labels.NoReviewLabel = DefaultNoReviewLabel
@@ -163,6 +171,10 @@ func (proxy *configProxy) ProjectId() int {
 
 func (proxy *configProxy) PointMeLabel() string {
 	return proxy.local.PT.Labels.PointMeLabel
+}
+
+func (proxy *configProxy) ImplementedLabel() string {
+	return proxy.local.PT.Labels.ImplementedLabel
 }
 
 func (proxy *configProxy) NoReviewLabel() string {

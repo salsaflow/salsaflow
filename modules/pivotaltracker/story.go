@@ -114,7 +114,7 @@ func (story *story) MarkAsImplemented() (action.Action, error) {
 		config    = story.tracker.config
 		client    = pivotal.NewClient(config.UserToken())
 		projectId = config.ProjectId()
-		label     = config.ReviewedLabel()
+		label     = config.ImplementedLabel()
 	)
 
 	var alreadyThere bool
