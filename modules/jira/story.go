@@ -101,6 +101,10 @@ func (story *story) Start() error {
 }
 
 func (story *story) MarkAsImplemented() (action.Action, error) {
+	if story.Fields.Status.Id == stateIdImplemented {
+		return nil, nil
+	}
+
 	fmt.Println(`SalsaFlow cannot mark a JIRA issue as implemented
 since there are some manual steps involved. It will, however,
 open the web page when the issue can be marked as implemented.`)
