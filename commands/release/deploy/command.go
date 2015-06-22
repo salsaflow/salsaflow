@@ -13,6 +13,7 @@ import (
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules"
 	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/releases/commands"
 	"github.com/salsaflow/salsaflow/version"
 
 	// Other
@@ -167,6 +168,23 @@ func runMain() (err error) {
 		}
 		return nil
 	}))
+
+	// Try to reset the staging branch to the release branch
+	// in case the release branch is started already.
+	// This basically means that we want to run `release stage`.
+	log.Log("Trying to stage the next release for acceptance")
+	act, err = commands.Stage(&commands.StageOptions{
+		SkipFetch: true,
+	})
+	if err != nil {
+		rootCause := errs.RootCause(err)
+		if ex, ok := rootCause.(*git.ErrRefNotFound); ok {
+			log.Log(fmt.Sprintf("Git reference '%v' not found, staging canceled", ex.Ref()))
+			return nil
+		}
+		return err
+	}
+	defer action.RollbackOnError(&err, act)
 
 	// Push the changes to the remote repository.
 	task = "Push changes to the remote repository"
