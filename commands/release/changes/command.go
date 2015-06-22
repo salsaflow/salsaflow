@@ -71,7 +71,7 @@ func run(cmd *gocli.Command, args []string) {
 	}
 }
 
-func runMain() error {
+func runMain() (err error) {
 	// Load repo config.
 	gitConfig, err := git.LoadConfig()
 	if err != nil {
@@ -85,8 +85,7 @@ func runMain() error {
 
 	// Make sure that the local release branch exists.
 	task := "Make sure that the local release branch exists"
-	err = git.CreateTrackingBranchUnlessExists(releaseBranch, remoteName)
-	if err != nil {
+	if err := git.EnsureLocalTrackingBranch(releaseBranch, remoteName); err != nil {
 		return errs.NewError(task, err)
 	}
 

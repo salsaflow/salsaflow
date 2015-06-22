@@ -118,6 +118,39 @@ func postRevision(revision string) error {
 	// "HEAD" is used to post the tip of the current branch.
 	headMode := revision == "HEAD"
 
+	// In case we are in HEAD mode, make sure the current branch is up to date.
+	if headMode {
+		// Load the git-related config.
+		gitConfig, err := git.LoadConfig()
+		if err != nil {
+			return err
+		}
+		remoteName := gitConfig.RemoteName()
+
+		if !flagNoFetch {
+			// Fetch the remote repository.
+			task := "Fetch the remote repository"
+			log.Run(task)
+
+			if err := git.UpdateRemotes(remoteName); err != nil {
+				return errs.NewError(task, err)
+			}
+		}
+
+		// Get the current branch name.
+		currentBranch, err := git.CurrentBranch()
+		if err != nil {
+			return err
+		}
+
+		// Make sure the current branch is up to date.
+		task := fmt.Sprintf("Make sure branch '%v' is up to date", currentBranch)
+		log.Run(task)
+		if err = git.EnsureBranchSynchronized(currentBranch, remoteName); err != nil {
+			return errs.NewError(task, err)
+		}
+	}
+
 	// Get the commit to be posted
 	task := "Get the commit to be posted for code review"
 	commits, err := git.ShowCommits(revision)
@@ -166,20 +199,20 @@ func postBranch(parentBranch string) error {
 		if err := git.UpdateRemotes(remoteName); err != nil {
 			return errs.NewError(task, err)
 		}
+	}
 
-		// Make sure the parent branch is up to date.
-		task = fmt.Sprintf("Make sure reference '%v' is up to date", parentBranch)
-		log.Run(task)
-		if err := git.EnsureBranchSynchronized(parentBranch, remoteName); err != nil {
-			return errs.NewError(task, err)
-		}
+	// Make sure the parent branch is up to date.
+	task := fmt.Sprintf("Make sure reference '%v' is up to date", parentBranch)
+	log.Run(task)
+	if err := git.EnsureBranchSynchronized(parentBranch, remoteName); err != nil {
+		return errs.NewError(task, err)
+	}
 
-		// Make sure the current branch is up to date.
-		task = fmt.Sprintf("Make sure branch '%v' is up to date", currentBranch)
-		log.Run(task)
-		if err = git.EnsureBranchSynchronized(currentBranch, remoteName); err != nil {
-			return errs.NewError(task, err)
-		}
+	// Make sure the current branch is up to date.
+	task = fmt.Sprintf("Make sure branch '%v' is up to date", currentBranch)
+	log.Run(task)
+	if err = git.EnsureBranchSynchronized(currentBranch, remoteName); err != nil {
+		return errs.NewError(task, err)
 	}
 
 	// Rebase the current branch on top the parent branch.
@@ -207,7 +240,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	}
 
 	// Get the commits to be posted
-	task := "Get the commits to be posted for code review"
+	task = "Get the commits to be posted for code review"
 	commits, err := git.ShowCommitRange(parentBranch + "..")
 	if err != nil {
 		return errs.NewError(task, err)
