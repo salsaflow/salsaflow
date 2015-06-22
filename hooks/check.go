@@ -11,6 +11,7 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/app/metadata"
 	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/fileutil"
 	"github.com/salsaflow/salsaflow/git/gitutil"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/prompt"
@@ -117,7 +118,10 @@ runs as your `+string(hookType)+` hook and run me again!
 // from the expected absolute path to the git config hook directory.
 func copyHook(hookType HookType, hookExecutable, hookDestPath string) error {
 	task := fmt.Sprintf("Install the SalsaFlow git %v hook", hookType)
-	if err := CopyFile(hookExecutable, hookDestPath); err != nil {
+	if err := fileutil.CopyFile(hookExecutable, hookDestPath); err != nil {
+		return errs.NewError(task, err)
+	}
+	if err := os.Chmod(hookDestPath, 0750); err != nil {
 		return errs.NewError(task, err)
 	}
 	log.Log(fmt.Sprintf("SalsaFlow git %v hook installed", hookType))
