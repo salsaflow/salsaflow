@@ -20,7 +20,7 @@ import (
 )
 
 var Command = &gocli.Command{
-	UsageLine: "deploy",
+	UsageLine: "deploy [-no_fetch]",
 	Short:     "deploy the current staging environment into production",
 	Long: `
   Deploy the current staging environment into production.
@@ -37,6 +37,13 @@ var Command = &gocli.Command{
     6) Everything is pushed to the remote repository.
 	`,
 	Action: run,
+}
+
+var flagNoFetch bool
+
+func init() {
+	Command.Flags.BoolVar(&flagNoFetch, "no_fetch", flagNoFetch,
+		"do not fetch the remote repository")
 }
 
 func run(cmd *gocli.Command, args []string) {
@@ -67,26 +74,42 @@ func runMain() (err error) {
 		stableBranch  = gitConfig.StableBranchName()
 	)
 
-	// Make sure the stable branch exists.
-	task := fmt.Sprintf("Make sure that branch '%v' exists", stableBranch)
-	if err := git.CreateTrackingBranchUnlessExists(stableBranch, remoteName); err != nil {
-		return errs.NewError(task, err)
+	// Fetch the repository.
+	if !flagNoFetch {
+		if err := git.UpdateRemotes(remoteName); err != nil {
+			return err
+		}
 	}
 
-	// Make sure we are not on the stable branch.
-	task = fmt.Sprintf("Make sure that branch '%v' is not checked out", stableBranch)
-	currentBranch, err := git.CurrentBranch()
-	if err != nil {
-		return errs.NewError(task, err)
+	// Check branches.
+	checkBranch := func(branchName string) error {
+		// Make sure the branch exists.
+		task := fmt.Sprintf("Make sure that branch '%v' exists and is up to date", branchName)
+		if err := git.EnsureLocalTrackingBranch(branchName, remoteName); err != nil {
+			return errs.NewError(task, err)
+		}
+
+		// Make sure we are not on the branch.
+		task = fmt.Sprintf("Make sure that branch '%v' is not checked out", branchName)
+		currentBranch, err := git.CurrentBranch()
+		if err != nil {
+			return errs.NewError(task, err)
+		}
+		if currentBranch == branchName {
+			err := fmt.Errorf("cannot deploy while on branch '%v'", branchName)
+			return errs.NewError(task, err)
+		}
+		return nil
 	}
 
-	if currentBranch == stableBranch {
-		err := fmt.Errorf("cannot deploy while on branch '%v'", stableBranch)
-		return errs.NewError(task, err)
+	for _, branch := range []string{stableBranch, stagingBranch} {
+		if err := checkBranch(branch); err != nil {
+			return err
+		}
 	}
 
 	// Make sure the current staging branch can be released.
-	task = fmt.Sprintf("Make sure that branch '%v' can be released", stagingBranch)
+	task := fmt.Sprintf("Make sure that branch '%v' can be released", stagingBranch)
 	log.Run(task)
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {

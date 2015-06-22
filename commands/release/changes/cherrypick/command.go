@@ -78,23 +78,19 @@ func runMain() error {
 
 	log.Run("Make sure all important branches are up to date")
 
-	// Make sure that the local release branch exists.
-	task := "Make sure that the local release branch exists"
-	err = git.CreateTrackingBranchUnlessExists(releaseBranch, remoteName)
-	if err != nil {
-		return errs.NewError(task, err)
+	// Check branches.
+	checkBranch := func(branchName string) error {
+		task := fmt.Sprintf("Make sure that branch '%v' exists and is up to date", branchName)
+		if err := git.EnsureLocalTrackingBranch(branchName, remoteName); err != nil {
+			return errs.NewError(task, err)
+		}
+		return nil
 	}
 
-	// Make sure that the release branch is up to date.
-	task = "Make sure the release branch is up to date"
-	if err := git.EnsureBranchSynchronized(releaseBranch, remoteName); err != nil {
-		return errs.NewError(task, err)
-	}
-
-	// Make sure that the trunk branch is up to date.
-	task = "Make sure the trunk branch is up to date"
-	if err := git.EnsureBranchSynchronized(trunkBranch, remoteName); err != nil {
-		return errs.NewError(task, err)
+	for _, branch := range [...]string{releaseBranch, trunkBranch} {
+		if err := checkBranch(branch); err != nil {
+			return err
+		}
 	}
 
 	// Remember the current branch.
@@ -104,7 +100,7 @@ func runMain() error {
 	}
 
 	// Checkout the release branch.
-	task = "Checkout the release branch"
+	task := "Checkout the release branch"
 	if err := git.Checkout(releaseBranch); err != nil {
 		return errs.NewError(task, err)
 	}
