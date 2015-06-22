@@ -30,6 +30,12 @@ const (
 	HookTypePrePush      HookType = "pre-push"
 )
 
+var HookTypes = [...]HookType{
+	HookTypeCommitMsg,
+	HookTypePostCheckout,
+	HookTypePrePush,
+}
+
 const hookPrefix = "salsaflow-"
 
 func getHookFileName(hookType HookType) string {

@@ -13,6 +13,7 @@ import (
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules"
 	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/releases/commands"
 	"github.com/salsaflow/salsaflow/version"
 
 	// Other
@@ -20,7 +21,7 @@ import (
 )
 
 var Command = &gocli.Command{
-	UsageLine: "deploy",
+	UsageLine: "deploy [-no_fetch]",
 	Short:     "deploy the current staging environment into production",
 	Long: `
   Deploy the current staging environment into production.
@@ -37,6 +38,13 @@ var Command = &gocli.Command{
     6) Everything is pushed to the remote repository.
 	`,
 	Action: run,
+}
+
+var flagNoFetch bool
+
+func init() {
+	Command.Flags.BoolVar(&flagNoFetch, "no_fetch", flagNoFetch,
+		"do not fetch the remote repository")
 }
 
 func run(cmd *gocli.Command, args []string) {
@@ -67,26 +75,42 @@ func runMain() (err error) {
 		stableBranch  = gitConfig.StableBranchName()
 	)
 
-	// Make sure the stable branch exists.
-	task := fmt.Sprintf("Make sure that branch '%v' exists", stableBranch)
-	if err := git.CreateTrackingBranchUnlessExists(stableBranch, remoteName); err != nil {
-		return errs.NewError(task, err)
+	// Fetch the repository.
+	if !flagNoFetch {
+		if err := git.UpdateRemotes(remoteName); err != nil {
+			return err
+		}
 	}
 
-	// Make sure we are not on the stable branch.
-	task = fmt.Sprintf("Make sure that branch '%v' is not checked out", stableBranch)
-	currentBranch, err := git.CurrentBranch()
-	if err != nil {
-		return errs.NewError(task, err)
+	// Check branches.
+	checkBranch := func(branchName string) error {
+		// Make sure the branch exists.
+		task := fmt.Sprintf("Make sure that branch '%v' exists and is up to date", branchName)
+		if err := git.EnsureLocalTrackingBranch(branchName, remoteName); err != nil {
+			return errs.NewError(task, err)
+		}
+
+		// Make sure we are not on the branch.
+		task = fmt.Sprintf("Make sure that branch '%v' is not checked out", branchName)
+		currentBranch, err := git.CurrentBranch()
+		if err != nil {
+			return errs.NewError(task, err)
+		}
+		if currentBranch == branchName {
+			err := fmt.Errorf("cannot deploy while on branch '%v'", branchName)
+			return errs.NewError(task, err)
+		}
+		return nil
 	}
 
-	if currentBranch == stableBranch {
-		err := fmt.Errorf("cannot deploy while on branch '%v'", stableBranch)
-		return errs.NewError(task, err)
+	for _, branch := range []string{stableBranch, stagingBranch} {
+		if err := checkBranch(branch); err != nil {
+			return err
+		}
 	}
 
 	// Make sure the current staging branch can be released.
-	task = fmt.Sprintf("Make sure that branch '%v' can be released", stagingBranch)
+	task := fmt.Sprintf("Make sure that branch '%v' can be released", stagingBranch)
 	log.Run(task)
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
@@ -144,6 +168,23 @@ func runMain() (err error) {
 		}
 		return nil
 	}))
+
+	// Try to reset the staging branch to the release branch
+	// in case the release branch is started already.
+	// This basically means that we want to run `release stage`.
+	log.Log("Trying to stage the next release for acceptance")
+	act, err = commands.Stage(&commands.StageOptions{
+		SkipFetch: true,
+	})
+	if err != nil {
+		rootCause := errs.RootCause(err)
+		if ex, ok := rootCause.(*git.ErrRefNotFound); ok {
+			log.Log(fmt.Sprintf("Git reference '%v' not found, staging canceled", ex.Ref()))
+		} else {
+			return err
+		}
+	}
+	defer action.RollbackOnError(&err, act)
 
 	// Push the changes to the remote repository.
 	task = "Push changes to the remote repository"

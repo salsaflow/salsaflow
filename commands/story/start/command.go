@@ -199,7 +199,7 @@ func createBranch() (action.Action, error) {
 	// Make sure the trunk branch is up to date.
 	task = fmt.Sprintf("Make sure branch '%v' is up to date", trunkBranch)
 	log.Run(task)
-	if err := git.EnsureBranchSynchronized(trunkBranch, remoteName); err != nil {
+	if err := git.EnsureLocalTrackingBranch(trunkBranch, remoteName); err != nil {
 		return nil, errs.NewError(task, err)
 	}
 

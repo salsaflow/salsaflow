@@ -10,6 +10,7 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/shell"
 
 	// Internal
@@ -151,31 +152,19 @@ func RemoteBranchExists(branch string, remote string) (exists bool, err error) {
 	return RefExistsStrict(fmt.Sprintf("refs/remotes/%v/%v", remote, branch))
 }
 
-func CreateTrackingBranchUnlessExists(branch string, remote string) error {
-	// Check whether the local branch exists and just return in that case.
-	exists, err := LocalBranchExists(branch)
+func CreateOrResetBranch(branch, target string) (action.Action, error) {
+	// Make sure the target exists.
+	// We do this manually so that we can return *ErrRefNotFound.
+	exists, err := RefExists(target)
 	if err != nil {
-		return err
-	}
-	if exists {
-		return nil
-	}
-
-	// Check whether the remote counterpart exists.
-	exists, err = RemoteBranchExists(branch, remote)
-	if err != nil {
-		return err
+		return nil, err
 	}
 	if !exists {
-		return fmt.Errorf("branch '%v' not found in the remote '%v'", branch, remote)
+		return nil, &ErrRefNotFound{target}
 	}
 
-	// Create the local branch.
-	return Branch(branch, remote+"/"+branch)
-}
-
-func CreateOrResetBranch(branch, target string) (action.Action, error) {
-	exists, err := LocalBranchExists(branch)
+	// Decide what to do next.
+	exists, err = LocalBranchExists(branch)
 	if err != nil {
 		return nil, err
 	}
@@ -286,6 +275,7 @@ func IsBranchSynchronized(branch, remote string) (bool, error) {
 }
 
 func EnsureBranchSynchronized(branch, remote string) error {
+	// Make sure the branch is up to date.
 	upToDate, err := IsBranchSynchronized(branch, remote)
 	if err != nil {
 		return err
@@ -294,6 +284,39 @@ func EnsureBranchSynchronized(branch, remote string) error {
 		return fmt.Errorf("branch '%v' is not up to date", branch)
 	}
 	return nil
+}
+
+// EnsureLocalTrackingBranch tries to make sure that a local branch
+// of the given name exists and is in sync with the given remote.
+//
+// So, in case the right remote branch exists and the local does not,
+// the local tracking branch is created. In case the local branch
+// exists already, it is ensured that it is up to date.
+func EnsureLocalTrackingBranch(branch, remote string) error {
+	// Check whether the remote counterpart exists.
+	exists, err := RemoteBranchExists(branch, remote)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return &ErrRefNotFound{remote + "/" + branch}
+	}
+
+	// Check whether the local branch exists.
+	exists, err = LocalBranchExists(branch)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		if err := Branch(branch, remote+"/"+branch); err != nil {
+			return err
+		}
+		log.Log(fmt.Sprintf("Local branch '%v' created (tracking %v/%v)", branch, remote, branch))
+		return nil
+	}
+
+	// In case it exists, make sure that it is up to date.
+	return EnsureBranchSynchronized(branch, remote)
 }
 
 func EnsureCleanWorkingTree(includeUntracked bool) error {
