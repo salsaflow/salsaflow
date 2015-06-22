@@ -84,6 +84,8 @@ func Confirm(question string) (bool, error) {
 	return line == "y", nil
 }
 
+// Prompt prints the given message and waits for user input.
+// In case the input is empty, ErrCanceled is returned.
 func Prompt(msg string) (string, error) {
 	stdin, err := OpenConsole(os.O_RDONLY)
 	if err != nil {

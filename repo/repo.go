@@ -2,7 +2,6 @@ package repo
 
 import (
 	// Stdlib
-	"bytes"
 	"errors"
 	"fmt"
 	"regexp"
@@ -91,64 +90,56 @@ You need Git version 1.9.0 or newer.
 	if err != nil {
 		return err
 	}
+	var (
+		remoteName   = gitConfig.RemoteName()
+		trunkBranch  = gitConfig.TrunkBranchName()
+		stableBranch = gitConfig.StableBranchName()
+	)
 
 	// Make sure that the master branch exists.
-	task = "Make sure the master branch exists"
+	task = fmt.Sprintf("Make sure branch '%v' exists", stableBranch)
 	log.Run(task)
-	var stableBranch = gitConfig.StableBranchName()
-	exists, err := git.RefExists(stableBranch)
+	err = git.EnsureLocalTrackingBranch(stableBranch, remoteName)
 	if err != nil {
+		if ex, ok := err.(*git.ErrRefNotFound); ok {
+			hint := fmt.Sprintf(
+				"Make sure that branch '%v' exists and run init again.\n", ex.Ref())
+			return errs.NewErrorWithHint(task, err, hint)
+		}
 		return errs.NewError(task, err)
-	}
-	if !exists {
-		stderr := bytes.NewBufferString(fmt.Sprintf(
-			"Make sure that branch '%v' exists and run init again.\n", stableBranch))
-		err := fmt.Errorf("branch '%v' not found", stableBranch)
-		return errs.NewErrorWithHint(task, err, stderr.String())
 	}
 
 	// Make sure that the trunk branch exists.
-	task = "Make sure the trunk branch exists"
+	task = fmt.Sprintf("Make sure branch '%v' exists", trunkBranch)
 	log.Run(task)
-	var trunkBranch = gitConfig.TrunkBranchName()
-	exists, err = git.RefExists(trunkBranch)
+	err = git.EnsureLocalTrackingBranch(trunkBranch, remoteName)
 	if err != nil {
-		return errs.NewError(task, err)
-	}
-	if !exists {
-		task := "Create the trunk branch"
-		log.Log(fmt.Sprintf(
-			"No branch '%s' found. Will create one for you for free!", trunkBranch))
-		log.NewLine(fmt.Sprintf(
-			"The newly created branch is pointing to '%v'.", stableBranch))
-		if err := git.Branch(trunkBranch, stableBranch); err != nil {
-			return errs.NewError(task, err)
-		}
+		if _, ok := err.(*git.ErrRefNotFound); ok {
+			task := fmt.Sprintf("Create branch '%v'", trunkBranch)
+			log.Log(fmt.Sprintf(
+				"Branch '%v' not found. Will create one for you for free!", trunkBranch))
+			if err := git.Branch(trunkBranch, stableBranch); err != nil {
+				return errs.NewError(task, err)
+			}
+			log.NewLine(fmt.Sprintf(
+				"The newly created branch is pointing to '%v'.", stableBranch))
 
-		task = "Push the newly created trunk branch"
-		log.Run(task)
-		if err := git.Push(gitConfig.RemoteName(), trunkBranch+":"+trunkBranch); err != nil {
-			return errs.NewError(task, err)
+			task = fmt.Sprintf("Push branch '%v' to remote '%v'", trunkBranch, remoteName)
+			log.Run(task)
+			if err := git.Push(remoteName, trunkBranch+":"+trunkBranch); err != nil {
+				return errs.NewError(task, err)
+			}
 		}
+		return errs.NewError(task, err)
 	}
 
 	// Verify our git hooks are installed and used.
-	task = "Check the current git commit-msg hook"
-	log.Run(task)
-	if err := hooks.CheckAndUpsert(hooks.HookTypeCommitMsg, force); err != nil {
-		return errs.NewError(task, err)
-	}
-
-	task = "Check the current git post-checkout hook"
-	log.Run(task)
-	if err := hooks.CheckAndUpsert(hooks.HookTypePostCheckout, force); err != nil {
-		return errs.NewError(task, err)
-	}
-
-	task = "Check the current git pre-push hook"
-	log.Run(task)
-	if err := hooks.CheckAndUpsert(hooks.HookTypePrePush, force); err != nil {
-		return errs.NewError(task, err)
+	for _, kind := range hooks.HookTypes {
+		task := fmt.Sprintf("Check the current git %v hook", kind)
+		log.Run(task)
+		if err := hooks.CheckAndUpsert(kind, force); err != nil {
+			return errs.NewError(task, err)
+		}
 	}
 
 	// Run other registered init hooks.
