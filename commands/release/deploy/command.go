@@ -12,6 +12,7 @@ import (
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules"
+	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/prompt"
 	"github.com/salsaflow/salsaflow/releases/commands"
 	"github.com/salsaflow/salsaflow/version"
@@ -177,9 +178,14 @@ func runMain() (err error) {
 		SkipFetch: true,
 	})
 	if err != nil {
+		// Not terribly pretty, but it works. We just handle the known errors and continue.
+		// It is ok when the release branch does not exist yet or the release cannot be staged
+		// in the issue tracker.
 		rootCause := errs.RootCause(err)
 		if ex, ok := rootCause.(*git.ErrRefNotFound); ok {
 			log.Log(fmt.Sprintf("Git reference '%v' not found, staging canceled", ex.Ref()))
+		} else if _, ok := rootCause.(*common.ErrNotStageable); ok {
+			log.Log("The next release cannot be staged yet, skipping ...")
 		} else {
 			return err
 		}

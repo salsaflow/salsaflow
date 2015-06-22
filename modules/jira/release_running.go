@@ -81,7 +81,9 @@ func (release *runningRelease) EnsureStageable() error {
 	if err != nil {
 		io.WriteString(tw, "\n")
 		tw.Flush()
-		return errs.NewErrorWithHint(task, err, details.String())
+		return &common.ErrNotStageable{
+			E: errs.NewErrorWithHint(task, err, details.String()),
+		}
 	}
 	return nil
 }

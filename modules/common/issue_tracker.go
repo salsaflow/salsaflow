@@ -110,6 +110,9 @@ type NextRelease interface {
 type RunningRelease interface {
 	Version() *version.Version
 	Stories() ([]Story, error)
+
+	// EnsureStageable shall return *ErrNotStageable in case
+	// it is not possible to stage the given release.
 	EnsureStageable() error
 	Stage() (action.Action, error)
 
