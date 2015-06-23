@@ -754,17 +754,22 @@ func implementedDialog(ctxs []*common.ReviewContext) (action.Action, error) {
 		storySet = make(map[string]struct{}, len(ctxs))
 	)
 	for _, ctx := range ctxs {
-		rid := ctx.Story.ReadableId()
+		story := ctx.Story
+		// Skip unassigned commits.
+		if story == nil {
+			continue
+		}
+		rid := story.ReadableId()
 		if _, ok := storySet[rid]; ok {
 			continue
 		}
 		// Collect only the stories that are Being Implemented.
 		// The transition doesn't make sense for other story states.
-		if ctx.Story.State() != common.StoryStateBeingImplemented {
+		if story.State() != common.StoryStateBeingImplemented {
 			continue
 		}
 		storySet[rid] = struct{}{}
-		stories = append(stories, ctx.Story)
+		stories = append(stories, story)
 	}
 	// Do nothing in case there are no stories left.
 	if len(stories) == 0 {
