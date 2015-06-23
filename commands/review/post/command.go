@@ -758,10 +758,20 @@ func implementedDialog(ctxs []*common.ReviewContext) (action.Action, error) {
 		if _, ok := storySet[rid]; ok {
 			continue
 		}
+		// Collect only the stories that are Being Implemented.
+		// The transition doesn't make sense for other story states.
+		if ctx.Story.State() != common.StoryStateBeingImplemented {
+			continue
+		}
 		storySet[rid] = struct{}{}
 		stories = append(stories, ctx.Story)
 	}
+	// Do nothing in case there are no stories left.
+	if len(stories) == 0 {
+		return nil, nil
+	}
 
+	// Prompt the user for confirmation.
 	fmt.Println("\nIt is possible to mark the stories as implemented now.")
 	fmt.Println("The following stories were associated with one or more commits:\n")
 	prompt.ListStories(stories, os.Stdout)
@@ -776,37 +786,31 @@ func implementedDialog(ctxs []*common.ReviewContext) (action.Action, error) {
 		return nil, nil
 	}
 
-	errUpdateFailed := errors.New("failed to update stories in the issue tracker")
-
 	// Always update as many stories as possible.
-	acts := make([]action.Action, 0, len(stories))
-	doRollback := func() error {
-		var ex error
-		for _, act := range acts {
-			if err := act.Rollback(); err != nil {
-				errs.Log(err)
-				ex = errUpdateFailed
-			}
-		}
-		return ex
-	}
-
-	var ex error
+	var (
+		chain           = action.NewActionChain()
+		errUpdateFailed = errors.New("failed to update stories in the issue tracker")
+		ex              error
+	)
 	for _, story := range stories {
+		task := fmt.Sprintf("Mark story %v as implemented", story.ReadableId())
+		log.Run(task)
 		act, err := story.MarkAsImplemented()
 		if err != nil {
-			errs.Log(err)
+			errs.Log(errs.NewError(task, err))
 			ex = errUpdateFailed
 			continue
 		}
-		acts = append(acts, act)
+		chain.PushTask(task, act)
 	}
 	if ex != nil {
-		doRollback()
+		if err := chain.Rollback(); err != nil {
+			errs.Log(err)
+		}
 		return nil, ex
 	}
 
-	return action.ActionFunc(doRollback), nil
+	return chain, nil
 }
 
 // merge merges commit into branch.

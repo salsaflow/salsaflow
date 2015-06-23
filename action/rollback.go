@@ -1,10 +1,16 @@
 package action
 
 import (
+	// Stdlib
+	"errors"
+
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
 )
+
+var ErrRollbackFailed = errs.NewError(
+	"Roll back changes", errors.New("failed to do roll back changes"))
 
 // RollbackOnError is equivalent to RollbackTaskOnError(err, "", action).
 func RollbackOnError(err *error, action Action) {
@@ -42,6 +48,7 @@ func (chain *ActionChain) PushTask(task string, action Action) {
 }
 
 func (chain *ActionChain) Rollback() error {
+	var ex error
 	for i := range chain.actions {
 		act := chain.actions[len(chain.actions)-1-i]
 
@@ -53,9 +60,10 @@ func (chain *ActionChain) Rollback() error {
 		// Run the rollback function registered.
 		if err := act.action.Rollback(); err != nil {
 			errs.Log(err)
+			ex = ErrRollbackFailed
 		}
 	}
-	return nil
+	return ex
 }
 
 // RollbackOnError is supposed to be called using defer:
