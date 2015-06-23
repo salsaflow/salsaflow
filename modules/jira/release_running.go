@@ -161,11 +161,24 @@ IssueLoop:
 }
 
 func (release *runningRelease) Release() error {
+	// TODO: Get rid of this unholy ugliness.
 	if release.issues == nil {
 		panic("bug(release.issues == nil)")
 	}
+
+	// Release all issues that are accepted.
+	issues := make([]*jira.Issue, 0, len(release.issues))
+	for _, issue := range release.issues {
+		if issue.Fields.Status.Id == stateIdAccepted {
+			issues = append(issues, issue)
+		}
+	}
+	if len(issues) == 0 {
+		return nil
+	}
+
 	return performBulkTransition(
-		newClient(release.tracker.config), release.issues, transitionIdRelease, "")
+		newClient(release.tracker.config), issues, transitionIdRelease, "")
 }
 
 func ensureStageableIssue(issue *jira.Issue) error {
