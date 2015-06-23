@@ -29,6 +29,46 @@ func (story *story) ReadableId() string {
 	return strconv.Itoa(story.Story.Id)
 }
 
+func (story *story) State() common.StoryState {
+	var (
+		config           = story.tracker.config
+		implementedLabel = config.ImplementedLabel()
+		reviewedLabel    = config.ReviewedLabel()
+	)
+
+	switch story.Story.State {
+	case pivotal.StoryStateUnscheduled:
+		return common.StoryStateNew
+	case pivotal.StoryStatePlanned:
+		fallthrough
+	case pivotal.StoryStateUnstarted:
+		return common.StoryStateApproved
+	case pivotal.StoryStateStarted:
+		// We do not handle testing passed and testing failed labels here.
+		// That is because it is not really important. Once the reviewed
+		// label is there, the daemon will make the transition in the bg
+		// in case one of the testing labels is there.
+		switch {
+		case story.isLabeled(implementedLabel):
+			return common.StoryStateImplemented
+		case story.isLabeled(reviewedLabel):
+			return common.StoryStateReviewed
+		default:
+			return common.StoryStateBeingImplemented
+		}
+	case pivotal.StoryStateFinished:
+		return common.StoryStateTested
+	case pivotal.StoryStateDelivered:
+		return common.StoryStateStaged
+	case pivotal.StoryStateAccepted:
+		return common.StoryStateAccepted
+	case pivotal.StoryStateRejected:
+		return common.StoryStateRejected
+	default:
+		panic("unknown Pivotal Tracker story state: " + story.Story.State)
+	}
+}
+
 func (story *story) URL() string {
 	return fmt.Sprintf("https://www.pivotaltracker.com/projects/%v/stories/%v",
 		story.Story.ProjectId, story.Story.Id)
@@ -157,4 +197,16 @@ func (s *story) LessThan(otherStory common.Story) bool {
 
 func (s *story) IssueTracker() common.IssueTracker {
 	return s.tracker
+}
+
+func (s *story) isLabeled(label string) bool {
+	if s.Labels == nil {
+		return false
+	}
+	for _, l := range *s.Labels {
+		if l.Name == label {
+			return true
+		}
+	}
+	return false
 }

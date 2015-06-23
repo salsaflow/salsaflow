@@ -43,6 +43,39 @@ func (story *story) ReadableId() string {
 	return story.Issue.Key
 }
 
+func (story *story) State() common.StoryState {
+	switch story.Fields.Status.Id {
+	case stateIdNew:
+		return common.StoryStateNew
+	case stateIdApproved:
+		return common.StoryStateApproved
+	case stateIdBeingImplemented:
+		return common.StoryStateBeingImplemented
+	case stateIdImplemented:
+		return common.StoryStateImplemented
+	case stateIdReviewed:
+		return common.StoryStateReviewed
+	case stateIdBeingTested:
+		return common.StoryStateBeingTested
+	case stateIdTested:
+		return common.StoryStateTested
+	case stateIdStaged:
+		return common.StoryStateStaged
+	case stateIdAccepted:
+		return common.StoryStateAccepted
+	case stateIdDone:
+		fallthrough
+	case stateIdComplete:
+		fallthrough
+	case stateIdReleased:
+		fallthrough
+	case stateIdClosed:
+		return common.StoryStateClosed
+	default:
+		panic("JIRA issue status not being handled properly")
+	}
+}
+
 func (story *story) URL() string {
 	u := newClient(story.tracker.config).BaseURL
 	return fmt.Sprintf("%v://%v/browse/%v", u.Scheme, u.Host, story.Issue.Key)

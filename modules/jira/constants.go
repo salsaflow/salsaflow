@@ -19,10 +19,12 @@ var codingIssueTypeIds = []string{
 // States --------------------------------------------------------------------
 
 const (
+	stateIdNew              = "10300"
 	stateIdApproved         = "10000"
 	stateIdBeingImplemented = "10400"
 	stateIdImplemented      = "10401"
 	stateIdReviewed         = "10102"
+	stateIdBeingTested      = "10303"
 	stateIdTested           = "10103"
 	stateIdStaged           = "10105"
 	stateIdAccepted         = "10005"

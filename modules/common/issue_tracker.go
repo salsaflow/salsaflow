@@ -57,6 +57,23 @@ type User interface {
 	Id() string
 }
 
+type StoryState string
+
+const (
+	StoryStateNew              StoryState = "new"
+	StoryStateApproved         StoryState = "approved"
+	StoryStateBeingImplemented StoryState = "being implemented"
+	StoryStateImplemented      StoryState = "implemented"
+	StoryStateReviewed         StoryState = "reviewed"
+	StoryStateBeingTested      StoryState = "being tested"
+	StoryStateTested           StoryState = "tested"
+	StoryStateStaged           StoryState = "staged"
+	StoryStateAccepted         StoryState = "accepted"
+	StoryStateRejected         StoryState = "rejected"
+	StoryStateClosed           StoryState = "closed"
+	StoryStateInvalid          StoryState = "invalid"
+)
+
 type Story interface {
 	// Id returns the ID of the story.
 	Id() string
@@ -64,6 +81,9 @@ type Story interface {
 	// ReadableId returns the human-friendly ID of the story.
 	// This ID is used when listing stories to the user.
 	ReadableId() string
+
+	// State returns the abstract state the story is in at the moment.
+	State() StoryState
 
 	// URL return the URL that can be used to access the story.
 	URL() string
