@@ -25,7 +25,6 @@ const dateLayout = "Mon Jan 2 15:04:05 2006 -0700"
 
 var (
 	ChangeIdTagPattern = regexp.MustCompile("^(?i)[ \t]*Change-Id:[ \t]+([^ \t]+)")
-	StoryIdTagPattern  = regexp.MustCompile("^(?i)[ \t]*Story-Id:[ \t]+([^ \t]+)")
 )
 
 // Parse git log output, which is a sequence of Git commits looking like
@@ -39,7 +38,6 @@ var (
 //    $body
 //
 //    Change-Id: $changeId
-//    Story-Id: $storyId
 //
 // The reason why we are parsing the regular output (not using --pretty=format:)
 // is that not all formatting options are supported. For example, log --all --source
@@ -175,17 +173,6 @@ func ParseCommits(input []byte) (commits []*Commit, err error) {
 					return
 				}
 				commit.ChangeIdTag = parts[1]
-			case StoryIdTagPattern.MatchString(trimmedLine):
-				if commit.StoryIdTag != "" {
-					err = fmt.Errorf("git log [commit %v]: duplicate Story-Id tag", commit.SHA)
-					return
-				}
-				parts := StoryIdTagPattern.FindStringSubmatch(trimmedLine)
-				if len(parts) != 2 {
-					err = fmt.Errorf("git log [commit %v]: invalid Story-Id tag", commit.SHA)
-					return
-				}
-				commit.StoryIdTag = parts[1]
 			}
 			if len(line) >= numSpaces {
 				line = line[numSpaces:]

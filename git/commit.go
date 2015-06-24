@@ -21,7 +21,6 @@ type Commit struct {
 	MessageTitle string
 	Message      string
 	ChangeIdTag  string
-	StoryIdTag   string
 }
 
 var commitTemplate = `commit {{.SHA}} {{.Source}}{{with .Merge}}Merge: {{.}}{{"\n"}}{{end}}

@@ -14,6 +14,9 @@ salsaflow_enabled_timestamp: "{{.EnabledTimestamp}}"
 #  Unless stated otherwise, the keys that are commented out
 #  are required, so please uncomment them and fill in the values.
 
+# metastore:
+#   server_url: "https://example.com/metastore/"
+
 #-- ISSUE TRACKER
 issue_tracker: "{{.IssueTrackerKey}}"
 {{ if eq .IssueTrackerKey "pivotal_tracker" }}pivotal_tracker:
@@ -33,16 +36,20 @@ issue_tracker: "{{.IssueTrackerKey}}"
 #      - "wontfix"
 #      - "dupe"
 {{ else if eq .IssueTrackerKey "jira" }}jira:
-#  server_url: "https://example.com/jira"
+#  server_url: "https://example.com/jira/"
 #  project_key: "EX"
 {{ end }}
 #-- CODE REVIEW TOOL
 code_review_tool: "{{.CodeReviewToolKey}}"
 {{ if eq .CodeReviewToolKey "review_board" }}review_board:
+<<<<<<< HEAD
 #  server_url: "https://review.example.com"{{ end }}
 
 {{with .ReleaseNotesManagerKey}}#-- RELEASE NOTES MANAGER
 release_notes_manager: "{{.}}"{{end}}
+=======
+#  server_url: "https://review.example.com/"{{ end }}
+>>>>>>> wip [ci skip]
 `
 
 type LocalContext struct {
