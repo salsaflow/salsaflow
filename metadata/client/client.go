@@ -25,6 +25,9 @@ type Client struct {
 
 	// User-Agent header to use when accessing salsaflow-metadata.
 	userAgent string
+
+	// Commit service.
+	Commits *CommitService
 }
 
 func New(baseURL, token string) (*Client, error) {
@@ -100,8 +103,10 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	}
 
 	if v != nil {
-		err = json.NewDecoder(resp.Body).Decode(v)
+		if err := json.NewDecoder(resp.Body).Decode(v); err != nil {
+			return nil, err
+		}
 	}
 
-	return resp, err
+	return resp, nil
 }
