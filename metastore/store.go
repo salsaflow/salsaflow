@@ -22,7 +22,7 @@ func (store *Store) GetCommitMetadata(sha string) (*client.CommitData, error) {
 	return data, err
 }
 
-func (store *Store) PostCommitMetadata(data []*client.CommitData) error {
+func (store *Store) StoreCommitMetadata(data []*client.CommitData) error {
 	_, err := store.client.Commits.Post(data)
 	return err
 }
