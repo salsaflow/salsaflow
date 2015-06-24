@@ -1,7 +1,7 @@
-package metadata
+package metastore
 
 import (
-	"github.com/salsaflow/salsaflow/metadata/client"
+	"github.com/salsaflow/salsaflow/metastore/client"
 )
 
 type Store struct {
