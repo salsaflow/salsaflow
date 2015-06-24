@@ -1,6 +1,7 @@
 package client
 
 import (
+	// Stdlib
 	"fmt"
 	"net/http"
 	"regexp"

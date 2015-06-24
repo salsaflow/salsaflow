@@ -1,6 +1,10 @@
 package metastore
 
 import (
+	// Stdlib
+	"net/http"
+
+	// Internal
 	"github.com/salsaflow/salsaflow/metastore/client"
 )
 
@@ -17,12 +21,10 @@ func NewStore(baseURL, token string) (*Store, error) {
 	return &Store{api}, nil
 }
 
-func (store *Store) GetCommitMetadata(sha string) (*client.CommitData, error) {
-	data, _, err := store.client.Commits.Get(sha)
-	return data, err
+func (store *Store) GetCommitMetadata(sha string) (*client.CommitData, *http.Response, error) {
+	return store.client.Commits.Get(sha)
 }
 
-func (store *Store) StoreCommitMetadata(data []*client.CommitData) error {
-	_, err := store.client.Commits.Post(data)
-	return err
+func (store *Store) StoreCommitMetadata(data []*client.CommitData) (*http.Response, error) {
+	return store.client.Commits.Post(data)
 }

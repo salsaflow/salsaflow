@@ -1,11 +1,13 @@
 package client
 
 import (
+	// Stdlib
 	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/url"
 
+	// Internal
 	"github.com/salsaflow/salsaflow/app/metadata"
 )
 

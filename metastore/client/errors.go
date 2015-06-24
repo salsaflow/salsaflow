@@ -1,6 +1,7 @@
 package client
 
 import (
+	// Stdlib
 	"errors"
 	"fmt"
 	"net/http"

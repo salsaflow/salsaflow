@@ -1,10 +1,14 @@
 package metastore
 
 import (
+	// Stdlib
+	"net/http"
+
+	// Internal
 	"github.com/salsaflow/salsaflow/metastore/client"
 )
 
-func GetCommitMetadata(sha string) (*client.CommitData, error) {
+func GetCommitMetadata(hashes []string) ([]*client.CommitData, error) {
 	config, err := LoadConfig()
 	if err != nil {
 		return nil, err
@@ -15,7 +19,18 @@ func GetCommitMetadata(sha string) (*client.CommitData, error) {
 		return nil, err
 	}
 
-	return store.GetCommitMetadata(sha)
+	metadata := make([]*client.CommitData, 0, len(hashes))
+	for _, hash := range hashes {
+		data, resp, err := store.GetCommitMetadata(hash)
+		if err != nil {
+			if resp != nil && resp.StatusCode == http.StatusNotFound {
+				metadata = append(metadata, nil)
+			}
+			return nil, err
+		}
+		metadata = append(metadata, data)
+	}
+	return metadata, nil
 }
 
 func StoreCommitMetadata(data []*client.CommitData) error {
@@ -29,5 +44,6 @@ func StoreCommitMetadata(data []*client.CommitData) error {
 		return err
 	}
 
-	return store.StoreCommitMetadata(data)
+	_, err = store.StoreCommitMetadata(data)
+	return err
 }
