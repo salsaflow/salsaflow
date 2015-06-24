@@ -10,7 +10,7 @@ import (
 )
 
 var ErrRollbackFailed = errs.NewError(
-	"Roll back changes", errors.New("failed to do roll back changes"))
+	"Roll back changes", errors.New("failed to roll back changes"))
 
 // RollbackOnError is equivalent to RollbackTaskOnError(err, "", action).
 func RollbackOnError(err *error, action Action) {
