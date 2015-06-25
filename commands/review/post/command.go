@@ -115,9 +115,6 @@ func run(cmd *gocli.Command, args []string) {
 }
 
 func postRevision(revision string) error {
-	// "HEAD" is used to post the tip of the current branch.
-	headMode := revision == "HEAD"
-
 	// Get the commit to be posted
 	task := "Get the commit to be posted for code review"
 	commits, err := git.ShowCommits(revision)
@@ -131,7 +128,7 @@ func postRevision(revision string) error {
 	}
 
 	// Post the review requests, in this case it will be only one.
-	act, err := postReviewRequests(commits, headMode)
+	act, err := postReviewRequests(commits, revision == "HEAD")
 	if err != nil {
 		return err
 	}
@@ -229,7 +226,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	return parentFollowupDialog(currentBranch, remoteName, trunkBranch)
 }
 
-func postReviewRequests(commits []*git.Commit, canAmend bool) (action.Action, error) {
+func postReviewRequests(commits []*git.Commit, isBranchTip bool) (action.Action, error) {
 	// Make sure there are actually some commits to be posted.
 	task := "Make sure there are actually some commits to be posted"
 	if len(commits) == 0 {
@@ -255,20 +252,13 @@ You are about to post review requests for the following commits:
 	fmt.Println()
 
 	// Check the commits.
-	task = "Make sure the commits comply with the rules"
-	if isStoryIdMissing(commits) {
-		commits, err = rewriteCommits(commits, canAmend)
-		if err != nil {
-			return nil, errs.NewError(task, err)
-		}
-	} else {
-		log.Log("Commit check passed")
+	task = "Check and update commit metadata"
+	if err := updateMetadata(commits); err != nil {
+		return nil, errs.NewError(task, err)
 	}
 
 	// Push the branch in case we are on a branch tip.
-	// We are on a branch tip when canAmend is true.
-	// Use force in case we are not on any SF core branch.
-	if canAmend {
+	if isBranchTip {
 		// Get the current branch name.
 		current, err := git.CurrentBranch()
 		if err != nil {
@@ -329,61 +319,28 @@ You are about to post review requests for the following commits:
 	return act, nil
 }
 
-func isStoryIdMissing(commits []*git.Commit) bool {
-	for _, commit := range commits {
-		if commit.Merge != "" {
-			continue
-		}
-		if commit.StoryIdTag != "" {
-			continue
-		}
-		return true
-	}
-	return false
-}
-
-func rewriteCommits(commits []*git.Commit, canAmend bool) ([]*git.Commit, error) {
-	// Make sure we are not posting any merge commits.
-	var noMergeCommits []*git.Commit
-	for _, commit := range commits {
-		if commit.Merge == "" {
-			noMergeCommits = append(noMergeCommits, commit)
-		}
+func updateMetadata(commits []*git.Commit) ([]*metastore.Commit, error) {
+	// Fetch metadata.
+	metaCommits, err := metastore.GetMetadataForCommits(commits)
+	if err != nil {
+		return nil, err
 	}
 
-	// Again, make sure there are actually some commits to be posted.
-	if len(noMergeCommits) == 0 {
-		return nil, ErrNoCommits
+	// We are done in case there is no metadata missing.
+	var metaMissing bool
+	for _, commit := range metaCommits {
+		if commit.Meta == nil {
+			metaMissing = true
+			break
+		}
 	}
-
-	// In case we cannot add Story-Id tag, we have to return an error.
-	if !canAmend {
-		hint := `
-The commit specified does not contain the Story-Id tag.
-We are, however, unable to amend the commit message when
-a revision is specified explicitly, because the revision
-can be anywhere in the git commit graph.
-
-Only the current branch tip (HEAD) or the current branch
-as a whole can be amended. That is what the other review post
-modes can do for you.
-
-TL;DR: Please amend the commit manually to add the Story-Id tag,
-or use some other mode of review post. To see what modes are
-available, execute
-
-  $ salsaflow review post -h
-
-and read the DESCRIPTION section.
-
-`
-		return nil, errs.NewErrorWithHint(
-			"Make sure the commits can be amended",
-			errors.New("Story-Id tag missing"), hint)
+	if !metaMissing {
+		log.Log("Commit check passed")
+		return metaCommits, nil
 	}
 
 	// Fetch the stories in progress from the issue tracker.
-	storiesTask := "Missing Story-Id detected, fetch stories from the issue tracker"
+	storiesTask := "Missing commit metadata detected, fetch stories from the issue tracker"
 	log.Run(storiesTask)
 
 	tracker, err := modules.GetIssueTracker()
@@ -409,16 +366,26 @@ and read the DESCRIPTION section.
 
 	// Show only the stories owned by the current user.
 	var myStories []common.Story
-StoryLoop:
 	for _, story := range stories {
 		for _, assignee := range story.Assignees() {
 			if assignee.Id() == me.Id() {
 				myStories = append(myStories, story)
-				continue StoryLoop
+				break
 			}
 		}
 	}
 	stories = myStories
+
+	var myReviewedStories []common.Story
+	for _, story := range reviewedStories {
+		for _, assignee := range story.Assignees() {
+			if assignee.Id() == me.Id() {
+				myReviewedStories = append(myReviewedStories, story)
+				break
+			}
+		}
+	}
+	reviewedStories = myReviewedStories
 
 	// Tell the user what is happening.
 	log.Run("Prepare a temporary branch to rewrite commit messages")

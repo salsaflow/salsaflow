@@ -3,6 +3,7 @@ package common
 import (
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/metastore"
 	"github.com/salsaflow/salsaflow/version"
 )
 
