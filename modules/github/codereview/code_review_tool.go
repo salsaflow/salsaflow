@@ -161,22 +161,24 @@ func (tool *codeReviewTool) PostReviewRequests(
 		for _, ctx := range ctxs {
 			commits = append(commits, ctx.Commit)
 		}
-		meta, ex := postAssignedReviewRequest(config, owner, repo, story, commits, opts)
+		metadata, ex := postAssignedReviewRequest(config, owner, repo, story, commits, opts)
 		if ex != nil {
 			errs.Log(ex)
 			err = errPostReviewRequest
 			continue
 		}
-		updatedCtxs = append(updateCtxs, &common.ReviewContext{
-			Commit:        ctx.Commit,
-			ReviewRequest: meta,
-			Story:         ctx.Story,
-		})
+		for _, ctx := range ctxs {
+			updatedCtxs = append(updatedCtxs, &common.ReviewContext{
+				Commit:        ctx.Commit,
+				ReviewRequest: metadata,
+				Story:         ctx.Story,
+			})
+		}
 	}
 
 	// Post the unassigned commits.
 	for _, commit := range unassignedCommits {
-		meta, ex := postUnassignedReviewRequest(config, owner, repo, commit, opts)
+		metadata, ex := postUnassignedReviewRequest(config, owner, repo, commit, opts)
 		if ex != nil {
 			errs.Log(ex)
 			err = errPostReviewRequest
@@ -184,7 +186,7 @@ func (tool *codeReviewTool) PostReviewRequests(
 		}
 		updatedCtxs = append(updateCtxs, &common.ReviewContext{
 			Commit:        commit,
-			ReviewRequest: meta,
+			ReviewRequest: metadata,
 		})
 	}
 
@@ -220,9 +222,10 @@ func postAssignedReviewRequest(
 	story common.Story,
 	commits []*git.Commit,
 	opts map[string]interface{},
-) error {
+) (*metastore.Resource, error) {
 
 	// Search for an existing review issue for the given story.
+	// XXX: We don't really need this any more, the existing issue is stored in metadata.
 	task := fmt.Sprintf("Search for an existing review issue for story %v", story.ReadableId())
 	log.Run(task)
 
@@ -233,7 +236,7 @@ func postAssignedReviewRequest(
 	client := ghutil.NewClient(config.Token())
 	result, _, err := client.Search.Issues(query, &github.SearchOptions{})
 	if err != nil {
-		return errs.NewError(task, err)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Decide what to do next based on the search results.
