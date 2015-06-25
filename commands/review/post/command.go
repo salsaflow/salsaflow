@@ -20,6 +20,8 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/metastore"
+	metaclient "github.com/salsaflow/salsaflow/metastore/client"
 	"github.com/salsaflow/salsaflow/modules"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/prompt"
@@ -319,7 +321,7 @@ You are about to post review requests for the following commits:
 	return act, nil
 }
 
-func updateMetadata(commits []*git.Commit) ([]*metastore.Commit, error) {
+func updateMetadata(commits []*git.Commit) ([]*metaclient.Commit, error) {
 	// Fetch metadata.
 	metaCommits, err := metastore.GetMetadataForCommits(commits)
 	if err != nil {
@@ -437,9 +439,12 @@ Inserting 'u' will mark the commit as unassigned:`, commit.SHA, commitMessageTit
 	}
 
 	// Upload the metadata.
+	// No need to roll back. In case something fails later, the metadata
+	// is uploaded and there is no need to set it again later.
 	if err := metastore.StoreMetadataForCommits(toInsert); err != nil {
 		return nil, err
 	}
+
 	// Update the metadata array.
 	// toInsert contains the right metadata already and the order matches
 	// the order of missing metadata in metaCommits, so it's enough to iterate
@@ -482,66 +487,36 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 	must(0, tw.Flush())
 }
 
-func commitsToReviewContexts(commits []*git.Commit) ([]*common.ReviewContext, error) {
+func commitsToReviewContexts(commits []*metastore.Commit) ([]*common.ReviewContext, error) {
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
 		return nil, err
 	}
 
 	// Fetch the stories from the issue tracker.
-	stories, err := tracker.ListStoriesByTag(storyTags(tracker, commits))
+	meta := make([]*metastore.CommitData, 0, len(commits))
+	for _, commit := range commits {
+		meta = append(meta, commit.Meta)
+	}
+	stories, err := tracker.StoriesFromMetadata(meta)
 	if err != nil {
 		return nil, err
 	}
 
-	// Build the story map.
-	storiesByTag := make(map[string]common.Story, 1)
-	for _, story := range stories {
-		storiesByTag[story.Tag()] = story
-	}
-
 	// Build the final list of review contexts.
 	ctxs := make([]*common.ReviewContext, 0, len(commits))
-	for _, commit := range commits {
+	for i := range commits {
 		// Story can be set to nil here in case the story is unassigned.
 		// In that case there will be, obviously, no story object in the map.
 		ctxs = append(ctxs, &common.ReviewContext{
-			Commit: commit,
-			Story:  storiesByTag[commit.StoryIdTag],
+			Commit: meta[i].Commit,
+			Meta:   meta[i].Meta,
+			Story:  stories[i],
 		})
 	}
 
 	// Return the commit review contexts.
 	return ctxs, nil
-}
-
-func storyTags(tracker common.IssueTracker, commits []*git.Commit) (tags []string) {
-	var (
-		storyTagSet  = make(map[string]struct{}, 1)
-		storyTagList = make([]string, 0, 1)
-	)
-	for _, commit := range commits {
-		tag := commit.StoryIdTag
-
-		// Skip empty tags.
-		if tag == "" {
-			continue
-		}
-
-		// Skip unassigned stories.
-		if _, err := tracker.StoryTagToReadableStoryId(tag); err != nil {
-			continue
-		}
-
-		// Otherwise register the tag, unless already registered.
-		if _, ok := storyTagSet[tag]; ok {
-			continue
-		}
-		storyTagSet[tag] = struct{}{}
-		storyTagList = append(storyTagList, tag)
-	}
-
-	return storyTagList
 }
 
 func sendReviewRequests(ctxs []*common.ReviewContext) error {
@@ -563,33 +538,38 @@ func sendReviewRequests(ctxs []*common.ReviewContext) error {
 		postOpts["open"] = true
 	}
 
-	// Only post a single commit in case -parent is not being used.
-	// By definition it must be only a single commit anyway.
+	var task string
 	if flagParent == "" {
+		// Only post a single commit in case -parent is not being used.
+		// By definition it must be only a single commit anyway.
 		if len(ctxs) != 1 {
 			panic(fmt.Sprintf("len(ctxs): expected 1, got %v", len(ctxs)))
 		}
 
-		task := "Post review request for commit " + ctxs[0].Commit.SHA
-		log.Run(task)
-		if err := tool.PostReviewRequests(ctxs, postOpts); err != nil {
-			return errs.NewError(task, err)
+		task = "Post review request for commit " + ctxs[0].Commit.SHA
+	} else {
+		// Post the review for the whole branch.
+		currentBranch, err := git.CurrentBranch()
+		if err != nil {
+			return err
 		}
-		return nil
-	}
 
-	// Post the review for the whole branch.
-	currentBranch, err := git.CurrentBranch()
+		task = fmt.Sprintf("Post review requests for branch '%v'", currentBranch)
+	}
+	log.Run(task)
+
+	// Post review requests.
+	newCtxs, err := tool.PostReviewRequests(ctxs, postOpts)
 	if err != nil {
-		return err
-	}
-
-	task := fmt.Sprintf("Post review request for branch '%v'", currentBranch)
-	if err := tool.PostReviewRequests(ctxs, postOpts); err != nil {
 		return errs.NewError(task, err)
 	}
 
-	return nil
+	// Store metadata.
+	meta := make([]*metastore.CommitData, 0, len(ctxs))
+	for _, ctx := range ctxs {
+		meta = append(meta, ctx.Meta)
+	}
+	return metastore.StoreCommitMetadata(meta)
 }
 
 func printFollowup() error {

@@ -3,7 +3,7 @@ package common
 import (
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/git"
-	"github.com/salsaflow/salsaflow/metastore"
+	metaclient "github.com/salsaflow/salsaflow/metastore/client"
 	"github.com/salsaflow/salsaflow/version"
 )
 
@@ -11,6 +11,7 @@ import (
 
 type ReviewContext struct {
 	Commit *git.Commit
+	Meta   *metaclient.CommitData
 	Story  Story
 }
 
@@ -24,6 +25,8 @@ type CodeReviewTool interface {
 	// by returning an error.
 	FinaliseRelease(v *version.Version) (rollback action.Action, err error)
 
-	PostReviewRequests(ctxs []*ReviewContext, opts map[string]interface{}) error
+	// PostReviewRequests posts review requests for the given review contexts.
+	// It is supposed to return new array that contains the review metadata as well.
+	PostReviewRequests(ctxs []*ReviewContext, opts map[string]interface{}) (map[string]interface{}, error)
 	PostReviewFollowupMessage() string
 }

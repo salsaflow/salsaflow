@@ -8,7 +8,7 @@ import (
 	"github.com/salsaflow/salsaflow/metastore/client"
 )
 
-func GetCommitMetadata(hashes []string) ([]*client.CommitData, error) {
+func getMetadata(hashes []string) ([]*client.CommitData, error) {
 	config, err := LoadConfig()
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func GetCommitMetadata(hashes []string) ([]*client.CommitData, error) {
 	return metadata, nil
 }
 
-func StoreCommitMetadata(data []*client.CommitData) error {
+func storeMetadata(data []*client.CommitData) error {
 	config, err := LoadConfig()
 	if err != nil {
 		return err
