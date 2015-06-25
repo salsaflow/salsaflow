@@ -155,13 +155,14 @@ func (tool *codeReviewTool) PostReviewRequests(
 	// Post the assigned commits.
 	for _, ctxs := range ctxsByStoryId {
 		var (
-			story   = ctxs[0].Story
-			commits = make([]*git.Commit, 0, len(ctxs))
+			story         = ctxs[0].Story
+			reviewRequest = ctxs[0].ReviewRequest
+			commits       = make([]*git.Commit, 0, len(ctxs))
 		)
 		for _, ctx := range ctxs {
 			commits = append(commits, ctx.Commit)
 		}
-		metadata, ex := postAssignedReviewRequest(config, owner, repo, story, commits, opts)
+		metadata, ex := postAssignedReviewRequest(config, owner, repo, story, commits, reviewRequest, opts)
 		if ex != nil {
 			errs.Log(ex)
 			err = errPostReviewRequest
@@ -221,37 +222,14 @@ func postAssignedReviewRequest(
 	repo string,
 	story common.Story,
 	commits []*git.Commit,
+	reviewRequest *metastore.Resource,
 	opts map[string]interface{},
 ) (*metastore.Resource, error) {
 
-	// Search for an existing review issue for the given story.
-	// XXX: We don't really need this any more, the existing issue is stored in metadata.
-	task := fmt.Sprintf("Search for an existing review issue for story %v", story.ReadableId())
-	log.Run(task)
-
-	query := fmt.Sprintf(
-		"\"Review story %v\" repo:%v/%v label:%v type:issue in:title",
-		story.ReadableId(), owner, repo, config.ReviewLabel())
-
-	client := ghutil.NewClient(config.Token())
-	result, _, err := client.Search.Issues(query, &github.SearchOptions{})
-	if err != nil {
-		return nil, errs.NewError(task, err)
-	}
-
-	// Decide what to do next based on the search results.
-	switch len(result.Issues) {
-	case 0:
-		// No review issue found for the given story, create a new issue.
+	if reviewRequest != nil {
+		return extendReviewRequest(config, owner, repo, reviewRequest, commits, opts)
+	} else {
 		return createAssignedReviewRequest(config, owner, repo, story, commits, opts)
-	case 1:
-		// An existing review issue found, extend it.
-		return extendReviewRequest(config, owner, repo, &result.Issues[0], commits, opts)
-	default:
-		// Multiple review issue found for the given story, that is clearly wrong
-		// since there is always just a single review issue for every story.
-		err := errors.New("inconsistency detected: multiple story review issues found")
-		return errs.NewError("Make sure the review issue can be created", err)
 	}
 }
 
@@ -264,7 +242,7 @@ func createAssignedReviewRequest(
 	story common.Story,
 	commits []*git.Commit,
 	opts map[string]interface{},
-) error {
+) (*metastore.Resource, error) {
 
 	var (
 		task       = fmt.Sprintf("Create review issue for story %v", story.ReadableId())
@@ -285,20 +263,23 @@ func createAssignedReviewRequest(
 	milestone, err := getOrCreateMilestoneForCommit(
 		config, owner, repo, commits[len(commits)-1].SHA)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Create a new review issue.
-	issue, meta, err := createIssue(task, config, owner, repo, issueTitle, issueBody.String(), milestone)
+	issue, metadata, err := createIssue(
+		task, config, owner, repo, issueTitle, issueBody.String(), milestone)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Open the issue if requested.
 	if _, open := opts["open"]; open {
-		return openIssue(issue)
+		if err := openIssue(issue); err != nil {
+			return nil, err
+		}
 	}
-	return nil
+	return metadata, nil
 }
 
 // postUnassignedReviewRequest can be used to post the given commit for review.
@@ -319,35 +300,12 @@ func postUnassignedReviewRequest(
 		}
 	}
 
-	// Search for an existing issue.
-	task := fmt.Sprintf("Search for an existing review issue for commit %v", commit.SHA)
-	log.Run(task)
-
-	query := fmt.Sprintf(
-		"\"Review commit %v\" repo:%v/%v label:%v type:issue in:title",
-		commit.SHA, owner, repo, config.ReviewLabel())
-
-	client := ghutil.NewClient(config.Token())
-	result, _, err := client.Search.Issues(query, &github.SearchOptions{})
-	if err != nil {
-		return nil, errs.NewError(task, err)
-	}
-
-	// Decide what to do next based on the search results.
-	switch len(result.Issues) {
-	case 0:
-		// Create a new unassigned review request.
+	if reviewRequest == nil {
+		// Create a new review issue.
 		return createUnassignedReviewRequest(config, owner, repo, commit, opts)
-	case 1:
-		// The issues already exists, return an error.
-		issueNum := *result.Issues[0].Number
-		err := fmt.Errorf("existing review issue found for commit %v: %v", commit.SHA, issueNum)
-		return nil, errs.NewError("Make sure the review issue can be created", err)
-	default:
-		// Inconsistency detected: multiple review issues found.
-		err := fmt.Errorf(
-			"inconsistency detected: multiple review issue found for commit %v", commit.SHA)
-		return nil, errs.NewError("Make sure the review issue can be created", err)
+	} else {
+		// The review request already exists, right? We are done.
+		return reviewRequest, nil
 	}
 }
 
@@ -357,6 +315,7 @@ func createUnassignedReviewRequest(
 	config Config,
 	owner string,
 	repo string,
+	reviewRequest *metastore.Resource,
 	commit *git.Commit,
 	opts map[string]interface{},
 ) (*metastore.Resource, error) {
@@ -376,11 +335,11 @@ func createUnassignedReviewRequest(
 	}
 
 	// Create a new review issue.
-	issue, err := createIssue(task, config, owner, repo, issueTitle, issueBody, milestone)
+	issue, metadata, err := createIssue(
+		task, config, owner, repo, issueTitle, issueBody, milestone)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
-	meta := metadata(issue)
 
 	// Open the issue if requested.
 	if _, open := opts["open"]; open {
