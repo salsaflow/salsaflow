@@ -1,5 +1,9 @@
 package metastore
 
+import (
+	"github.com/salsaflow/salsaflow/git"
+)
+
 type ServiceData struct {
 	// ServiceId identifies the given service.
 	// It can be "jira", "github" and so on.
@@ -57,7 +61,20 @@ func FetchMetadataForCommits(commits []*git.Commit) (data []*CommitData, err err
 }
 
 func StoreMetadataForCommits(data []*CommitData) error {
-	panic("Not implemented")
+	// Convert []*CommitData into []*client.CommitData.
+	rawData := make([]client.CommitData, 0, len(data))
+	for _, commit := range data {
+		trackerData := serviceToData(commit.IssueTracker)
+		reviewToolData := serviceToData(commit.CodeReviewTool)
+		rawData = append(rawData, &client.CommitData{
+			SHA:            commit.SHA,
+			IssueTracker:   trackerData,
+			CodeReviewTool: reviewToolData,
+		})
+	}
+
+	// Store the metadata.
+	return storeMetadata(rawData)
 }
 
 func dataToService(sha string, data map[string]interface{}) (*ServiceData, error) {
@@ -78,4 +95,15 @@ func dataToService(sha string, data map[string]interface{}) (*ServiceData, error
 	delete(data, "service_id")
 	srv.Metadata = data
 	return &srv, nil
+}
+
+func serviceToData(srv *ServiceData) (data map[string]interface{}) {
+	// We need to create a map that contains all the metadata
+	// as well as srv.ServiceId as "service_id".
+	raw := make(map[string]interface{}, 1+len(srv.Metadata))
+	raw["service_id"] = srv.ServiceId
+	for k, v := range srv.Metadata {
+		raw[k] = v
+	}
+	return raw
 }
