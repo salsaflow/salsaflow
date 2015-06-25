@@ -387,76 +387,37 @@ func updateMetadata(commits []*git.Commit) ([]*metastore.Commit, error) {
 	}
 	reviewedStories = myReviewedStories
 
-	// Tell the user what is happening.
-	log.Run("Prepare a temporary branch to rewrite commit messages")
+	// Ask for the missing story associations.
+	var toInsert []*metastore.Commit
 
-	// Get the current branch name.
-	currentBranch, err := git.CurrentBranch()
-	if err != nil {
-		return nil, err
-	}
-
-	// Get the parent of the first commit in the chain.
-	task = "Get the parent commit of the commit chain to be posted"
-	stdout, err := git.Log("--pretty=%P", "-n", "1", commits[0].SHA)
-	if err != nil {
-		return nil, errs.NewError(task, err)
-	}
-	parentSHA := strings.Fields(stdout.String())[0]
-
-	// Prepare a temporary branch that will be used to amend commit messages.
-	task = "Create a temporary branch to rewrite commit messages"
-	if err := git.Branch("-f", constants.TempBranchName, parentSHA); err != nil {
-		return nil, errs.NewError(task, err)
-	}
-	defer func() {
-		// Delete the temporary branch on exit.
-		task := "Delete the temporary branch"
-		if err := git.Branch("-D", constants.TempBranchName); err != nil {
-			errs.LogError(task, err)
-		}
-	}()
-
-	// Checkout the temporary branch.
-	task = "Checkout the temporary branch"
-	if err := git.Checkout(constants.TempBranchName); err != nil {
-		return nil, errs.NewError(task, err)
-	}
-	defer func() {
-		// Checkout the original branch on exit.
-		task := fmt.Sprintf("Checkout branch '%v'", currentBranch)
-		if err := git.Checkout(currentBranch); err != nil {
-			errs.LogError(task, err)
-		}
-	}()
-
-	// Loop and rewrite the commit messages.
-	var story common.Story
 	if flagAskOnce {
 		header := `
 Some of the commits listed above are not assigned to any story.
 Please pick up the story that these commits will be assigned to.
 You can also insert 'u' to mark the commits as unassigned:`
-		selectedStory, err := promptForStory(header, stories, reviewedStories)
+		story, err := promptForStory(header, stories, reviewedStories)
 		if err != nil {
 			return nil, err
 		}
-		story = selectedStory
-	}
-
-	for _, commit := range commits {
-		// Cherry-pick the commit.
-		task := fmt.Sprintf("Move commit %v onto the temporary branch", commit.SHA)
-		if err := git.CherryPick(commit.SHA); err != nil {
-			return nil, errs.NewError(task, err)
+		for _, commit := range metaCommits {
+			if commit.Meta == nil {
+				toInsert = append(toInsert, &metastore.Commit{
+					Commit: commit.Commit,
+					Meta:   tracker.CommitMetadata(story),
+				})
+			}
 		}
+	} else { /* !flagAskOnce */
+		for _, commit := range metaCommits {
+			// Skip commits that are already associated.
+			if commit.Meta != nil {
+				continue
+			}
 
-		if commit.StoryIdTag == "" {
-			if !flagAskOnce {
-				commitMessageTitle := prompt.ShortenCommitTitle(commit.MessageTitle)
+			commitMessageTitle := prompt.ShortenCommitTitle(commit.MessageTitle)
 
-				// Ask for the story ID for the current commit.
-				header := fmt.Sprintf(`
+			// Ask for the story ID for the current commit.
+			header := fmt.Sprintf(`
 The following commit is not assigned to any story:
 
   commit hash:  %v
@@ -464,51 +425,41 @@ The following commit is not assigned to any story:
 
 Please pick up the story to assign the commit to.
 Inserting 'u' will mark the commit as unassigned:`, commit.SHA, commitMessageTitle)
-				selectedStory, err := promptForStory(header, stories, reviewedStories)
-				if err != nil {
-					return nil, err
-				}
-				story = selectedStory
+			story, err := promptForStory(header, stories, reviewedStories)
+			if err != nil {
+				return nil, err
 			}
-
-			// Use the unassigned tag value in case no story is selected.
-			storyTag := git.StoryIdUnassignedTagValue
-			if story != nil {
-				storyTag = story.Tag()
-			}
-
-			// Extend the commit message to include Story-Id.
-			commitMessage := fmt.Sprintf("%v\nStory-Id: %v\n", commit.Message, storyTag)
-
-			// Amend the cherry-picked commit to include the new commit message.
-			task = "Amend the commit message for " + commit.SHA
-			stderr := new(bytes.Buffer)
-			cmd := exec.Command("git", "commit", "--amend", "-F", "-")
-			cmd.Stdin = bytes.NewBufferString(commitMessage)
-			cmd.Stderr = stderr
-			if err := cmd.Run(); err != nil {
-				return nil, errs.NewErrorWithHint(task, err, stderr.String())
-			}
+			toInsert = append(toInsert, &metastore.Commit{
+				Commit: commit.Commit,
+				Meta:   tracker.CommitMetadata(story),
+			})
 		}
 	}
 
-	// Reset the current branch to point to the new branch.
-	task = "Reset the current branch to point to the temporary branch"
-	if err := git.ResetKeep(currentBranch, constants.TempBranchName); err != nil {
-		return nil, errs.NewError(task, err)
-	}
-
-	// Parse the commits again since the commit hashes have changed.
-	newCommits, err := git.ShowCommitRange(parentSHA + "..")
-	if err != nil {
+	// Upload the metadata.
+	if err := metastore.StoreMetadataForCommits(toInsert); err != nil {
 		return nil, err
+	}
+	// Update the metadata array.
+	// toInsert contains the right metadata already and the order matches
+	// the order of missing metadata in metaCommits, so it's enough to iterate
+	// and copy the metadata over into metaCommits.
+	var i int
+	for _, commit := range metaCommits {
+		if commit.Meta == nil {
+			commit.Meta = toInsert[i].Meta
+			i++
+		}
+		if commit.Meta == nil {
+			panic("commit.Meta not set for commit ", commit.Commit.SHA)
+		}
 	}
 
 	log.NewLine("")
-	log.Log("Commit messages amended successfully")
+	log.Log("Commit metadata updated successfully")
 
 	// And we are done!
-	return newCommits, nil
+	return metaCommits, nil
 }
 
 func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
