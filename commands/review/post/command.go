@@ -509,9 +509,9 @@ func commitsToReviewContexts(commits []*metastore.Commit) ([]*common.ReviewConte
 		// Story can be set to nil here in case the story is unassigned.
 		// In that case there will be, obviously, no story object in the map.
 		ctxs = append(ctxs, &common.ReviewContext{
-			Commit: meta[i].Commit,
-			Meta:   meta[i].Meta,
-			Story:  stories[i],
+			Commit:        meta[i].Commit,
+			ReviewRequest: meta[i].Meta.ReviewRequest,
+			Story:         stories[i],
 		})
 	}
 

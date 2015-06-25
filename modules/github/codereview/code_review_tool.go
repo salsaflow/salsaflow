@@ -13,6 +13,7 @@ import (
 	"github.com/salsaflow/salsaflow/git"
 	ghutil "github.com/salsaflow/salsaflow/github"
 	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/metastore"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/version"
 
@@ -110,18 +111,18 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 func (tool *codeReviewTool) PostReviewRequests(
 	ctxs []*common.ReviewContext,
 	opts map[string]interface{},
-) (err error) {
+) ([]*common.ReviewContext, error) {
 
 	// Load the GitHub config.
 	config, err := LoadConfig()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Get the GitHub owner and repository from the upstream URL.
 	owner, repo, err := git.ParseUpstreamURL()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Group commits by story ID.
@@ -148,6 +149,9 @@ func (tool *codeReviewTool) PostReviewRequests(
 		}
 	}
 
+	// Post the review requests.
+	updatedCtxs := make([]*common.ReviewContext, 0, len(ctxs))
+
 	// Post the assigned commits.
 	for _, ctxs := range ctxsByStoryId {
 		var (
@@ -157,21 +161,34 @@ func (tool *codeReviewTool) PostReviewRequests(
 		for _, ctx := range ctxs {
 			commits = append(commits, ctx.Commit)
 		}
-		if ex := postAssignedReviewRequest(config, owner, repo, story, commits, opts); ex != nil {
+		meta, ex := postAssignedReviewRequest(config, owner, repo, story, commits, opts)
+		if ex != nil {
 			errs.Log(ex)
 			err = errPostReviewRequest
+			continue
 		}
+		updatedCtxs = append(updateCtxs, &common.ReviewContext{
+			Commit:        ctx.Commit,
+			ReviewRequest: meta,
+			Story:         ctx.Story,
+		})
 	}
 
 	// Post the unassigned commits.
 	for _, commit := range unassignedCommits {
-		if ex := postUnassignedReviewRequest(config, owner, repo, commit, opts); ex != nil {
+		meta, ex := postUnassignedReviewRequest(config, owner, repo, commit, opts)
+		if ex != nil {
 			errs.Log(ex)
 			err = errPostReviewRequest
+			continue
 		}
+		updatedCtxs = append(updateCtxs, &common.ReviewContext{
+			Commit:        commit,
+			ReviewRequest: meta,
+		})
 	}
 
-	return
+	return updatedCtxs, err
 }
 
 func (tool *codeReviewTool) PostReviewFollowupMessage() string {
@@ -269,7 +286,7 @@ func createAssignedReviewRequest(
 	}
 
 	// Create a new review issue.
-	issue, err := createIssue(task, config, owner, repo, issueTitle, issueBody.String(), milestone)
+	issue, meta, err := createIssue(task, config, owner, repo, issueTitle, issueBody.String(), milestone)
 	if err != nil {
 		return err
 	}
@@ -289,7 +306,7 @@ func postUnassignedReviewRequest(
 	repo string,
 	commit *git.Commit,
 	opts map[string]interface{},
-) error {
+) (*metastore.Resource, error) {
 
 	// Extend the specified review issue in case -fixes is specified.
 	flagFixes, ok := opts["fixes"]
@@ -310,7 +327,7 @@ func postUnassignedReviewRequest(
 	client := ghutil.NewClient(config.Token())
 	result, _, err := client.Search.Issues(query, &github.SearchOptions{})
 	if err != nil {
-		return errs.NewError(task, err)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Decide what to do next based on the search results.
@@ -322,12 +339,12 @@ func postUnassignedReviewRequest(
 		// The issues already exists, return an error.
 		issueNum := *result.Issues[0].Number
 		err := fmt.Errorf("existing review issue found for commit %v: %v", commit.SHA, issueNum)
-		return errs.NewError("Make sure the review issue can be created", err)
+		return nil, errs.NewError("Make sure the review issue can be created", err)
 	default:
 		// Inconsistency detected: multiple review issues found.
 		err := fmt.Errorf(
 			"inconsistency detected: multiple review issue found for commit %v", commit.SHA)
-		return errs.NewError("Make sure the review issue can be created", err)
+		return nil, errs.NewError("Make sure the review issue can be created", err)
 	}
 }
 
@@ -339,7 +356,7 @@ func createUnassignedReviewRequest(
 	repo string,
 	commit *git.Commit,
 	opts map[string]interface{},
-) error {
+) (*metastore.Resource, error) {
 
 	// Generate the issue title and body.
 	var (
@@ -352,20 +369,23 @@ func createUnassignedReviewRequest(
 	// Get the right review milestone to add the issue into.
 	milestone, err := getOrCreateMilestoneForCommit(config, owner, repo, commit.SHA)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Create a new review issue.
 	issue, err := createIssue(task, config, owner, repo, issueTitle, issueBody, milestone)
 	if err != nil {
-		return errs.NewError(task, err)
+		return nil, errs.NewError(task, err)
 	}
+	meta := metadata(issue)
 
 	// Open the issue if requested.
 	if _, open := opts["open"]; open {
-		return openIssue(issue)
+		if err := openIssue(issue); err != nil {
+			return nil, err
+		}
 	}
-	return nil
+	return meta, nil
 }
 
 // extendUnassignedReviewRequest can be used to upload fixes for
@@ -377,7 +397,7 @@ func extendUnassignedReviewRequest(
 	issueNum int,
 	commit *git.Commit,
 	opts map[string]interface{},
-) error {
+) (*metastore.Resource, error) {
 
 	// Fetch the issue.
 	task := fmt.Sprintf("Fetch GitHub issue #%v", issueNum)
@@ -385,7 +405,7 @@ func extendUnassignedReviewRequest(
 	client := ghutil.NewClient(config.Token())
 	issue, _, err := client.Issues.Get(owner, repo, issueNum)
 	if err != nil {
-		return errs.NewError(task, err)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Extend the given review issue.
@@ -495,7 +515,7 @@ func createIssue(
 	issueTitle string,
 	issueBody string,
 	milestone *github.Milestone,
-) (issue *github.Issue, err error) {
+) (*github.Issue, *metastore.Resource, error) {
 
 	log.Run(task)
 	client := ghutil.NewClient(config.Token())
@@ -507,11 +527,11 @@ func createIssue(
 		Milestone: milestone.Number,
 	})
 	if err != nil {
-		return nil, errs.NewError(task, err)
+		return nil, nil, errs.NewError(task, err)
 	}
 
 	log.Log(fmt.Sprintf("GitHub issue #%v created", *issue.Number))
-	return issue, nil
+	return issue, metadata(issue), nil
 }
 
 func createMilestone(
@@ -607,4 +627,14 @@ func getOrCreateMilestoneForCommit(
 
 func milestoneTitle(v *version.Version) string {
 	return fmt.Sprintf("%v-review", v.BaseString())
+}
+
+func metadata(issue *github.Issue) *metastore.Resource {
+	return &metastore.Resource{
+		ServiceId: "github_codereview",
+		Metadata: map[string]interface{}{
+			"issue_number": *issue.Number,
+			"issue_url":    *issue.URL,
+		},
+	}
 }
