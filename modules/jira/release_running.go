@@ -174,6 +174,7 @@ func (release *runningRelease) Release() error {
 		}
 	}
 	if len(issues) == 0 {
+		log.Warn("No accepted stories found in JIRA")
 		return nil
 	}
 
