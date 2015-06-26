@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/metastore"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/repo"
 	"github.com/salsaflow/salsaflow/shell"
@@ -51,7 +53,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 func (tool *codeReviewTool) PostReviewRequests(
 	ctxs []*common.ReviewContext,
 	opts map[string]interface{},
-) ([]*commit.ReviewContext, error) {
+) ([]*common.ReviewContext, error) {
 
 	// Use postReviewRequestForCommit for every commit on the branch.
 	// Try to post a review request for every commit and keep printing the errors.
@@ -111,7 +113,7 @@ func postReviewRequestForCommit(
 	// Load the RB config.
 	config, err := LoadConfig()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Parse the options.
@@ -131,7 +133,7 @@ func postReviewRequestForCommit(
 	}
 
 	if story != nil {
-		args = append(args, "--bugs-closed", commit.StoryIdTag)
+		args = append(args, "--bugs-closed", story.Tag())
 	}
 	if fixes != "" {
 		args = append(args, "--depends-on", fixes)
@@ -160,9 +162,9 @@ func postReviewRequestForCommit(
 		// rbt is retarded and sometimes prints stderr to stdout.
 		// That is why we return stdout when stderr is empty.
 		if stderr.Len() == 0 {
-			return errs.NewErrorWithHint(task, err, stdout.String())
+			return nil, errs.NewErrorWithHint(task, err, stdout.String())
 		} else {
-			return errs.NewErrorWithHint(task, err, stderr.String())
+			return nil, errs.NewErrorWithHint(task, err, stderr.String())
 		}
 	}
 
@@ -174,7 +176,18 @@ func postReviewRequestForCommit(
 	fmt.Print(out)
 	logger.Unlock()
 
-	return parseRbtOutput(out)
+	if update == "" {
+		resource, err := parseRbtOutput(out)
+		if err != nil {
+			return nil, err
+		}
+		newCtx = &common.ReviewContext{
+			Commit:        ctx.Commit,
+			Story:         ctx.Story,
+			ReviewRequest: resource,
+		}
+	}
+	return newCtx, nil
 }
 
 func parseRbtOutput(out string) (*metastore.Resource, error) {
@@ -191,9 +204,9 @@ func parseRbtOutput(out string) (*metastore.Resource, error) {
 	match := regexp.MustCompile("^Review request #([0-9]+) posted[.]$").FindStringSubmatch(lines[0])
 	if len(match) != 2 {
 		hint := fmt.Sprintf("failed to parse line 1: %v", lines[0])
-		return nil, errs.NewError(task, errors.New("failed to parse rbt output", hint))
+		return nil, errs.NewErrorWithHint(task, errors.New("failed to parse rbt output"), hint)
 	}
-	rrid, _ := strconv.Itoa(match[1])
+	rrid, _ := strconv.Atoi(match[1])
 	link := lines[2]
 
 	return &metastore.Resource{
