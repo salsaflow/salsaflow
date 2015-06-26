@@ -5,6 +5,10 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 )
 
+// ErrNotStageable shall be returned from EnsureStageable()
+// when the given release cannot be staged yet.
+//
+// ErrNotStageable implements errs.Error interface.
 type ErrNotStageable struct {
 	// Cannot simply embed because then the name collides
 	// with the Error method. Sucks.
@@ -33,6 +37,10 @@ type ErrNotReleasable struct {
 	E errs.Error
 }
 
+// ErrNotReleasable shall be returned from EnsureReleasable()
+// when the given release cannot be released yet.
+//
+// ErrNotReleasable implements errs.Error interface.
 func (err *ErrNotReleasable) Error() string {
 	return err.E.Error()
 }
