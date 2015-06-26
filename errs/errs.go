@@ -66,15 +66,20 @@ func LogWith(err error, logger log.Logger) error {
 }
 
 func unsafeLogWith(err error, logger log.Logger) error {
-	// Implementing Error inteface.
+	// Handle errors implementing Error interface.
 	if ex, ok := err.(Error); ok {
 		logger.UnsafeFail(ex.Task())
 
 		hint := ex.Hint()
 		if next, ok := ex.Err().(Error); ok {
+			// The next error is also Error, call recursively
+			// after printing the hint when that is set.
 			logger.UnsafeStderr(hint)
 			return unsafeLogWith(next, logger)
 		} else {
+			// The next error is the root cause error.
+			// It is not implementing Error, so we can print
+			// the root cause error and stop the recursion.
 			last := ex.Err()
 			logger.UnsafeNewLine(fmt.Sprintf("(error = %v)", last))
 			logger.UnsafeStderr(hint)
@@ -82,7 +87,12 @@ func unsafeLogWith(err error, logger log.Logger) error {
 		}
 	}
 
-	// Regular errors.
+	// Handle regular errors.
+	//
+	// This block is only executed when this function is called
+	// for the first time with an error not implementing Error.
+	logger.UnsafeFail("Unknown task")
+	logger.UnsafeNewLine(fmt.Sprintf("(error = %v)", err))
 	return err
 }
 
