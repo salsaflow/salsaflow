@@ -67,7 +67,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 	releaseString := v.BaseString()
 	task := fmt.Sprintf("Get code review milestone for release %v", releaseString)
 	log.Run(task)
-	milestone, err := getOrCreateMilestoneForVersion(config, owner, repo, v, true)
+	milestone, err := milestoneForVersion(config, owner, repo, v)
 	if err != nil {
 		if _, ok := errs.RootCause(err).(*ErrMilestoneNotFound); ok {
 			log.Warn("Weird, " + err.Error())
@@ -306,7 +306,7 @@ func createAssignedReviewRequest(
 
 	// Get the right review milestone to add the issue into.
 	milestone, err := getOrCreateMilestoneForCommit(
-		config, owner, repo, commits[len(commits)-1].SHA, false)
+		config, owner, repo, commits[len(commits)-1].SHA)
 	if err != nil {
 		return err
 	}
@@ -393,7 +393,7 @@ func createUnassignedReviewRequest(
 	)
 
 	// Get the right review milestone to add the issue into.
-	milestone, err := getOrCreateMilestoneForCommit(config, owner, repo, commit.SHA, false)
+	milestone, err := getOrCreateMilestoneForCommit(config, owner, repo, commit.SHA)
 	if err != nil {
 		return err
 	}
@@ -590,12 +590,11 @@ func createMilestone(
 	}), nil
 }
 
-func getOrCreateMilestoneForVersion(
+func milestoneForVersion(
 	config Config,
 	owner string,
 	repo string,
 	v *version.Version,
-	dontCreate bool,
 ) (*github.Milestone, error) {
 
 	// Fetch milestones for the given repository.
@@ -617,12 +616,7 @@ func getOrCreateMilestoneForVersion(
 		}
 	}
 
-	// Create the milestone if that is desired.
-	if !dontCreate {
-		milestone, _, err := createMilestone(config, owner, repo, v)
-		return milestone, err
-	}
-	// Just return an error.
+	// Milestone not found.
 	return nil, errs.NewError(task, &ErrMilestoneNotFound{v})
 }
 
@@ -631,7 +625,6 @@ func getOrCreateMilestoneForCommit(
 	owner string,
 	repo string,
 	sha string,
-	dontCreate bool,
 ) (*github.Milestone, error) {
 
 	// Get the version associated with the given commit.
@@ -640,8 +633,19 @@ func getOrCreateMilestoneForCommit(
 		return nil, err
 	}
 
-	// Return the associated milestone.
-	return getOrCreateMilestoneForVersion(config, owner, repo, v, dontCreate)
+	// Try to get the milestone.
+	milestone, err := milestoneForVersion(config, owner, repo, v)
+	if err != nil {
+		// In case the milestone was not found, we try to create it.
+		if _, ok := errs.RootCause(err).(*ErrMilestoneNotFound); ok {
+			milestone, _, err := createMilestone(config, owner, repo, v)
+			return milestone, err
+		}
+		return nil, err
+	}
+
+	// Milestone found, return it.
+	return milestone, nil
 }
 
 func milestoneTitle(v *version.Version) string {
