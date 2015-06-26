@@ -169,7 +169,7 @@ func (tool *codeReviewTool) PostReviewRequests(
 			err = errPostReviewRequest
 			continue
 		}
-		for i, ctx := range ctxs {
+		for _, ctx := range ctxs {
 			updatedCtxs = append(updatedCtxs, &common.ReviewContext{
 				Commit:        ctx.Commit,
 				ReviewRequest: reviewRequest,
@@ -228,11 +228,32 @@ func postAssignedReviewRequest(
 	opts map[string]interface{},
 ) (*metastore.Resource, error) {
 
-	if reviewRequest != nil {
-		return extendReviewRequest(config, owner, repo, reviewRequest, commits, opts)
-	} else {
+	// In case reviewRequest is nil, there is no existing review issue.
+	if reviewRequest == nil {
 		return createAssignedReviewRequest(config, owner, repo, story, commits, opts)
 	}
+
+	// Otherwise we extend an existing review issue.
+	issueNum, err := getIssueNum(reviewRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return extendReviewRequest(config, owner, repo, issueNum, commits, opts)
+}
+
+func getIssueNum(reviewRequest *metastore.Resource) (int, error) {
+	task := "Get review issue number for the metadata record"
+	v, ok := reviewRequest.Metadata["issue_number"]
+	if !ok {
+		return 0, errs.NewError(task, errors.New("field 'issue_number' is not set"))
+	}
+
+	issueNum, ok := v.(int)
+	if !ok {
+		return 0, errs.NewError(task, errors.New("field 'issue_number' is not an integer"))
+	}
+	return issueNum, nil
 }
 
 // createAssignedReviewRequest can be used to create a new review issue
@@ -298,7 +319,8 @@ func postUnassignedReviewRequest(
 	flagFixes, ok := opts["fixes"]
 	if ok {
 		if fixes, ok := flagFixes.(uint); ok && fixes != 0 {
-			return extendUnassignedReviewRequest(config, owner, repo, int(fixes), commit, opts)
+			return extendReviewRequest(
+				config, owner, repo, int(fixes), []*git.Commit{commit}, opts)
 		}
 	}
 
@@ -349,17 +371,17 @@ func createUnassignedReviewRequest(
 			return nil, err
 		}
 	}
-	return meta, nil
+	return metadata, nil
 }
 
-// extendUnassignedReviewRequest can be used to upload fixes for
-// the specified unassigned review issue.
-func extendUnassignedReviewRequest(
+// extendReviewRequest is a general function that can be used to extend
+// the given review issue with the given list of commits.
+func extendReviewRequest(
 	config Config,
 	owner string,
 	repo string,
 	issueNum int,
-	commit *git.Commit,
+	commits []*git.Commit,
 	opts map[string]interface{},
 ) (*metastore.Resource, error) {
 
@@ -372,23 +394,8 @@ func extendUnassignedReviewRequest(
 		return nil, errs.NewError(task, err)
 	}
 
-	// Extend the given review issue.
-	return extendReviewRequest(config, owner, repo, issue, []*git.Commit{commit}, opts)
-}
-
-// extendReviewRequest is a general function that can be used to extend
-// the given review issue with the given list of commits.
-func extendReviewRequest(
-	config Config,
-	owner string,
-	repo string,
-	issue *github.Issue,
-	commits []*git.Commit,
-	opts map[string]interface{},
-) (*metastore.Resource, error) {
-
+	// Extend the review issue.
 	var (
-		issueNum     = *issue.Number
 		issueBody    = *issue.Body
 		bodyBuffer   = bytes.NewBufferString(issueBody)
 		addedCommits = make([]*git.Commit, 0, len(commits))
@@ -413,10 +420,8 @@ func extendReviewRequest(
 	}
 
 	// Edit the issue.
-	task := fmt.Sprintf("Update GitHub issue #%v", issueNum)
+	task = fmt.Sprintf("Update GitHub issue #%v", issueNum)
 	log.Run(task)
-
-	client := ghutil.NewClient(config.Token())
 	newIssue, _, err := client.Issues.Edit(owner, repo, issueNum, &github.IssueRequest{
 		Body:  github.String(bodyBuffer.String()),
 		State: github.String("open"),
@@ -452,7 +457,7 @@ func createIssue(
 	log.Run(task)
 	client := ghutil.NewClient(config.Token())
 	labels := []string{config.ReviewLabel()}
-	issue, _, err = client.Issues.Create(owner, repo, &github.IssueRequest{
+	issue, _, err := client.Issues.Create(owner, repo, &github.IssueRequest{
 		Title:     github.String(issueTitle),
 		Body:      github.String(issueBody),
 		Labels:    &labels,
@@ -603,12 +608,4 @@ func metadata(issue *github.Issue) *metastore.Resource {
 			"issue_url":    *issue.URL,
 		},
 	}
-}
-
-func metadataForCommits(commits []*git.Commit, issue *github.Issue) []*metastore.Resource {
-	rs := make([]*metastore.Resource, 0, len(commits))
-	for range commits {
-		rs := append(rs, metadata(issue))
-	}
-	return rs
 }
