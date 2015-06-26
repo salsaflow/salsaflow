@@ -96,7 +96,7 @@ You need Git version 1.9.0 or newer.
 		stableBranch = gitConfig.StableBranchName()
 	)
 
-	// Make sure that the master branch exists.
+	// Make sure that the stable branch exists.
 	task = fmt.Sprintf("Make sure branch '%v' exists", stableBranch)
 	log.Run(task)
 	err = git.CheckOrCreateTrackingBranch(stableBranch, remoteName)
