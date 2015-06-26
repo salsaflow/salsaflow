@@ -8,24 +8,24 @@ import (
 	"github.com/salsaflow/salsaflow/log"
 )
 
-type Error interface {
+type Err interface {
 	error
 	Task() string
 	Err() error
 	Hint() string
 }
 
-type Err struct {
+type errImpl struct {
 	task string
 	err  error
 	hint string
 }
 
-func NewError(task string, err error) Error {
+func NewError(task string, err error) Err {
 	return NewErrorWithHint(task, err, "")
 }
 
-func NewErrorWithHint(task string, err error, hint string) Error {
+func NewErrorWithHint(task string, err error, hint string) Err {
 	// The task name and the error must be set, always. Only the error hint is optional.
 	switch {
 	case task == "":
@@ -35,26 +35,26 @@ func NewErrorWithHint(task string, err error, hint string) Error {
 	}
 
 	// We are cool now, return a new Err instance.
-	return &Err{
+	return &errImpl{
 		task: task,
 		err:  err,
 		hint: hint,
 	}
 }
 
-func (err *Err) Error() string {
+func (err *errImpl) Error() string {
 	return err.err.Error()
 }
 
-func (err *Err) Hint() string {
+func (err *errImpl) Hint() string {
 	return err.hint
 }
 
-func (err *Err) Task() string {
+func (err *errImpl) Task() string {
 	return err.task
 }
 
-func (err *Err) Err() error {
+func (err *errImpl) Err() error {
 	return err.err
 }
 
@@ -66,19 +66,19 @@ func LogWith(err error, logger log.Logger) error {
 }
 
 func unsafeLogWith(err error, logger log.Logger) error {
-	// Handle errors implementing Error interface.
-	if ex, ok := err.(Error); ok {
+	// Handle errors implementing Err interface.
+	if ex, ok := err.(Err); ok {
 		logger.UnsafeFail(ex.Task())
 
 		hint := ex.Hint()
-		if next, ok := ex.Err().(Error); ok {
-			// The next error is also Error, call recursively
+		if next, ok := ex.Err().(Err); ok {
+			// The next error is also Err, call recursively
 			// after printing the hint when that is set.
 			logger.UnsafeStderr(hint)
 			return unsafeLogWith(next, logger)
 		} else {
 			// The next error is the root cause error.
-			// It is not implementing Error, so we can print
+			// It is not implementing Err, so we can print
 			// the root cause error and stop the recursion.
 			last := ex.Err()
 			logger.UnsafeNewLine(fmt.Sprintf("(error = %v)", last))
@@ -90,7 +90,7 @@ func unsafeLogWith(err error, logger log.Logger) error {
 	// Handle regular errors.
 	//
 	// This block is only executed when this function is called
-	// for the first time with an error not implementing Error.
+	// for the first time with an error not implementing Err.
 	logger.UnsafeFail("Unknown task")
 	logger.UnsafeNewLine(fmt.Sprintf("(error = %v)", err))
 	return err
@@ -119,7 +119,7 @@ func Fatal(err error) {
 
 // RootCause returns the error deepest in the error chain.
 func RootCause(err error) error {
-	if ex, ok := err.(Error); ok {
+	if ex, ok := err.(Err); ok {
 		return RootCause(ex.Err())
 	}
 	return err

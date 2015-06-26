@@ -90,7 +90,7 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 	}
 
 	var numThreads int
-	errCh := make(chan errs.Error, len(archive.File))
+	errCh := make(chan errs.Err, len(archive.File))
 
 	// Uncompress all the executables in the archive and move them into place.
 	// This part replaces the current executables with new ones just downloaded.
