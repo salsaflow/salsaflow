@@ -99,7 +99,7 @@ You need Git version 1.9.0 or newer.
 	// Make sure that the master branch exists.
 	task = fmt.Sprintf("Make sure branch '%v' exists", stableBranch)
 	log.Run(task)
-	err = git.EnsureLocalTrackingBranch(stableBranch, remoteName)
+	err = git.CheckOrCreateTrackingBranch(stableBranch, remoteName)
 	if err != nil {
 		if ex, ok := err.(*git.ErrRefNotFound); ok {
 			hint := fmt.Sprintf(
@@ -112,7 +112,7 @@ You need Git version 1.9.0 or newer.
 	// Make sure that the trunk branch exists.
 	task = fmt.Sprintf("Make sure branch '%v' exists", trunkBranch)
 	log.Run(task)
-	err = git.EnsureLocalTrackingBranch(trunkBranch, remoteName)
+	err = git.CheckOrCreateTrackingBranch(trunkBranch, remoteName)
 	if err != nil {
 		if _, ok := err.(*git.ErrRefNotFound); ok {
 			task := fmt.Sprintf("Create branch '%v'", trunkBranch)

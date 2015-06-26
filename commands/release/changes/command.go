@@ -85,7 +85,7 @@ func runMain() (err error) {
 
 	// Make sure that the local release branch exists.
 	task := "Make sure that the local release branch exists"
-	if err := git.EnsureLocalTrackingBranch(releaseBranch, remoteName); err != nil {
+	if err := git.CheckOrCreateTrackingBranch(releaseBranch, remoteName); err != nil {
 		return errs.NewError(task, err)
 	}
 

@@ -286,13 +286,13 @@ func EnsureBranchSynchronized(branch, remote string) error {
 	return nil
 }
 
-// EnsureLocalTrackingBranch tries to make sure that a local branch
+// CheckOrCreateTrackingBranch tries to make sure that a local branch
 // of the given name exists and is in sync with the given remote.
 //
 // So, in case the right remote branch exists and the local does not,
 // the local tracking branch is created. In case the local branch
 // exists already, it is ensured that it is up to date.
-func EnsureLocalTrackingBranch(branch, remote string) error {
+func CheckOrCreateTrackingBranch(branch, remote string) error {
 	// Check whether the remote counterpart exists.
 	exists, err := RemoteBranchExists(branch, remote)
 	if err != nil {

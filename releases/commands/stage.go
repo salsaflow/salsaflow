@@ -79,7 +79,7 @@ func Stage(options *StageOptions) (act action.Action, err error) {
 	// Make sure that the local release branch exists and is up to date.
 	task = fmt.Sprintf("Make sure that branch '%v' is up to date", releaseBranch)
 	log.Run(task)
-	if err := git.EnsureLocalTrackingBranch(releaseBranch, remoteName); err != nil {
+	if err := git.CheckOrCreateTrackingBranch(releaseBranch, remoteName); err != nil {
 		return nil, errs.NewError(task, err)
 	}
 

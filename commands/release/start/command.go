@@ -85,7 +85,7 @@ func runMain() (err error) {
 
 	// Make sure that the trunk branch is up to date.
 	task := fmt.Sprintf("Make sure that branch '%v' is up to date", trunkBranch)
-	if err := git.EnsureLocalTrackingBranch(trunkBranch, remote); err != nil {
+	if err := git.CheckOrCreateTrackingBranch(trunkBranch, remote); err != nil {
 		return errs.NewError(task, err)
 	}
 

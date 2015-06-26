@@ -81,7 +81,7 @@ func runMain() error {
 	// Check branches.
 	checkBranch := func(branchName string) error {
 		task := fmt.Sprintf("Make sure that branch '%v' exists and is up to date", branchName)
-		if err := git.EnsureLocalTrackingBranch(branchName, remoteName); err != nil {
+		if err := git.CheckOrCreateTrackingBranch(branchName, remoteName); err != nil {
 			return errs.NewError(task, err)
 		}
 		return nil
