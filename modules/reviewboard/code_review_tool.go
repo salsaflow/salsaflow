@@ -173,7 +173,36 @@ func postReviewRequestForCommit(
 	logger.UnsafeOk(task)
 	fmt.Print(out)
 	logger.Unlock()
-	return nil
+
+	return parseRbtOutput(out)
+}
+
+func parseRbtOutput(out string) (*metastore.Resource, error) {
+	// The format is:
+	//
+	// Review request #12832 posted.
+	//
+	// https://review.example.com/r/12832/
+	// https://review.example.com/r/12832/diff/
+
+	task := "Parse rbt output"
+	lines := strings.Split(out, "\n")
+
+	match := regexp.MustCompile("^Review request #([0-9]+) posted[.]$").FindStringSubmatch(lines[0])
+	if len(match) != 2 {
+		hint := fmt.Sprintf("failed to parse line 1: %v", lines[0])
+		return nil, errs.NewError(task, errors.New("failed to parse rbt output", hint))
+	}
+	rrid, _ := strconv.Itoa(match[1])
+	link := lines[2]
+
+	return &metastore.Resource{
+		ServiceId: "reviewboard",
+		Metadata: map[string]interface{}{
+			"rr_id":   rrid,
+			"rr_link": link,
+		},
+	}, nil
 }
 
 func formatOptInteger(value interface{}) string {
