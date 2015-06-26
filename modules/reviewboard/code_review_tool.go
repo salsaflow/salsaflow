@@ -51,19 +51,28 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 func (tool *codeReviewTool) PostReviewRequests(
 	ctxs []*common.ReviewContext,
 	opts map[string]interface{},
-) (err error) {
+) ([]*commit.ReviewContext, error) {
 
-	// Use PostReviewRequestForCommit for every commit on the branch.
+	// Use postReviewRequestForCommit for every commit on the branch.
 	// Try to post a review request for every commit and keep printing the errors.
 	// Return a common error in case there is any partial error encountered.
+	var (
+		newCtxs = make([]*common.ReviewContext, 0, len(ctxs))
+		err     error
+	)
 	for _, ctx := range ctxs {
-		if ex := postReviewRequestForCommit(ctx, opts); ex != nil {
+		newCtx, ex := postReviewRequestForCommit(ctx, opts)
+		if ex != nil {
 			log.NewLine("")
 			errs.Log(ex)
 			err = errors.New("failed to post a review request")
 		}
+		newCtxs = append(newCtxs, newCtx)
 	}
-	return
+	if err != nil {
+		return nil, err
+	}
+	return newCtxs, nil
 }
 
 func (tool *codeReviewTool) PostReviewFollowupMessage() string {
@@ -92,20 +101,12 @@ This will create a new review request that is linked to the one being fixed.
 func postReviewRequestForCommit(
 	ctx *common.ReviewContext,
 	opts map[string]interface{},
-) error {
+) (*common.ReviewContext, error) {
 
 	var (
 		commit = ctx.Commit
 		story  = ctx.Story
 	)
-
-	// Assert that certain field are set.
-	switch {
-	case commit.SHA == "":
-		panic("SHA not set for the commit being posted")
-	case commit.StoryIdTag == "":
-		panic("story ID not set for the commit being posted")
-	}
 
 	// Load the RB config.
 	config, err := LoadConfig()
@@ -143,9 +144,13 @@ func postReviewRequestForCommit(
 	}
 	args = append(args, commit.SHA)
 
-	var task string
+	var (
+		task   string
+		newCtx *common.ReviewContext
+	)
 	if update != "" {
 		task = "Update a Review Board review request with commit " + commit.SHA
+		newCtx = ctx
 	} else {
 		task = "Create a Review Board review request for commit " + commit.SHA
 	}
@@ -160,11 +165,13 @@ func postReviewRequestForCommit(
 			return errs.NewErrorWithHint(task, err, stderr.String())
 		}
 	}
+
+	out := stdout.String()
 	logger := log.V(log.Info)
 	logger.Lock()
 	logger.UnsafeNewLine("")
 	logger.UnsafeOk(task)
-	fmt.Print(stdout)
+	fmt.Print(out)
 	logger.Unlock()
 	return nil
 }
