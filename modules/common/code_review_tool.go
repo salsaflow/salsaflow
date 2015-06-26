@@ -15,8 +15,6 @@ type ReviewContext struct {
 	Story         Story
 }
 
-type Map map[string]interface{}
-
 type CodeReviewTool interface {
 	// InitialiseRelease is called during `release start`
 	// when a new version string is committed into trunk.

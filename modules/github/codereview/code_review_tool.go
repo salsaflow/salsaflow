@@ -130,8 +130,8 @@ func (tool *codeReviewTool) PostReviewRequests(
 	// In case the commit is associated with a story, we add it to the relevant story group.
 	// Otherwise the commit is marked as unassigned and added to the relevant list.
 	var (
-		ctxsByStoryId     = make(map[string][]*common.ReviewContext, 1)
-		unassignedCommits = make([]*git.Commit, 0, 1)
+		ctxsByStoryId  = make(map[string][]*common.ReviewContext, 1)
+		ctxsUnassigned = make([]*common.ReviewContext, 0, 1)
 	)
 	for _, ctx := range ctxs {
 		story := ctx.Story
@@ -145,7 +145,7 @@ func (tool *codeReviewTool) PostReviewRequests(
 			}
 			ctxsByStoryId[sid] = rcs
 		} else {
-			unassignedCommits = append(unassignedCommits, ctx.Commit)
+			ctxsUnassigned = append(ctxsUnassigned, ctx)
 		}
 	}
 
@@ -162,31 +162,33 @@ func (tool *codeReviewTool) PostReviewRequests(
 		for _, ctx := range ctxs {
 			commits = append(commits, ctx.Commit)
 		}
-		metadata, ex := postAssignedReviewRequest(config, owner, repo, story, commits, reviewRequest, opts)
+		reviewRequest, ex := postAssignedReviewRequest(
+			config, owner, repo, story, commits, reviewRequest, opts)
 		if ex != nil {
 			errs.Log(ex)
 			err = errPostReviewRequest
 			continue
 		}
-		for _, ctx := range ctxs {
+		for i, ctx := range ctxs {
 			updatedCtxs = append(updatedCtxs, &common.ReviewContext{
 				Commit:        ctx.Commit,
-				ReviewRequest: metadata,
+				ReviewRequest: reviewRequest,
 				Story:         ctx.Story,
 			})
 		}
 	}
 
 	// Post the unassigned commits.
-	for _, commit := range unassignedCommits {
-		metadata, ex := postUnassignedReviewRequest(config, owner, repo, commit, opts)
+	for _, ctx := range ctxsUnassigned {
+		metadata, ex := postUnassignedReviewRequest(
+			config, owner, repo, ctx.Commit, ctx.ReviewRequest, opts)
 		if ex != nil {
 			errs.Log(ex)
 			err = errPostReviewRequest
 			continue
 		}
-		updatedCtxs = append(updateCtxs, &common.ReviewContext{
-			Commit:        commit,
+		updatedCtxs = append(updatedCtxs, &common.ReviewContext{
+			Commit:        ctx.Commit,
 			ReviewRequest: metadata,
 		})
 	}
@@ -315,8 +317,8 @@ func createUnassignedReviewRequest(
 	config Config,
 	owner string,
 	repo string,
-	reviewRequest *metastore.Resource,
 	commit *git.Commit,
+	reviewRequest *metastore.Resource,
 	opts map[string]interface{},
 ) (*metastore.Resource, error) {
 
@@ -383,7 +385,7 @@ func extendReviewRequest(
 	issue *github.Issue,
 	commits []*git.Commit,
 	opts map[string]interface{},
-) error {
+) (*metastore.Resource, error) {
 
 	var (
 		issueNum     = *issue.Number
@@ -407,7 +409,7 @@ func extendReviewRequest(
 
 	if len(addedCommits) == 0 {
 		log.Log(fmt.Sprintf("All commits already listed in issue #%v", issueNum))
-		return nil
+		return metadata(issue), nil
 	}
 
 	// Edit the issue.
@@ -420,19 +422,48 @@ func extendReviewRequest(
 		State: github.String("open"),
 	})
 	if err != nil {
-		return errs.NewError(task, err)
+		return nil, errs.NewError(task, err)
 	}
 
 	// Add the review comment.
 	if err := addReviewComment(config, owner, repo, issueNum, addedCommits); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Open the issue if requested.
 	if _, open := opts["open"]; open {
-		return openIssue(newIssue)
+		if err := openIssue(newIssue); err != nil {
+			return nil, err
+		}
 	}
-	return nil
+	return metadata(issue), nil
+}
+
+func createIssue(
+	task string,
+	config Config,
+	owner string,
+	repo string,
+	issueTitle string,
+	issueBody string,
+	milestone *github.Milestone,
+) (*github.Issue, *metastore.Resource, error) {
+
+	log.Run(task)
+	client := ghutil.NewClient(config.Token())
+	labels := []string{config.ReviewLabel()}
+	issue, _, err = client.Issues.Create(owner, repo, &github.IssueRequest{
+		Title:     github.String(issueTitle),
+		Body:      github.String(issueBody),
+		Labels:    &labels,
+		Milestone: milestone.Number,
+	})
+	if err != nil {
+		return nil, nil, errs.NewError(task, err)
+	}
+
+	log.Log(fmt.Sprintf("GitHub issue #%v created", *issue.Number))
+	return issue, metadata(issue), nil
 }
 
 func addReviewComment(
@@ -467,33 +498,6 @@ func openIssue(issue *github.Issue) error {
 		return errs.NewError(task, err)
 	}
 	return nil
-}
-
-func createIssue(
-	task string,
-	config Config,
-	owner string,
-	repo string,
-	issueTitle string,
-	issueBody string,
-	milestone *github.Milestone,
-) (*github.Issue, *metastore.Resource, error) {
-
-	log.Run(task)
-	client := ghutil.NewClient(config.Token())
-	labels := []string{config.ReviewLabel()}
-	issue, _, err = client.Issues.Create(owner, repo, &github.IssueRequest{
-		Title:     github.String(issueTitle),
-		Body:      github.String(issueBody),
-		Labels:    &labels,
-		Milestone: milestone.Number,
-	})
-	if err != nil {
-		return nil, nil, errs.NewError(task, err)
-	}
-
-	log.Log(fmt.Sprintf("GitHub issue #%v created", *issue.Number))
-	return issue, metadata(issue), nil
 }
 
 func createMilestone(
@@ -599,4 +603,12 @@ func metadata(issue *github.Issue) *metastore.Resource {
 			"issue_url":    *issue.URL,
 		},
 	}
+}
+
+func metadataForCommits(commits []*git.Commit, issue *github.Issue) []*metastore.Resource {
+	rs := make([]*metastore.Resource, 0, len(commits))
+	for range commits {
+		rs := append(rs, metadata(issue))
+	}
+	return rs
 }
