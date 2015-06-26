@@ -565,6 +565,7 @@ func sendReviewRequests(ctxs []*common.ReviewContext) error {
 	}
 
 	// Store metadata.
+	// XXX: This also uploads the metadata that hasn't changed. Improve this.
 	meta := make([]*metastore.CommitData, 0, len(ctxs))
 	for _, ctx := range ctxs {
 		meta = append(meta, ctx.Meta)
