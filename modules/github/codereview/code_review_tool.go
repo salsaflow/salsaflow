@@ -67,7 +67,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 	releaseString := v.BaseString()
 	task := fmt.Sprintf("Get code review milestone for release %v", releaseString)
 	log.Run(task)
-	milestone, err := milestoneForVersion(config, owner, repo, v, false)
+	milestone, err := getOrCreateMilestoneForVersion(config, owner, repo, v, true)
 	if err != nil {
 		if _, ok := errs.RootCause(err).(*ErrMilestoneNotFound); ok {
 			log.Warn("Weird, " + err.Error())
@@ -305,7 +305,8 @@ func createAssignedReviewRequest(
 	}
 
 	// Get the right review milestone to add the issue into.
-	milestone, err := milestoneForCommit(config, owner, repo, commits[len(commits)-1].SHA, true)
+	milestone, err := getOrCreateMilestoneForCommit(
+		config, owner, repo, commits[len(commits)-1].SHA, false)
 	if err != nil {
 		return err
 	}
@@ -392,7 +393,7 @@ func createUnassignedReviewRequest(
 	)
 
 	// Get the right review milestone to add the issue into.
-	milestone, err := milestoneForCommit(config, owner, repo, commit.SHA, true)
+	milestone, err := getOrCreateMilestoneForCommit(config, owner, repo, commit.SHA, false)
 	if err != nil {
 		return err
 	}
@@ -589,12 +590,12 @@ func createMilestone(
 	}), nil
 }
 
-func milestoneForVersion(
+func getOrCreateMilestoneForVersion(
 	config Config,
 	owner string,
 	repo string,
 	v *version.Version,
-	createIfMissing bool,
+	dontCreate bool,
 ) (*github.Milestone, error) {
 
 	// Fetch milestones for the given repository.
@@ -617,7 +618,7 @@ func milestoneForVersion(
 	}
 
 	// Create the milestone if that is desired.
-	if createIfMissing {
+	if !dontCreate {
 		milestone, _, err := createMilestone(config, owner, repo, v)
 		return milestone, err
 	}
@@ -625,12 +626,12 @@ func milestoneForVersion(
 	return nil, errs.NewError(task, &ErrMilestoneNotFound{v})
 }
 
-func milestoneForCommit(
+func getOrCreateMilestoneForCommit(
 	config Config,
 	owner string,
 	repo string,
 	sha string,
-	createIfMissing bool,
+	dontCreate bool,
 ) (*github.Milestone, error) {
 
 	// Get the version associated with the given commit.
@@ -640,7 +641,7 @@ func milestoneForCommit(
 	}
 
 	// Return the associated milestone.
-	return milestoneForVersion(config, owner, repo, v, createIfMissing)
+	return getOrCreateMilestoneForVersion(config, owner, repo, v, dontCreate)
 }
 
 func milestoneTitle(v *version.Version) string {
