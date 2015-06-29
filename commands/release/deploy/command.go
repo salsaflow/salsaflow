@@ -170,28 +170,6 @@ func runMain() (err error) {
 		return nil
 	}))
 
-	// Try to reset the staging branch to the release branch
-	// in case the release branch is started already.
-	// This basically means that we want to run `release stage`.
-	log.Log("Trying to stage the next release for acceptance")
-	act, err = commands.Stage(&commands.StageOptions{
-		SkipFetch: true,
-	})
-	if err != nil {
-		// Not terribly pretty, but it works. We just handle the known errors and continue.
-		// It is ok when the release branch does not exist yet or the release cannot be staged
-		// in the issue tracker.
-		rootCause := errs.RootCause(err)
-		if ex, ok := rootCause.(*git.ErrRefNotFound); ok {
-			log.Log(fmt.Sprintf("Git reference '%v' not found, staging canceled", ex.Ref()))
-		} else if rootCause == common.ErrNotStageable {
-			log.Log("The next release cannot be staged yet, skipping ...")
-		} else {
-			return err
-		}
-	}
-	defer action.RollbackOnError(&err, act)
-
 	// Push the changes to the remote repository.
 	task = "Push changes to the remote repository"
 	log.Run(task)
@@ -202,5 +180,31 @@ func runMain() (err error) {
 	if err := git.PushForce(remoteName, toPush...); err != nil {
 		return errs.NewError(task, err)
 	}
+
+	// Now we proceed to the staging step. We do not roll back
+	// the previous changes on error since this is a separate step.
+	tryToStageRunningRelease()
 	return nil
+}
+
+func tryToStageRunningRelease() {
+	stagingTask := "Try to stage the next release for acceptance"
+	log.Run(stagingTask)
+	_, err := commands.Stage(&commands.StageOptions{
+		SkipFetch: true,
+	})
+	if err != nil {
+		// Not terribly pretty, but it works. We just handle the known errors and continue.
+		// It is ok when the release branch does not exist yet or the release cannot be staged
+		// in the issue tracker.
+		rootCause := errs.RootCause(err)
+		if ex, ok := rootCause.(*git.ErrRefNotFound); ok {
+			log.Log(fmt.Sprintf("Git reference '%v' not found, staging canceled", ex.Ref()))
+		} else if rootCause == common.ErrNotStageable {
+			log.Log("The next release cannot be staged yet, staging canceled")
+		} else {
+			errs.LogError(stagingTask, err)
+			log.Log("Failed to stage the next release, continuing anyway ...")
+		}
+	}
 }
