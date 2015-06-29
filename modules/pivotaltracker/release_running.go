@@ -92,13 +92,13 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	}
 
 	// Set all the states to Delivered.
-	updateRequest := &pivotal.Story{State: pivotal.StoryStateDelivered}
-	updateFunc := func(story *pivotal.Story) *pivotal.Story {
+	updateRequest := &pivotal.StoryRequest{State: pivotal.StoryStateDelivered}
+	updateFunc := func(story *pivotal.Story) *pivotal.StoryRequest {
 		return updateRequest
 	}
 	// On rollback, get the original state from the map.
-	rollbackFunc := func(story *pivotal.Story) *pivotal.Story {
-		return &pivotal.Story{State: originalStates[story.Id]}
+	rollbackFunc := func(story *pivotal.Story) *pivotal.StoryRequest {
+		return &pivotal.StoryRequest{State: originalStates[story.Id]}
 	}
 
 	// Update the stories.
