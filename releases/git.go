@@ -20,22 +20,29 @@ func ListNewTrunkCommits() ([]*git.Commit, error) {
 	if err != nil {
 		return nil, err
 	}
-	trunkBranch := config.TrunkBranchName()
+	var (
+		remoteName    = config.RemoteName()
+		trunkBranch   = config.TrunkBranchName()
+		stagingBranch = config.StagingBranchName()
+	)
 
-	// Get sorted release tags.
-	tags, err := ListTags()
+	// By default, use the staging branch as the --not part.
+	// In other words, list commits that are on trunk,
+	// but which are not reachable from the staging branch.
+	// In case the staging branch doesn't exist, take the whole trunk.
+	// That probably means that no release has ever been started,
+	// so the staging branch has not been created yet.
+	startingReference := stagingBranch
+	err = git.CheckOrCreateTrackingBranch(stagingBranch, remoteName)
 	if err != nil {
+		if _, ok := err.(*git.ErrRefNotFound); ok {
+			startingReference = trunkBranch
+		}
 		return nil, err
 	}
 
-	// In case there are no tags, take the whole trunk branch.
-	if len(tags) == 0 {
-		return git.ShowCommitRange(trunkBranch)
-	}
-
 	// Return the list of relevant commits.
-	lastTag := tags[len(tags)-1]
-	return git.ShowCommitRange(fmt.Sprintf("%v..%v", lastTag, trunkBranch))
+	return git.ShowCommitRange(fmt.Sprintf("%v..%v", startingReference, trunkBranch))
 }
 
 // ListStoryIdsToBeAssigned lists the story IDs that are associated with
