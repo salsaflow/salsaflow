@@ -28,7 +28,7 @@ func storiesMatchingByLabel(stories []*pivotal.Story, filter *regexp.Regexp) []*
 	var ss []*pivotal.Story
 StoryLoop:
 	for _, story := range stories {
-		for _, label := range *story.Labels {
+		for _, label := range story.Labels {
 			if filter.MatchString(label.Name) {
 				ss = append(ss, story)
 				continue StoryLoop
@@ -40,7 +40,7 @@ StoryLoop:
 }
 
 func labeled(story *pivotal.Story, label string) bool {
-	for _, lab := range *story.Labels {
+	for _, lab := range story.Labels {
 		if lab.Name == label {
 			return true
 		}

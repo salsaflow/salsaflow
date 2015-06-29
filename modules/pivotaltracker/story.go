@@ -84,7 +84,7 @@ func (story *story) Title() string {
 
 func (story *story) Assignees() []common.User {
 	var users []common.User
-	for _, id := range *story.OwnerIds {
+	for _, id := range story.OwnerIds {
 		users = append(users, userId(id))
 	}
 	return users
@@ -92,7 +92,7 @@ func (story *story) Assignees() []common.User {
 
 func (story *story) AddAssignee(user common.User) error {
 	task := fmt.Sprintf("Add user as the owner to story %v", user.Id(), story.Id)
-	for _, id := range *story.OwnerIds {
+	for _, id := range story.OwnerIds {
 		if strconv.Itoa(id) == user.Id() {
 			return nil
 		}
@@ -123,7 +123,7 @@ func (story *story) SetAssignees(users []common.User) error {
 		client    = pivotal.NewClient(config.UserToken())
 		projectId = config.ProjectId()
 	)
-	updateRequest := &pivotal.Story{OwnerIds: &ownerIds}
+	updateRequest := &pivotal.StoryRequest{OwnerIds: &ownerIds}
 	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
 	if err != nil {
 		return errs.NewError(task, err)
@@ -140,7 +140,7 @@ func (story *story) Start() error {
 		client    = pivotal.NewClient(config.UserToken())
 		projectId = config.ProjectId()
 	)
-	updateRequest := &pivotal.Story{State: pivotal.StoryStateStarted}
+	updateRequest := &pivotal.StoryRequest{State: pivotal.StoryStateStarted}
 	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
 	if err != nil {
 		return errs.NewError(task, err)
@@ -158,8 +158,8 @@ func (story *story) MarkAsImplemented() (action.Action, error) {
 	)
 
 	var alreadyThere bool
-	ls := make([]*pivotal.Label, 0, len(*story.Labels))
-	for _, l := range *story.Labels {
+	ls := make([]*pivotal.Label, 0, len(story.Labels))
+	for _, l := range story.Labels {
 		if l.Name == label {
 			alreadyThere = true
 		}
@@ -171,7 +171,7 @@ func (story *story) MarkAsImplemented() (action.Action, error) {
 	ls = append(ls, &pivotal.Label{Name: label})
 
 	updateTask := fmt.Sprintf("Update Pivotal Tracker story (id = %v)", story.Story.Id)
-	updateRequest := &pivotal.Story{Labels: &ls}
+	updateRequest := &pivotal.StoryRequest{Labels: &ls}
 	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
 	if err != nil {
 		return nil, errs.NewError(updateTask, err)
@@ -181,7 +181,7 @@ func (story *story) MarkAsImplemented() (action.Action, error) {
 
 	return action.ActionFunc(func() error {
 		log.Rollback(updateTask)
-		updateRequest := &pivotal.Story{Labels: originalStory.Labels}
+		updateRequest := &pivotal.StoryRequest{Labels: &originalStory.Labels}
 		updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
 		if err != nil {
 			return err
@@ -200,13 +200,5 @@ func (s *story) IssueTracker() common.IssueTracker {
 }
 
 func (s *story) isLabeled(label string) bool {
-	if s.Labels == nil {
-		return false
-	}
-	for _, l := range *s.Labels {
-		if l.Name == label {
-			return true
-		}
-	}
-	return false
+	return labeled(s.Story, label)
 }

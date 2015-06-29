@@ -103,27 +103,27 @@ func listStoriesByIdOrdered(
 }
 
 func addLabelFunc(label string) storyUpdateFunc {
-	return func(story *pivotal.Story) *pivotal.Story {
+	return func(story *pivotal.Story) *pivotal.StoryRequest {
 		// Make sure the label is not already there.
 		labels := story.Labels
-		for _, l := range *labels {
+		for _, l := range labels {
 			if l.Name == label {
 				return nil
 			}
 		}
 
 		// Return the update request.
-		ls := append(*labels, &pivotal.Label{Name: label})
-		return &pivotal.Story{Labels: &ls}
+		ls := append(labels, &pivotal.Label{Name: label})
+		return &pivotal.StoryRequest{Labels: &ls}
 	}
 }
 
 func removeLabelFunc(label string) storyUpdateFunc {
-	return func(story *pivotal.Story) *pivotal.Story {
+	return func(story *pivotal.Story) *pivotal.StoryRequest {
 		// Make sure the label is there.
 		index := -1
 		labels := story.Labels
-		for i, l := range *labels {
+		for i, l := range labels {
 			if l.Name == label {
 				index = i
 				break
@@ -134,8 +134,8 @@ func removeLabelFunc(label string) storyUpdateFunc {
 		}
 
 		// Return the update request.
-		ls := append((*labels)[:index], (*labels)[index+1:]...)
-		return &pivotal.Story{Labels: &ls}
+		ls := append(labels[:index], labels[index+1:]...)
+		return &pivotal.StoryRequest{Labels: &ls}
 	}
 }
 
@@ -159,7 +159,7 @@ func removeLabel(
 	return updateStories(client, projectId, stories, removeLabelFunc(label), addLabelFunc(label))
 }
 
-type storyUpdateFunc func(story *pivotal.Story) (updateRequest *pivotal.Story)
+type storyUpdateFunc func(story *pivotal.Story) (updateRequest *pivotal.StoryRequest)
 
 type storyUpdateResult struct {
 	story *pivotal.Story
