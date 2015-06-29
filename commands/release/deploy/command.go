@@ -184,7 +184,7 @@ func runMain() (err error) {
 		rootCause := errs.RootCause(err)
 		if ex, ok := rootCause.(*git.ErrRefNotFound); ok {
 			log.Log(fmt.Sprintf("Git reference '%v' not found, staging canceled", ex.Ref()))
-		} else if _, ok := rootCause.(*common.ErrNotStageable); ok {
+		} else if rootCause == common.ErrNotStageable {
 			log.Log("The next release cannot be staged yet, skipping ...")
 		} else {
 			return err

@@ -3,7 +3,6 @@ package jira
 import (
 	// Stdlib
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"text/tabwriter"
@@ -67,23 +66,18 @@ func (release *runningRelease) EnsureStageable() error {
 	io.WriteString(tw, "Issue Key\tError\n")
 	io.WriteString(tw, "=========\t=====\n")
 
-	var (
-		err             error
-		errNotStageable = errors.New("release cannot be staged")
-	)
+	var err error
 	for _, issue := range release.issues {
 		if ex := ensureStageableIssue(issue); ex != nil {
 			fmt.Fprintf(tw, "%v\t%v\n", issue.Key, ex)
-			err = errNotStageable
+			err = common.ErrNotStageable
 		}
 	}
 
 	if err != nil {
 		io.WriteString(tw, "\n")
 		tw.Flush()
-		return &common.ErrNotStageable{
-			errs.NewErrorWithHint(task, err, details.String()),
-		}
+		return errs.NewErrorWithHint(task, err, details.String())
 	}
 	return nil
 }
@@ -152,12 +146,10 @@ IssueLoop:
 	tw.Flush()
 
 	versionString := release.releaseVersion.BaseString()
-	return &common.ErrNotReleasable{
-		errs.NewErrorWithHint(
-			fmt.Sprintf("Make sure release %v can be released", versionString),
-			fmt.Errorf("release %v cannot be released", versionString),
-			hint.String()),
-	}
+	return errs.NewErrorWithHint(
+		fmt.Sprintf("Make sure release %v can be released", versionString),
+		common.ErrNotReleasable,
+		hint.String())
 }
 
 func (release *runningRelease) Release() error {

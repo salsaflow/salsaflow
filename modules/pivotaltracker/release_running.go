@@ -3,7 +3,6 @@ package pivotaltracker
 import (
 	// Stdlib
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"text/tabwriter"
@@ -62,19 +61,16 @@ func (release *runningRelease) EnsureStageable() error {
 
 	// For a story to be stageable, it must be in the Finished stage.
 	// That by definition means that it has been reviewed and verified.
-	errNotStageable := errors.New("release not stageable")
 	for _, story := range stories {
 		if !stateAtLeast(story, pivotal.StoryStateFinished) {
 			fmt.Fprintf(tw, "%v\t%v\n", story.URL, "story not finished yet")
-			err = errNotStageable
+			err = common.ErrNotStageable
 		}
 	}
 	if err != nil {
 		io.WriteString(tw, "\n")
 		tw.Flush()
-		return &common.ErrNotStageable{
-			errs.NewErrorWithHint(task, err, details.String()),
-		}
+		return errs.NewErrorWithHint(task, err, details.String())
 	}
 	return nil
 }
@@ -170,10 +166,7 @@ func (release *runningRelease) EnsureReleasable() error {
 	fmt.Fprintf(tw, "\n")
 	tw.Flush()
 
-	return &common.ErrNotReleasable{
-		errs.NewErrorWithHint(
-			task, fmt.Errorf("release %v cannot be released", versionString), hint.String()),
-	}
+	return errs.NewErrorWithHint(task, common.ErrNotReleasable, hint.String())
 }
 
 func (release *runningRelease) Release() error {

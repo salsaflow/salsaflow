@@ -1,18 +1,14 @@
 package common
 
 import (
-	// Internal
-	"github.com/salsaflow/salsaflow/errs"
+	// Stdlib
+	"errors"
 )
 
 // ErrNotStageable shall be returned from EnsureStageable()
 // when the given release cannot be staged yet.
-type ErrNotStageable struct {
-	errs.Err
-}
+var ErrNotStageable = errors.New("release cannot be staged")
 
 // ErrNotReleasable shall be returned from EnsureReleasable()
 // when the given release cannot be released yet.
-type ErrNotReleasable struct {
-	errs.Err
-}
+var ErrNotReleasable = errors.New("release cannot be released")
