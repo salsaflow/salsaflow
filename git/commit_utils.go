@@ -58,6 +58,19 @@ func ShowCommitRange(revisionRange string) ([]*Commit, error) {
 	return ParseCommits(stdout.Bytes())
 }
 
+type CommitFilterFunc func(*Commit) bool
+
+// FilterCommits can be used to filter commits by the given filter function.
+func FilterCommits(commits []*Commit, filterFunc CommitFilterFunc) []*Commit {
+	cs := make([]*Commit, 0, len(commits))
+	for _, commit := range commits {
+		if filterFunc(commit) {
+			cs = append(cs, commit)
+		}
+	}
+	return cs
+}
+
 // FixCommitSources can be used to set the Source field for the given commits
 // to the right value in respect to the branching model.
 //

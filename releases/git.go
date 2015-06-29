@@ -10,10 +10,12 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/modules/common"
+	"github.com/salsaflow/salsaflow/repo"
 	"github.com/salsaflow/salsaflow/version"
 )
 
 // ListNewTrunkCommits returns the list of commits that are new since the last release.
+// By the last release we mean the last release being tested, staged or released.
 func ListNewTrunkCommits() ([]*git.Commit, error) {
 	// Get git config.
 	config, err := git.LoadConfig()
@@ -23,6 +25,7 @@ func ListNewTrunkCommits() ([]*git.Commit, error) {
 	var (
 		remoteName    = config.RemoteName()
 		trunkBranch   = config.TrunkBranchName()
+		releaseBranch = config.ReleaseBranchName()
 		stagingBranch = config.StagingBranchName()
 	)
 
@@ -32,17 +35,43 @@ func ListNewTrunkCommits() ([]*git.Commit, error) {
 	// In case the staging branch doesn't exist, take the whole trunk.
 	// That probably means that no release has ever been started,
 	// so the staging branch has not been created yet.
-	startingReference := stagingBranch
-	err = git.CheckOrCreateTrackingBranch(stagingBranch, remoteName)
-	if err != nil {
-		if _, ok := err.(*git.ErrRefNotFound); ok {
-			startingReference = trunkBranch
+	var rangeStart string
+	for _, branch := range [...]string{releaseBranch, stagingBranch} {
+		err := git.CheckOrCreateTrackingBranch(branch, remoteName)
+		// In case the branch is ok, we use it.
+		if err == nil {
+			rangeStart = branch
+			break
 		}
+		// In case the branch does not exist, it's ok and we continue.
+		if _, ok := err.(*git.ErrRefNotFound); ok {
+			continue
+		}
+		// Otherwise we return the error since something has just exploded.
+		// This can mean that the branch is not up to date, but that is an error as well.
 		return nil, err
 	}
 
-	// Return the list of relevant commits.
-	return git.ShowCommitRange(fmt.Sprintf("%v..%v", startingReference, trunkBranch))
+	// Get the commits in range.
+	commits, err := git.ShowCommitRange(fmt.Sprintf("%v..%v", rangeStart, trunkBranch))
+	if err != nil {
+		return nil, err
+	}
+
+	// In case we were doing ..trunk, limit the commits by date.
+	if rangeStart != "" {
+		return commits, nil
+	}
+
+	repoConfig, err := repo.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+	enabledTimestamp := repoConfig.SalsaFlowEnabledTimestamp()
+	commits = git.FilterCommits(commits, func(commit *git.Commit) bool {
+		return commit.AuthorDate.After(enabledTimestamp)
+	})
+	return commits, nil
 }
 
 // ListStoryIdsToBeAssigned lists the story IDs that are associated with

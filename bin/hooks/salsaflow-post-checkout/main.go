@@ -11,6 +11,7 @@ import (
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/hooks"
 	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/repo"
 )
 
 func main() {
@@ -68,23 +69,14 @@ func hook() error {
 	}
 
 	// Drop commits that happened before SalsaFlow bootstrap.
-	enabledTimestamp, err := hooks.SalsaFlowEnabledTimestamp()
+	repoConfig, err := repo.LoadConfig()
 	if err != nil {
 		return err
 	}
-	// Only perform the filtering in case the timestamp is set.
-	if enabledTimestamp.IsZero() {
-		return printConfigWarning()
-	}
-
-	salsaFlowCommits := make([]*git.Commit, 0, len(commits))
-	for _, commit := range commits {
-		if commit.AuthorDate.Before(enabledTimestamp) {
-			continue
-		}
-		salsaFlowCommits = append(salsaFlowCommits, commit)
-	}
-	commits = salsaFlowCommits
+	enabledTimestamp := repoConfig.SalsaFlowEnabledTimestamp()
+	commits = git.FilterCommits(commits, func(commit *git.Commit) bool {
+		return commit.AuthorDate.After(enabledTimestamp)
+	})
 
 	// Collect the commits with missing Story-Id tag.
 	missing := make([]*git.Commit, 0, len(commits))
@@ -148,20 +140,6 @@ func printWarning(commits []*git.Commit) error {
 
 	fmt.Fprintln(console)
 	hooks.PrintUnassignedWarning(console, commits)
-	fmt.Fprintln(console)
-
-	return nil
-}
-
-func printConfigWarning() error {
-	console, err := prompt.OpenConsole(os.O_WRONLY)
-	if err != nil {
-		return err
-	}
-	defer console.Close()
-
-	fmt.Fprintln(console)
-	hooks.PrintSalsaFlowEnabledTimestampWarning(console)
 	fmt.Fprintln(console)
 
 	return nil

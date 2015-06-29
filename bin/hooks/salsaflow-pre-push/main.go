@@ -15,6 +15,7 @@ import (
 	"github.com/salsaflow/salsaflow/hooks"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/repo"
 )
 
 func main() {
@@ -56,17 +57,12 @@ func run(remoteName, pushURL string) error {
 		return err
 	}
 
-	// Load the hook-related SalsaFlow config.
-	enabledTimestamp, err := hooks.SalsaFlowEnabledTimestamp()
+	// Load the other necessary SalsaFlow config.
+	repoConfig, err := repo.LoadConfig()
 	if err != nil {
 		return err
 	}
-	if enabledTimestamp.IsZero() {
-		if err = printConfigWarning(); err != nil {
-			return err
-		}
-		return errors.New("SalsaFlow enabled timestamp not set")
-	}
+	enabledTimestamp := repoConfig.SalsaFlowEnabledTimestamp()
 
 	// Only check the project remote.
 	if remoteName != gitConfig.RemoteName() {
@@ -218,18 +214,4 @@ func promptUserForConfirmation(commits []*git.Commit) (bool, error) {
 	// Prompt the user for confirmation.
 	defer fmt.Fprintln(console)
 	return prompt.Confirm("Are you sure you want to push these commits?")
-}
-
-func printConfigWarning() error {
-	console, err := prompt.OpenConsole(os.O_WRONLY)
-	if err != nil {
-		return err
-	}
-	defer console.Close()
-
-	fmt.Fprintln(console)
-	hooks.PrintSalsaFlowEnabledTimestampWarning(console)
-	fmt.Fprintln(console)
-
-	return nil
 }
