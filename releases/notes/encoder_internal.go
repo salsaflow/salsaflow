@@ -3,6 +3,7 @@ package notes
 import (
 	// Stdlib
 	"sort"
+	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/modules/common"
@@ -59,7 +60,7 @@ func toInternalRepresentation(notes *common.ReleaseNotes) *releaseNotes {
 			})
 		}
 		sections = append(sections, &releaseNotesSection{
-			StoryType: section.StoryType,
+			StoryType: strings.Title(section.StoryType),
 			Stories:   stories,
 		})
 	}
