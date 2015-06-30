@@ -1,15 +1,10 @@
 package common
 
 import (
-	// Stdlib
-	"errors"
-
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/version"
 )
-
-var ErrReleaseNotFound = errors.New("release not found")
 
 // IssueTracker interface ------------------------------------------------------
 
@@ -51,6 +46,10 @@ type IssueTracker interface {
 
 	// StoryTagToReadableStoryId parses the Story-Id tag and returns the relevant readable ID.
 	StoryTagToReadableStoryId(tag string) (storyId string, err error)
+
+	// ReleaseNotes generates release notes for the given version.
+	// In case the given release is not found, ErrReleaseNotFound is returned.
+	ReleaseNotes(*version.Version) (*ReleaseNotes, error)
 }
 
 type User interface {
@@ -140,4 +139,17 @@ type RunningRelease interface {
 	// it is not possible to release the given release.
 	EnsureReleasable() error
 	Release() error
+}
+
+// ReleaseNotes represent, well, the release notes for the given version.
+type ReleaseNotes struct {
+	Version  *version.Version
+	Sections []*ReleaseNotesSection
+}
+
+// ReleaseNotesSection represents a section of release notes
+// that is associated with certain story type.
+type ReleaseNotesSection struct {
+	StoryType string
+	Stories   []Story
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/version"
 
@@ -47,7 +48,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		formatInRange("type", codingIssueTypeIds...),
 		formatInRange("status", startableStateIds...))
 
-	return tracker.searchIssues(query)
+	return tracker.searchStories(query)
 }
 
 func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
@@ -55,7 +56,7 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 		formatInRange("type", codingIssueTypeIds...),
 		formatInRange("status", inDevelopmentStateIds...))
 
-	return tracker.searchIssues(query)
+	return tracker.searchStories(query)
 }
 
 func (tracker *issueTracker) ReviewedStories() (stories []common.Story, err error) {
@@ -63,7 +64,7 @@ func (tracker *issueTracker) ReviewedStories() (stories []common.Story, err erro
 		formatInRange("type", codingIssueTypeIds...),
 		formatInRange("status", stateIdReviewed))
 
-	return tracker.searchIssues(query)
+	return tracker.searchStories(query)
 }
 
 func (tracker *issueTracker) ListStoriesByTag(tags []string) (stories []common.Story, err error) {
@@ -105,6 +106,53 @@ func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId stri
 	return tag, nil
 }
 
+func (tracker *issueTracker) ReleaseNotes(v *version.Version) (*common.ReleaseNotes, error) {
+	// Fetch relevant issues from JIRA.
+	task := "Fetch relevant issues from JIRA"
+	issues, err := tracker.searchIssues("labels = " + v.ReleaseTagString())
+	if err != nil {
+		return nil, errs.NewError(task, err)
+	}
+	if len(issues) == 0 {
+		return nil, &common.ErrReleaseNotFound{v}
+	}
+
+	// issue.Fields.IssueType.Name -> *[]*jira.Issue
+	// We use pointer to a slice so that we don't need to reinsert
+	// the slice into the map after modification.
+	groups := make(map[string]*[]*jira.Issue)
+
+	// A helper to allocate a new slice and return the pointer.
+	newGroup := func(issue *jira.Issue) *[]*jira.Issue {
+		g := []*jira.Issue{issue}
+		return &g
+	}
+
+	for _, issue := range issues {
+		typeName := issue.Fields.IssueType.Name
+		g, ok := groups[typeName]
+		if ok {
+			*g = append(*g, issue)
+			continue
+		}
+		groups[typeName] = newGroup(issue)
+	}
+
+	// Generate the release notes.
+	notes := &common.ReleaseNotes{
+		Version:  v,
+		Sections: make([]*common.ReleaseNotesSection, 0, len(groups)),
+	}
+	for kind, issues := range groups {
+		notes.Sections = append(notes.Sections, &common.ReleaseNotesSection{
+			StoryType: kind,
+			Stories:   toCommonStories(*issues, tracker),
+		})
+	}
+	return notes, nil
+
+}
+
 func (tracker *issueTracker) getVersionResource(ver *version.Version) (*jira.Version, error) {
 	var (
 		projectKey  = tracker.config.ProjectKey()
@@ -133,7 +181,7 @@ func (tracker *issueTracker) getVersionResource(ver *version.Version) (*jira.Ver
 	return nil, nil
 }
 
-func (tracker *issueTracker) searchIssues(query string) ([]common.Story, error) {
+func (tracker *issueTracker) searchIssues(query string) ([]*jira.Issue, error) {
 	jql := fmt.Sprintf("project = \"%v\" AND (%v)", tracker.config.ProjectKey(), query)
 
 	issues, _, err := newClient(tracker.config).Issues.Search(&jira.SearchOptions{
@@ -143,7 +191,14 @@ func (tracker *issueTracker) searchIssues(query string) ([]common.Story, error) 
 	if err != nil {
 		return nil, err
 	}
+	return issues, nil
+}
 
+func (tracker *issueTracker) searchStories(query string) ([]common.Story, error) {
+	issues, err := tracker.searchIssues(query)
+	if err != nil {
+		return nil, err
+	}
 	return toCommonStories(issues, tracker), nil
 }
 
