@@ -3,6 +3,7 @@ package releaseCmd
 import (
 	"github.com/salsaflow/salsaflow/commands/release/changes"
 	"github.com/salsaflow/salsaflow/commands/release/deploy"
+	"github.com/salsaflow/salsaflow/commands/release/notes"
 	"github.com/salsaflow/salsaflow/commands/release/stage"
 	"github.com/salsaflow/salsaflow/commands/release/start"
 
@@ -20,6 +21,7 @@ var Command = &gocli.Command{
 func init() {
 	Command.MustRegisterSubcommand(changesCmd.Command)
 	Command.MustRegisterSubcommand(deployCmd.Command)
+	Command.MustRegisterSubcommand(notesCmd.Command)
 	Command.MustRegisterSubcommand(startCmd.Command)
 	Command.MustRegisterSubcommand(stageCmd.Command)
 }
