@@ -34,14 +34,16 @@ var cache *LocalConfig
 
 func LoadConfig() (Config, error) {
 	if cache == nil {
-		if err := config.UnmarshalLocalConfig(cache); err != nil {
+		var lc LocalConfig
+		if err := config.UnmarshalLocalConfig(&lc); err != nil {
 			return nil, err
 		}
-		if cache.EnabledTimestamp.IsZero() {
+		if lc.EnabledTimestamp.IsZero() {
 			// The enabled timestamp must be set no matter what.
 			printSalsaFlowEnabledTimestampWarning()
 			return nil, errors.New("SalsaFlow enabled timestamp not set")
 		}
+		cache = &lc
 	}
 	return cache, nil
 }
