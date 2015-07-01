@@ -51,6 +51,10 @@ func toInternalRepresentation(notes *common.ReleaseNotes) *releaseNotes {
 	// Generate sections.
 	var sections []*releaseNotesSection
 	for _, section := range notes.Sections {
+		// Sort stories. What this means is specified to each issue tracker.
+		sort.Sort(common.Stories(section.Stories))
+
+		// Generate the story section.
 		var stories []*story
 		for _, s := range section.Stories {
 			stories = append(stories, &story{

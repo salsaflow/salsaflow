@@ -22,8 +22,9 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  bootstrap [-issue_tracker=ISSUE_TRACKER]
-            [-code_review_tool=CODE_REVIEW_TOOL]
+  bootstrap -issue_tracker=ISSUE_TRACKER
+            -code_review_tool=CODE_REVIEW_TOOL
+            [-release_notes_manager=RNM]
             [-skeleton=SKELETON]`,
 	Short: "generate local config for SalsaFlow",
 	Long: `
@@ -37,9 +38,10 @@ var Command = &gocli.Command{
   The files are just dumped into the working tree, into .salsaflow directory.
   The directory must be committed after making sure everything is correct.
 
-  Considering the flags, 'issue_tracker' and 'code_review_tool' can be used
-  to tell SalsaFlow what implementation to use for particular service modules.
-  See the AVAILABLE MODULES section for the allowed values.
+  Considering the flags, 'issue_tracker', 'code_review_tool' and
+  'release_notes_manager' can be used to tell SalsaFlow what implementation to use
+  for particular service modules. The first two flags are required, the last one
+  is optional. See the AVAILABLE MODULES section for the allowed values.
 
   The 'skeleton' flag is a bit different. It can be used to specify
   a GitHub repository that is used as the skeleton for project custom scripts.
@@ -53,8 +55,9 @@ const unsetValue = `""`
 
 func init() {
 	var (
-		issueTrackerKeys   = modules.AvailableIssueTrackerKeys()
-		codeReviewToolKeys = modules.AvailableCodeReviewToolKeys()
+		issueTrackerKeys        = modules.AvailableIssueTrackerKeys()
+		codeReviewToolKeys      = modules.AvailableCodeReviewToolKeys()
+		releaseNotesManagerKeys = modules.AvailableReleaseNotesManagerKeys()
 	)
 
 	// Generate the long description so that it lists the availabe module keys.
@@ -73,17 +76,26 @@ func init() {
 	for _, key := range codeReviewToolKeys {
 		fmt.Fprintf(&help, "    - %v\n", key)
 	}
+	fmt.Fprintln(&help)
+	fmt.Fprintln(&help, "  Release Notes Managers")
+	fmt.Fprintln(&help, "  ----------------------")
+	fmt.Fprintln(&help, "  The following values can be used for the release_notes_manager flag:")
+	for _, key := range releaseNotesManagerKeys {
+		fmt.Fprintf(&help, "    - %v\n", key)
+	}
 	Command.Long = fmt.Sprintf("%v\n%v", Command.Long, help.String())
 
 	// Initialise the enum flags.
 	flagIssueTracker = flag.NewStringEnumFlag(issueTrackerKeys, unsetValue)
 	flagCodeReviewTool = flag.NewStringEnumFlag(codeReviewToolKeys, unsetValue)
+	flagReleaseNotesManager = flag.NewStringEnumFlag(releaseNotesManagerKeys, unsetValue)
 }
 
 var (
-	flagCodeReviewTool *flag.StringEnumFlag
-	flagIssueTracker   *flag.StringEnumFlag
-	flagSkeleton       string
+	flagCodeReviewTool      *flag.StringEnumFlag
+	flagIssueTracker        *flag.StringEnumFlag
+	flagReleaseNotesManager *flag.StringEnumFlag
+	flagSkeleton            string
 )
 
 func init() {
@@ -91,6 +103,8 @@ func init() {
 		"code review tool that is being used for the project")
 	Command.Flags.Var(flagIssueTracker, "issue_tracker",
 		"issue tracker that is being used for the project")
+	Command.Flags.Var(flagReleaseNotesManager, "release_notes_manager",
+		"release notes module that is being used for the project")
 	Command.Flags.StringVar(&flagSkeleton, "skeleton", flagSkeleton,
 		"skeleton to be used to bootstrap the repository")
 }
@@ -164,9 +178,10 @@ func runMain() error {
 	defer file.Close()
 
 	err = WriteLocalConfigTemplate(file, &LocalContext{
-		EnabledTimestamp:  Time(time.Now()),
-		IssueTrackerKey:   flagIssueTracker.Value(),
-		CodeReviewToolKey: flagCodeReviewTool.Value(),
+		EnabledTimestamp:       Time(time.Now()),
+		IssueTrackerKey:        flagIssueTracker.Value(),
+		CodeReviewToolKey:      flagCodeReviewTool.Value(),
+		ReleaseNotesManagerKey: flagReleaseNotesManager.Value(),
 	})
 	if err != nil {
 		return err

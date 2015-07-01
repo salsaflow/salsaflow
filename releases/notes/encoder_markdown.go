@@ -13,7 +13,7 @@ import (
 const markdownTemplate = `
 ## Release Notes ##
 
-These are the release notes for version {{.Version}}.
+These are the release notes for version {{.Version}} as collected from the issue tracker.
 
 The following sections contain the release notes grouped by story type.
 {{range .Sections}}

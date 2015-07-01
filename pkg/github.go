@@ -11,5 +11,5 @@ func newGitHubClient() (*github.Client, error) {
 		return nil, err
 	}
 
-	return ghutil.NewClient(config.GitHubToken()), nil
+	return ghutil.NewClient(config.ApiToken()), nil
 }

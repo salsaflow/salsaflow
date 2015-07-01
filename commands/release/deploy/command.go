@@ -170,6 +170,25 @@ func runMain() (err error) {
 		return nil
 	}))
 
+	// Generate the release notes.
+	// We try to do as much as possible before pushing.
+	task = fmt.Sprintf("Generate release notes for version '%v'", stableVersion)
+	log.Run(task)
+	rnm, err := modules.GetReleaseNotesManager()
+	if err != nil {
+		return errs.NewError(task, err)
+	}
+	var notes *common.ReleaseNotes
+	// rnm will be nil in case the module is disabled.
+	if rnm != nil {
+		notes, err = tracker.ReleaseNotes(stableVersion)
+		if err != nil {
+			return errs.NewError(task, err)
+		}
+	} else {
+		log.Log("Release notes module disabled, skipping ...")
+	}
+
 	// Push the changes to the remote repository.
 	task = "Push changes to the remote repository"
 	log.Run(task)
@@ -179,6 +198,16 @@ func runMain() (err error) {
 	}
 	if err := git.PushForce(remoteName, toPush...); err != nil {
 		return errs.NewError(task, err)
+	}
+
+	// Post the release notes.
+	task = fmt.Sprintf("Post the release notes for version '%v'", stableVersion)
+	if rnm != nil {
+		log.Run(task)
+		if _, err := rnm.PostReleaseNotes(notes); err != nil {
+			errs.LogError(task, err)
+			log.Warn("Failed to post the release notes, continuing anyway ...")
+		}
 	}
 
 	// Now we proceed to the staging step. We do not roll back

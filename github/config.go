@@ -24,7 +24,7 @@ func (global *GlobalConfig) validate() error {
 // Config proxy ----------------------------------------------------------------
 
 type Config interface {
-	GitHubToken() string
+	ApiToken() string
 }
 
 var configCache Config
@@ -53,6 +53,6 @@ type configProxy struct {
 	global *GlobalConfig
 }
 
-func (proxy *configProxy) GitHubToken() string {
+func (proxy *configProxy) ApiToken() string {
 	return proxy.global.GitHub.Token
 }

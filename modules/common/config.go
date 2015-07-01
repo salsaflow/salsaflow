@@ -8,8 +8,9 @@ import (
 // Local config ----------------------------------------------------------------
 
 type LocalConfig struct {
-	IssueTrackerId   string `yaml:"issue_tracker"`
-	CodeReviewToolId string `yaml:"code_review_tool"`
+	IssueTrackerId        string `yaml:"issue_tracker"`
+	CodeReviewToolId      string `yaml:"code_review_tool"`
+	ReleaseNotesManagerId string `yaml:"release_notes_manager"`
 }
 
 func (local *LocalConfig) validate() error {
@@ -28,6 +29,7 @@ func (local *LocalConfig) validate() error {
 type Config interface {
 	IssueTrackerId() string
 	CodeReviewToolId() string
+	ReleaseNotesManagerId() string
 }
 
 var configCache Config
@@ -63,4 +65,8 @@ func (proxy *configProxy) IssueTrackerId() string {
 
 func (proxy *configProxy) CodeReviewToolId() string {
 	return proxy.local.CodeReviewToolId
+}
+
+func (proxy *configProxy) ReleaseNotesManagerId() string {
+	return proxy.local.ReleaseNotesManagerId
 }
