@@ -58,6 +58,7 @@ The complete list of SalsaFlow commands follows (links pointing to the `develop`
 * [pkg upgrade](https://github.com/salsaflow/salsaflow/blob/develop/commands/pkg/upgrade/README.md)
 * [release changes](https://github.com/salsaflow/salsaflow/blob/develop/commands/release/changes/README.md)
 * [release deploy](https://github.com/salsaflow/salsaflow/blob/develop/commands/release/deploy/README.md)
+* [release notes](https://github.com/salsaflow/salsaflow/blob/develop/commands/release/notes/README.md)
 * [release stage](https://github.com/salsaflow/salsaflow/blob/develop/commands/release/stage/README.md)
 * [release start](https://github.com/salsaflow/salsaflow/blob/develop/commands/release/start/README.md)
 * [repo bootstrap](https://github.com/salsaflow/salsaflow/blob/develop/commands/repo/bootstrap/README.md)
