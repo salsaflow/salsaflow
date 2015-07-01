@@ -14,6 +14,7 @@ salsaflow_enabled_timestamp: "{{.EnabledTimestamp}}"
 #  Unless stated otherwise, the keys that are commented out
 #  are required, so please uncomment them and fill in the values.
 
+#-- ISSUE TRACKER
 issue_tracker: "{{.IssueTrackerKey}}"
 {{ if eq .IssueTrackerKey "pivotal_tracker" }}pivotal_tracker:
 #  project_id: 123456
@@ -35,15 +36,20 @@ issue_tracker: "{{.IssueTrackerKey}}"
 #  server_url: "https://example.com/jira"
 #  project_key: "EX"
 {{ end }}
+#-- CODE REVIEW TOOL
 code_review_tool: "{{.CodeReviewToolKey}}"
 {{ if eq .CodeReviewToolKey "review_board" }}review_board:
 #  server_url: "https://review.example.com"{{ end }}
+
+{{with .ReleaseNotesManagerKey}}#-- RELEASE NOTES MANAGER
+release_notes_manager: "{{.}}"{{end}}
 `
 
 type LocalContext struct {
-	EnabledTimestamp  Time
-	IssueTrackerKey   string
-	CodeReviewToolKey string
+	EnabledTimestamp       Time
+	IssueTrackerKey        string
+	CodeReviewToolKey      string
+	ReleaseNotesManagerKey string
 }
 
 func WriteLocalConfigTemplate(dst io.Writer, ctx *LocalContext) error {
