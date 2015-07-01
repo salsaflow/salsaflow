@@ -42,14 +42,10 @@ issue_tracker: "{{.IssueTrackerKey}}"
 #-- CODE REVIEW TOOL
 code_review_tool: "{{.CodeReviewToolKey}}"
 {{ if eq .CodeReviewToolKey "review_board" }}review_board:
-<<<<<<< HEAD
 #  server_url: "https://review.example.com"{{ end }}
 
 {{with .ReleaseNotesManagerKey}}#-- RELEASE NOTES MANAGER
 release_notes_manager: "{{.}}"{{end}}
-=======
-#  server_url: "https://review.example.com/"{{ end }}
->>>>>>> wip [ci skip]
 `
 
 type LocalContext struct {
