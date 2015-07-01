@@ -312,6 +312,7 @@ func postUnassignedReviewRequest(
 	owner string,
 	repo string,
 	commit *git.Commit,
+	reviewRequest *metastore.Resource,
 	opts map[string]interface{},
 ) (*metastore.Resource, error) {
 
@@ -340,7 +341,6 @@ func createUnassignedReviewRequest(
 	owner string,
 	repo string,
 	commit *git.Commit,
-	reviewRequest *metastore.Resource,
 	opts map[string]interface{},
 ) (*metastore.Resource, error) {
 
