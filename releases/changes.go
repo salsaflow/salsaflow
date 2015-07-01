@@ -9,7 +9,7 @@ func StoryChangesToCherryPick(
 	groups []*changes.StoryChangeGroup,
 ) ([]*changes.StoryChangeGroup, error) {
 
-	// Get the commits that are reachable from the release branch.
+	// Get the changes that are reachable from the release branch.
 	gitConfig, err := git.LoadConfig()
 	if err != nil {
 		return nil, err
@@ -21,9 +21,13 @@ func StoryChangesToCherryPick(
 		return nil, err
 	}
 
-	reachableCommitMap := make(map[string]struct{}, len(reachableCommits))
+	reachableChanges := make(map[string]struct{}, len(reachableCommits))
 	for _, commit := range reachableCommits {
-		reachableCommitMap[commit.SHA] = struct{}{}
+		// Would not probably harm much not to have the condition here,
+		// but hey, let's keep the Change-Id set clean.
+		if commit.ChangeIdTag != "" {
+			reachableChanges[commit.ChangeIdTag] = struct{}{}
+		}
 	}
 
 	// Get the changes that needs to be cherry-picked.
@@ -35,21 +39,21 @@ func StoryChangesToCherryPick(
 			StoryIdTag: group.StoryIdTag,
 		}
 
-	ChangesLoop:
-		// Loop over the story changes and the commits associated with
-		// these changes. A change needs cherry-picking in case there are
-		// some commits left when we drop the commits reachable from
-		// the release branch.
+		// A change needs cherry-picking in case it's not reachable
+		// from the release branch, right?
 		for _, change := range group.Changes {
-			for _, commit := range change.Commits {
-				if _, ok := reachableCommitMap[commit.SHA]; ok {
-					continue ChangesLoop
-				}
+			// Skip the group representing commits with no Change-Id tag.
+			if change.ChangeIdTag == "" {
+				continue
 			}
-
-			storyGroup.Changes = append(storyGroup.Changes, change)
+			// Append the group in case the Change-Id is not reachable.
+			if _, ok := reachableChanges[change.ChangeIdTag]; !ok {
+				storyGroup.Changes = append(storyGroup.Changes, change)
+			}
 		}
 
+		// Append the whole story group in case any associated change group
+		// is not reachable from the release branch.
 		if len(storyGroup.Changes) != 0 {
 			toCherryPick = append(toCherryPick, storyGroup)
 		}
