@@ -117,6 +117,9 @@ func run(cmd *gocli.Command, args []string) {
 }
 
 func postRevision(revision string) error {
+	// "HEAD" is used to post the tip of the current branch.
+	headMode := revision == "HEAD"
+
 	// Get the commit to be posted
 	task := "Get the commit to be posted for code review"
 	commits, err := git.ShowCommits(revision)
@@ -130,7 +133,7 @@ func postRevision(revision string) error {
 	}
 
 	// Post the review requests, in this case it will be only one.
-	act, err := postReviewRequests(commits, revision == "HEAD")
+	act, err := postReviewRequests(commits, headMode)
 	if err != nil {
 		return err
 	}
