@@ -5,8 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"net/url"
-	"regexp"
 	"strings"
 
 	// Internal
@@ -40,7 +38,7 @@ func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action
 		return nil, err
 	}
 
-	owner, repo, err := parseUpstreamURL()
+	owner, repo, err := git.ParseUpstreamURL()
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +56,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 	}
 	client := ghutil.NewClient(config.Token())
 
-	owner, repo, err := parseUpstreamURL()
+	owner, repo, err := git.ParseUpstreamURL()
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +119,7 @@ func (tool *codeReviewTool) PostReviewRequests(
 	}
 
 	// Get the GitHub owner and repository from the upstream URL.
-	owner, repo, err := parseUpstreamURL()
+	owner, repo, err := git.ParseUpstreamURL()
 	if err != nil {
 		return err
 	}
@@ -194,47 +192,6 @@ review issue, use
 
 to create a new GitHub review issue that references ISSUE_NUMBER.
 `
-}
-
-// parseUpstreamURL parses the URL of the git upstream being used by SalsaFlow
-// and returns the given GitHub owner and repository.
-func parseUpstreamURL() (owner, repo string, err error) {
-	// Load the Git config.
-	gitConfig, err := git.LoadConfig()
-	if err != nil {
-		return "", "", err
-	}
-	remoteName := gitConfig.RemoteName()
-
-	// Get the upstream URL.
-	task := fmt.Sprintf("Get URL for git remote '%v'", remoteName)
-	remoteURL, err := git.GetConfigString(fmt.Sprintf("remote.%v.url", remoteName))
-	if err != nil {
-		return "", "", errs.NewError(task, err)
-	}
-
-	// Parse the upstream URL to get the owner and repo name.
-	task = "Parse the upstream repository URL"
-	u, err := url.Parse(remoteURL)
-	if err != nil {
-		return "", "", errs.NewError(task, err)
-	}
-
-	var match []string
-	if u.Scheme == "https" {
-		// Handle HTTPS.
-		re := regexp.MustCompile("/([^/]+)/(.+)")
-		match = re.FindStringSubmatch(u.Path)
-	} else {
-		// Handle SSH.
-		re := regexp.MustCompile("git@github.com:([^/]+)/(.+)[.]git")
-		match = re.FindStringSubmatch(remoteURL)
-	}
-	if len(match) != 3 {
-		err := fmt.Errorf("failed to parse git remote URL: %v", remoteURL)
-		return "", "", errs.NewError(task, err)
-	}
-	return match[1], match[2], nil
 }
 
 // postAssignedReviewRequest can be used to post
