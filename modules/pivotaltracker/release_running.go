@@ -85,6 +85,17 @@ func (release *runningRelease) Stage() (action.Action, error) {
 		return nil, errs.NewError(stageTask, err)
 	}
 
+	// Pick only the stories that are finished.
+	// All other stories are delivered or further.
+	// That is checked in EnsureStageable().
+	ss := make([]*pivotal.Story, 0, len(stories))
+	for _, s := range ss {
+		if s.State == pivotal.StoryStateFinished {
+			ss = append(ss, s)
+		}
+	}
+	stories = ss
+
 	// Save the original states into a map.
 	originalStates := make(map[int]string, len(stories))
 	for _, story := range stories {
