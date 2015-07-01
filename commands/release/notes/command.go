@@ -2,7 +2,9 @@ package notesCmd
 
 import (
 	// Stdlib
+	"fmt"
 	"os"
+	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/app"
@@ -19,11 +21,11 @@ import (
 var Command = &gocli.Command{
 	UsageLine: "notes [-format=FORMAT] [-pretty] VERSION",
 	Short:     "print release notes",
-	Long: `
+	Long: fmt.Sprintf(`
   Print release notes for release VERSION.
 
-  Supported formats: html, json, markdown, yaml
-	`,
+  Supported formats: %v
+	`, strings.Join(notes.AvailableEncodings(), ", ")),
 	Action: run,
 }
 

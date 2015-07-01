@@ -121,6 +121,21 @@ type Story interface {
 	IssueTracker() IssueTracker
 }
 
+// Stories implement sort.Interface
+type Stories []Story
+
+func (ss Stories) Len() int {
+	return len(ss)
+}
+
+func (ss Stories) Less(i, j int) bool {
+	return ss[i].LessThan(ss[j])
+}
+
+func (ss Stories) Swap(i, j int) {
+	ss[i], ss[j] = ss[j], ss[i]
+}
+
 type NextRelease interface {
 	PromptUserToConfirmStart() (bool, error)
 	Start() (action.Action, error)
