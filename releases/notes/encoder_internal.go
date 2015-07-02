@@ -30,27 +30,18 @@ type story struct {
 	URL   string `json:"url"   yaml:"url"`
 }
 
-// Implement sort.Interface to sort story sections alphabetically.
-type releaseNotesSections []*releaseNotesSection
-
-func (sections releaseNotesSections) Len() int {
-	return len(sections)
-}
-
-func (sections releaseNotesSections) Less(i, j int) bool {
-	return sections[i].StoryType < sections[j].StoryType
-}
-
-func (sections releaseNotesSections) Swap(i, j int) {
-	sections[i], sections[j] = sections[j], sections[i]
-}
-
 // toInternalRepresentation converts the given release notes to an internal
 // representation that is easily serializable any typical encoder.
 func toInternalRepresentation(notes *common.ReleaseNotes) *releaseNotes {
+	// Sort the sections.
+	// The sections are most probably already sorted, but just to be sure.
+	sortedSections := make([]*common.ReleaseNotesSection, len(notes.Sections))
+	copy(sortedSections, notes.Sections)
+	sort.Sort(common.ReleaseNotesSections(sortedSections))
+
 	// Generate sections.
 	var sections []*releaseNotesSection
-	for _, section := range notes.Sections {
+	for _, section := range sortedSections {
 		// Sort stories. What this means is specified to each issue tracker.
 		sort.Sort(common.Stories(section.Stories))
 
@@ -68,9 +59,6 @@ func toInternalRepresentation(notes *common.ReleaseNotes) *releaseNotes {
 			Stories:   stories,
 		})
 	}
-
-	// Sort sections alphabetically by story type.
-	sort.Sort(releaseNotesSections(sections))
 
 	// Return the new internal representation.
 	return &releaseNotes{

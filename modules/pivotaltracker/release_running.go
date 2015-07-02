@@ -191,13 +191,7 @@ func (release *runningRelease) loadStories() ([]*pivotal.Story, error) {
 	if release.stories == nil {
 		task := "Fetch data from Pivotal Tracker"
 		log.Run(task)
-		var (
-			config       = release.tracker.config
-			client       = pivotal.NewClient(config.UserToken())
-			projectId    = config.ProjectId()
-			releaseLabel = getReleaseLabel(release.version)
-		)
-		stories, err := searchStories(client, projectId, "label:%v", releaseLabel)
+		stories, err := release.tracker.storiesByRelease(release.version)
 		if err != nil {
 			return nil, errs.NewError(task, err)
 		}

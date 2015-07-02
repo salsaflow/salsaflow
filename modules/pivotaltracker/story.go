@@ -29,6 +29,10 @@ func (story *story) ReadableId() string {
 	return strconv.Itoa(story.Story.Id)
 }
 
+func (story *story) Type() string {
+	return story.Story.Type
+}
+
 func (story *story) State() common.StoryState {
 	var (
 		config           = story.tracker.config

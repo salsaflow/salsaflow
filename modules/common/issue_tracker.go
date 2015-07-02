@@ -29,6 +29,10 @@ type IssueTracker interface {
 	// ListStoriesByTag returns the stories for the given list of Story-Id tags.
 	ListStoriesByTag(tags []string) ([]Story, error)
 
+	// ListStoriesByRelease returns the stories associated with the given release.
+	// An empty slice should be returned in case there are no such stories.
+	ListStoriesByRelease(v *version.Version) ([]Story, error)
+
 	// NextRelease is a factory method for creating release objects
 	// representing the releases that have not been started yet.
 	//
@@ -46,10 +50,6 @@ type IssueTracker interface {
 
 	// StoryTagToReadableStoryId parses the Story-Id tag and returns the relevant readable ID.
 	StoryTagToReadableStoryId(tag string) (storyId string, err error)
-
-	// ReleaseNotes generates release notes for the given version.
-	// In case the given release is not found, ErrReleaseNotFound is returned.
-	ReleaseNotes(*version.Version) (*ReleaseNotes, error)
 }
 
 type User interface {
@@ -80,6 +80,10 @@ type Story interface {
 	// ReadableId returns the human-friendly ID of the story.
 	// This ID is used when listing stories to the user.
 	ReadableId() string
+
+	// Type returns a string representing the type of the given issue.
+	// The values returned depend on the issue tracker.
+	Type() string
 
 	// State returns the abstract state the story is in at the moment.
 	State() StoryState
@@ -154,17 +158,4 @@ type RunningRelease interface {
 	// it is not possible to release the given release.
 	EnsureReleasable() error
 	Release() error
-}
-
-// ReleaseNotes represent, well, the release notes for the given version.
-type ReleaseNotes struct {
-	Version  *version.Version
-	Sections []*ReleaseNotesSection
-}
-
-// ReleaseNotesSection represents a section of release notes
-// that is associated with certain story type.
-type ReleaseNotesSection struct {
-	StoryType string
-	Stories   []Story
 }
