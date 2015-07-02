@@ -174,8 +174,8 @@ The relevant version strings are:
 		return errs.NewError(task, err)
 	}
 	defer action.RollbackTaskOnError(&err, task, action.ActionFunc(func() error {
-		task := "Delete the release branch"
-		if err := git.Branch("-d", releaseBranch); err != nil {
+		task := fmt.Sprintf("Delete branch '%v'", releaseBranch)
+		if err := git.Branch("-D", releaseBranch); err != nil {
 			errs.NewError(task, err)
 		}
 		return nil
