@@ -13,7 +13,8 @@ import (
 const htmlTemplate = `
 <h2>Release Notes</h2>
 
-<p>These are the release notes for version {{.Version}}.</p>
+<p>These are the release notes for version {{.Version}} as collected from the issue tracker.</p>
+
 <p>The following sections contain the release notes grouped by story type.</p>
 {{range .Sections}}
 <h3>{{.StoryType}}</h3>
