@@ -89,7 +89,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	// All other stories are delivered or further.
 	// That is checked in EnsureStageable().
 	ss := make([]*pivotal.Story, 0, len(stories))
-	for _, s := range ss {
+	for _, s := range stories {
 		if s.State == pivotal.StoryStateFinished {
 			ss = append(ss, s)
 		}
