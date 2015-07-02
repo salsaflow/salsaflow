@@ -6,5 +6,9 @@ issue_tracker: "jira"
 jira:
   server_url: "https://jira.salsitasoft.com"
   project_key: "SF"
+
 # CODE REVIEW TOOL: GitHub
 code_review_tool: "github"
+
+# RELEASE NOTES: GitHub
+release_notes: "github"
