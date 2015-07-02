@@ -2,6 +2,7 @@ package notesCmd
 
 import (
 	// Stdlib
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -65,11 +66,18 @@ func runMain(versionString string) (err error) {
 		return err
 	}
 
-	// Generate the release notes.
-	nts, err := tracker.ReleaseNotes(v)
+	// Get the relevant stories.
+	task := fmt.Sprintf("Fetch stories assigned to release %v", v.BaseString())
+	stories, err := tracker.ListStoriesByRelease(v)
 	if err != nil {
-		return err
+		return errs.NewError(task, err)
 	}
+	if len(stories) == 0 {
+		return errs.NewError(task, errors.New("no stories found"))
+	}
+
+	// Generate the release notes.
+	nts := notes.GenerateReleaseNotes(v, stories)
 
 	// Dump the release notes.
 	encoder, err := notes.NewEncoder(notes.Encoding(flagFormat.Value()), os.Stdout)

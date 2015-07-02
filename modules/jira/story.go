@@ -43,6 +43,10 @@ func (story *story) ReadableId() string {
 	return story.Issue.Key
 }
 
+func (story *story) Type() string {
+	return story.Issue.Fields.IssueType.Name
+}
+
 func (story *story) State() common.StoryState {
 	switch story.Fields.Status.Id {
 	case stateIdNew:

@@ -114,6 +114,14 @@ func (tracker *issueTracker) ListStoriesByTag(tags []string) ([]common.Story, er
 	return toCommonStories(stories, tracker), nil
 }
 
+func (tracker *issueTracker) ListStoriesByRelease(v *version.Version) ([]common.Story, error) {
+	stories, err := tracker.storiesByRelease(v)
+	if err != nil {
+		return nil, err
+	}
+	return toCommonStories(stories, tracker), nil
+}
+
 func (tracker *issueTracker) NextRelease(
 	trunkVersion *version.Version,
 	nextTrunkVersion *version.Version,
@@ -141,50 +149,6 @@ func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId stri
 	return parts[2], nil
 }
 
-func (tracker *issueTracker) ReleaseNotes(v *version.Version) (*common.ReleaseNotes, error) {
-	// Get relevant stories.
-	stories, err := tracker.searchStories("label:%v", getReleaseLabel(v))
-	if err != nil {
-		return nil, err
-	}
-	if len(stories) == 0 {
-		return nil, &common.ErrReleaseNotFound{v}
-	}
-
-	// story.Type -> *[]*pivotal.Story
-	// We use pointer to a slice so that we don't need to reinsert
-	// the slice into the map after modification.
-	groups := make(map[string]*[]*pivotal.Story)
-
-	// A helper to allocate a new slice and return the pointer.
-	newGroup := func(story *pivotal.Story) *[]*pivotal.Story {
-		g := []*pivotal.Story{story}
-		return &g
-	}
-
-	for _, story := range stories {
-		g, ok := groups[story.Type]
-		if ok {
-			*g = append(*g, story)
-			continue
-		}
-		groups[story.Type] = newGroup(story)
-	}
-
-	// Generate the release notes.
-	notes := &common.ReleaseNotes{
-		Version:  v,
-		Sections: make([]*common.ReleaseNotesSection, 0, len(groups)),
-	}
-	for kind, stories := range groups {
-		notes.Sections = append(notes.Sections, &common.ReleaseNotesSection{
-			StoryType: kind,
-			Stories:   toCommonStories(*stories, tracker),
-		})
-	}
-	return notes, nil
-}
-
 func (tracker *issueTracker) searchStories(
 	queryFormat string,
 	v ...interface{},
@@ -195,4 +159,8 @@ func (tracker *issueTracker) searchStories(
 		projectId = tracker.config.ProjectId()
 	)
 	return searchStories(client, projectId, queryFormat, v...)
+}
+
+func (tracker *issueTracker) storiesByRelease(v *version.Version) ([]*pivotal.Story, error) {
+	return tracker.searchStories(`label:"%v"`, getReleaseLabel(v))
 }

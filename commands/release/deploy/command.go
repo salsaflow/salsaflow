@@ -15,6 +15,7 @@ import (
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/prompt"
 	"github.com/salsaflow/salsaflow/releases/commands"
+	"github.com/salsaflow/salsaflow/releases/notes"
 	"github.com/salsaflow/salsaflow/version"
 
 	// Other
@@ -178,13 +179,16 @@ func runMain() (err error) {
 	if err != nil {
 		return errs.NewError(task, err)
 	}
-	var notes *common.ReleaseNotes
+	var nts *common.ReleaseNotes
 	// rnm will be nil in case the module is disabled.
 	if rnm != nil {
-		notes, err = tracker.ReleaseNotes(stableVersion)
+		// Get the relevant stories.
+		stories, err := tracker.ListStoriesByRelease(stableVersion)
 		if err != nil {
 			return errs.NewError(task, err)
 		}
+		// Generate the release notes.
+		nts = notes.GenerateReleaseNotes(stableVersion, stories)
 	} else {
 		log.Log("Release notes module disabled, skipping ...")
 	}
@@ -204,7 +208,7 @@ func runMain() (err error) {
 	task = fmt.Sprintf("Post the release notes for version '%v'", stableVersion)
 	if rnm != nil {
 		log.Run(task)
-		if _, err := rnm.PostReleaseNotes(notes); err != nil {
+		if _, err := rnm.PostReleaseNotes(nts); err != nil {
 			errs.LogError(task, err)
 			log.Warn("Failed to post the release notes, continuing anyway ...")
 		}
