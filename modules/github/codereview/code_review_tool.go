@@ -45,16 +45,15 @@ func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action
 
 	// Check whether the review milestone exists or not.
 	// People can create milestones manually, so this makes the thing more robust.
-	task := fmt.Sprintf("Check whether the review milestone exists for release %v", v.BaseString())
+	task := fmt.Sprintf("Check whether GitHub review milestone exists for release %v", v.BaseString())
 	log.Run(task)
-	if _, err := milestoneForVersion(config, owner, repo, v); err != nil {
-		// Return error in case it is not ErrMilestoneNotFound.
-		if _, ok := errs.RootCause(err).(*ErrMilestoneNotFound); !ok {
-			return nil, errs.NewError(task, err)
-		}
-	} else {
+	milestone, err := milestoneForVersion(config, owner, repo, v)
+	if err != nil {
+		return nil, errs.NewError(task, err)
+	}
+	if milestone != nil {
 		// Milestone already exists, we are done.
-		log.Log(fmt.Sprintf("Review milestone '%v' exists already", milestoneTitle(v)))
+		log.Log(fmt.Sprintf("GitHub review milestone '%v' already exists", milestoneTitle(v)))
 		return nil, nil
 	}
 
@@ -78,19 +77,21 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 
 	// Get the relevant review milestone.
 	releaseString := v.BaseString()
-	task := fmt.Sprintf("Get the review milestone for release %v", releaseString)
+	task := fmt.Sprintf("Get GitHub review milestone for release %v", releaseString)
 	log.Run(task)
 	milestone, err := milestoneForVersion(config, owner, repo, v)
 	if err != nil {
-		if _, ok := errs.RootCause(err).(*ErrMilestoneNotFound); ok {
-			log.Warn("Weird, " + err.Error())
-			return action.ActionFunc(func() error { return nil }), nil
-		}
 		return nil, errs.NewError(task, err)
+	}
+	if milestone == nil {
+		log.Warn(fmt.Sprintf(
+			"Weird, GitHub review milestone for release %v not found", releaseString))
+		return nil, nil
 	}
 
 	// Close the milestone unless there are some issues open.
-	task = fmt.Sprintf("Make sure review milestone for release %v can be closed", releaseString)
+	task = fmt.Sprintf(
+		"Make sure the review milestone for release %v can be closed", releaseString)
 	if num := *milestone.OpenIssues; num != 0 {
 		return nil, errs.NewError(
 			task,
@@ -99,7 +100,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 				releaseString, num))
 	}
 
-	milestoneTask := fmt.Sprintf("Close review milestone for release %v", releaseString)
+	milestoneTask := fmt.Sprintf("Close GitHub review milestone for release %v", releaseString)
 	log.Run(milestoneTask)
 	milestone, _, err = client.Issues.EditMilestone(owner, repo, *milestone.Number, &github.Milestone{
 		State: github.String("closed"),
@@ -111,7 +112,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 	// Return a rollback function.
 	return action.ActionFunc(func() error {
 		log.Rollback(milestoneTask)
-		task := fmt.Sprintf("Reopen review milestone for release %v", releaseString)
+		task := fmt.Sprintf("Reopen GitHub review milestone for release %v", releaseString)
 		_, _, err := client.Issues.EditMilestone(owner, repo, *milestone.Number, &github.Milestone{
 			State: github.String("open"),
 		})
@@ -538,13 +539,13 @@ func createMilestone(
 
 	// Create the review milestone.
 	var (
-		releaseString = v.BaseString()
-		milestoneTask = fmt.Sprintf("Create the review milestone for release %v", releaseString)
+		title         = milestoneTitle(v)
+		milestoneTask = fmt.Sprintf("Create GitHub review milestone '%v'", title)
 		client        = ghutil.NewClient(config.Token())
 	)
 	log.Run(milestoneTask)
 	milestone, _, err := client.Issues.CreateMilestone(owner, repo, &github.Milestone{
-		Title: github.String(milestoneTitle(v)),
+		Title: github.String(title),
 	})
 	if err != nil {
 		return nil, nil, errs.NewError(milestoneTask, err)
@@ -553,7 +554,7 @@ func createMilestone(
 	// Return a rollback function.
 	return milestone, action.ActionFunc(func() error {
 		log.Rollback(milestoneTask)
-		task := fmt.Sprintf("Delete the review milestone for release %v", releaseString)
+		task := fmt.Sprintf("Delete GitHub review milestone '%v'", title)
 		_, err := client.Issues.DeleteMilestone(owner, repo, *milestone.Number)
 		if err != nil {
 			return errs.NewError(task, err)
@@ -589,7 +590,7 @@ func milestoneForVersion(
 	}
 
 	// Milestone not found.
-	return nil, errs.NewError(task, &ErrMilestoneNotFound{v})
+	return nil, nil
 }
 
 func getOrCreateMilestoneForCommit(
@@ -608,12 +609,12 @@ func getOrCreateMilestoneForCommit(
 	// Try to get the milestone.
 	milestone, err := milestoneForVersion(config, owner, repo, v)
 	if err != nil {
-		// In case the milestone was not found, we try to create it.
-		if _, ok := errs.RootCause(err).(*ErrMilestoneNotFound); ok {
-			milestone, _, err := createMilestone(config, owner, repo, v)
-			return milestone, err
-		}
 		return nil, err
+	}
+	if milestone == nil {
+		// Create the milestone when not found.
+		milestone, _, err := createMilestone(config, owner, repo, v)
+		return milestone, err
 	}
 
 	// Milestone found, return it.
