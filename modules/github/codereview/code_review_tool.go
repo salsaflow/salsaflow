@@ -49,7 +49,7 @@ func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action
 	log.Run(task)
 	if _, err := milestoneForVersion(config, owner, repo, v); err != nil {
 		// Return error in case it is not ErrMilestoneNotFound.
-		if _, ok := err.(*ErrMilestoneNotFound); !ok {
+		if _, ok := errs.RootCause(err).(*ErrMilestoneNotFound); !ok {
 			return nil, errs.NewError(task, err)
 		}
 	} else {
