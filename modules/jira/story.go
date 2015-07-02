@@ -142,9 +142,10 @@ func (story *story) MarkAsImplemented() (action.Action, error) {
 		return nil, nil
 	}
 
-	fmt.Println(`SalsaFlow cannot mark a JIRA issue as implemented
+	fmt.Println(`
+SalsaFlow cannot mark the JIRA issue as implemented
 since there are some manual steps involved. It will, however,
-open the web page when the issue can be marked as implemented.`)
+open the web page where the issue can be marked as implemented.`)
 
 	return nil, story.tracker.OpenStory(story.Issue.Key)
 }
