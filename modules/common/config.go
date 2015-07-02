@@ -10,7 +10,7 @@ import (
 type LocalConfig struct {
 	IssueTrackerId        string `yaml:"issue_tracker"`
 	CodeReviewToolId      string `yaml:"code_review_tool"`
-	ReleaseNotesManagerId string `yaml:"release_notes_manager"`
+	ReleaseNotesManagerId string `yaml:"release_notes"`
 }
 
 func (local *LocalConfig) validate() error {

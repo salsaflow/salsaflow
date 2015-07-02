@@ -24,7 +24,7 @@ var Command = &gocli.Command{
 	UsageLine: `
   bootstrap -issue_tracker=ISSUE_TRACKER
             -code_review_tool=CODE_REVIEW_TOOL
-            [-release_notes_manager=RNM]
+            [-release_notes=RELEASE_NOTES]
             [-skeleton=SKELETON]`,
 	Short: "generate local config for SalsaFlow",
 	Long: `
@@ -39,7 +39,7 @@ var Command = &gocli.Command{
   The directory must be committed after making sure everything is correct.
 
   Considering the flags, 'issue_tracker', 'code_review_tool' and
-  'release_notes_manager' can be used to tell SalsaFlow what implementation to use
+  'release_notes' can be used to tell SalsaFlow what implementation to use
   for particular service modules. The first two flags are required, the last one
   is optional. See the AVAILABLE MODULES section for the allowed values.
 
@@ -77,9 +77,9 @@ func init() {
 		fmt.Fprintf(&help, "    - %v\n", key)
 	}
 	fmt.Fprintln(&help)
-	fmt.Fprintln(&help, "  Release Notes Managers")
-	fmt.Fprintln(&help, "  ----------------------")
-	fmt.Fprintln(&help, "  The following values can be used for the release_notes_manager flag:")
+	fmt.Fprintln(&help, "  Release Notes")
+	fmt.Fprintln(&help, "  -------------")
+	fmt.Fprintln(&help, "  The following values can be used for the release_notes flag:")
 	for _, key := range releaseNotesManagerKeys {
 		fmt.Fprintf(&help, "    - %v\n", key)
 	}
@@ -103,7 +103,7 @@ func init() {
 		"code review tool that is being used for the project")
 	Command.Flags.Var(flagIssueTracker, "issue_tracker",
 		"issue tracker that is being used for the project")
-	Command.Flags.Var(flagReleaseNotesManager, "release_notes_manager",
+	Command.Flags.Var(flagReleaseNotesManager, "release_notes",
 		"release notes module that is being used for the project")
 	Command.Flags.StringVar(&flagSkeleton, "skeleton", flagSkeleton,
 		"skeleton to be used to bootstrap the repository")

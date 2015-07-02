@@ -42,7 +42,7 @@ code_review_tool: "{{.CodeReviewToolKey}}"
 #  server_url: "https://review.example.com"{{ end }}
 
 {{with .ReleaseNotesManagerKey}}#-- RELEASE NOTES MANAGER
-release_notes_manager: "{{.}}"{{end}}
+release_notes: "{{.}}"{{end}}
 `
 
 type LocalContext struct {
