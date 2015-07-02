@@ -43,6 +43,21 @@ func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action
 		return nil, err
 	}
 
+	// Check whether the review milestone exists or not.
+	// People can create milestones manually, so this makes the thing more robust.
+	task := fmt.Sprintf("Check whether the review milestone exists for release %v", v.BaseString())
+	log.Run(task)
+	if _, err := milestoneForVersion(config, owner, repo, v); err != nil {
+		// Return error in case it is not ErrMilestoneNotFound.
+		if _, ok := err.(*ErrMilestoneNotFound); !ok {
+			return nil, errs.NewError(task, err)
+		}
+	} else {
+		// Milestone already exists, we are done.
+		log.Log("The review milestone exists already")
+		return nil, nil
+	}
+
 	// Create the review milestone.
 	_, act, err := createMilestone(config, owner, repo, v)
 	return act, err
@@ -63,7 +78,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 
 	// Get the relevant review milestone.
 	releaseString := v.BaseString()
-	task := fmt.Sprintf("Get code review milestone for release %v", releaseString)
+	task := fmt.Sprintf("Get the review milestone for release %v", releaseString)
 	log.Run(task)
 	milestone, err := milestoneForVersion(config, owner, repo, v)
 	if err != nil {
@@ -524,7 +539,7 @@ func createMilestone(
 	// Create the review milestone.
 	var (
 		releaseString = v.BaseString()
-		milestoneTask = fmt.Sprintf("Create code review milestone for release %v", releaseString)
+		milestoneTask = fmt.Sprintf("Create the review milestone for release %v", releaseString)
 		client        = ghutil.NewClient(config.Token())
 	)
 	log.Run(milestoneTask)
@@ -538,7 +553,7 @@ func createMilestone(
 	// Return a rollback function.
 	return milestone, action.ActionFunc(func() error {
 		log.Rollback(milestoneTask)
-		task := fmt.Sprintf("Delete code review milestone for release %v", releaseString)
+		task := fmt.Sprintf("Delete the review milestone for release %v", releaseString)
 		_, err := client.Issues.DeleteMilestone(owner, repo, *milestone.Number)
 		if err != nil {
 			return errs.NewError(task, err)
