@@ -30,13 +30,9 @@ func newRunningRelease(
 ) (*runningRelease, error) {
 
 	// Fetch relevant issues from JIRA.
-	var (
-		key          = tracker.config.ProjectKey()
-		releaseLabel = releaseVersion.ReleaseTagString()
-		task         = fmt.Sprintf("Fetch issues labeled with '%v'", releaseLabel)
-	)
+	task := fmt.Sprintf("Fetch issues for release '%v'", releaseVersion)
 	log.Run(task)
-	issues, err := issuesByLabel(newClient(tracker.config), key, releaseLabel)
+	issues, err := tracker.issuesByRelease(releaseVersion)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
