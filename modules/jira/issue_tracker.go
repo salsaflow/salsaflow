@@ -78,7 +78,11 @@ func (tracker *issueTracker) ListStoriesByTag(tags []string) (stories []common.S
 }
 
 func (tracker *issueTracker) ListStoriesByRelease(v *version.Version) ([]common.Story, error) {
-	return tracker.storiesByRelease(v)
+	issues, err := tracker.issuesByRelease(v)
+	if err != nil {
+		return nil, err
+	}
+	return toCommonStories(issues, tracker), nil
 }
 
 func (tracker *issueTracker) NextRelease(
@@ -158,14 +162,6 @@ func (tracker *issueTracker) issuesByRelease(v *version.Version) ([]*jira.Issue,
 
 func (tracker *issueTracker) searchStories(queryFormat string, v ...interface{}) ([]common.Story, error) {
 	issues, err := tracker.searchIssues(queryFormat, v...)
-	if err != nil {
-		return nil, err
-	}
-	return toCommonStories(issues, tracker), nil
-}
-
-func (tracker *issueTracker) storiesByRelease(v *version.Version) ([]common.Story, error) {
-	issues, err := tracker.issuesByRelease(v)
 	if err != nil {
 		return nil, err
 	}
