@@ -2,13 +2,16 @@ package jira
 
 import (
 	// Stdlib
+	"container/list"
 	"fmt"
 	"os"
+	"sort"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/prompt"
 	"github.com/salsaflow/salsaflow/releases"
 	"github.com/salsaflow/salsaflow/version"
@@ -38,48 +41,110 @@ func newNextRelease(
 }
 
 func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
-	// Collect the issues to be added to the current release.
-	task := "Collect the issues that modified trunk since the last release"
+	// Fetch the issues already assigned to the release.
+	var (
+		ver       = release.trunkVersion
+		verString = ver.BaseString()
+		verLabel  = ver.ReleaseTagString()
+	)
+	task := fmt.Sprintf("Fetch JIRA issues already assigned to release %v", verString)
 	log.Run(task)
-	ids, err := releases.ListStoryIdsToBeAssigned(release.tracker)
+	issues, err := release.tracker.issuesByRelease(ver)
 	if err != nil {
 		return false, errs.NewError(task, err)
 	}
 
-	// Fetch the additional issues from JIRA.
-	task = "Fetch the collected issues from JIRA"
+	// Collect the issues that modified trunk since the last release.
+	task = "Collect the issues that modified trunk since the last release"
 	log.Run(task)
-	issues, err := listStoriesById(newClient(release.tracker.config), ids)
-	if len(issues) == 0 && err != nil {
+	issueKeys, err := releases.ListStoryIdsToBeAssigned(release.tracker)
+	if err != nil {
 		return false, errs.NewError(task, err)
 	}
-	if len(issues) != len(ids) {
+
+	// Drop the issues that are already assigned.
+	keySet := make(map[string]struct{}, len(issues))
+	for _, issue := range issues {
+		keySet[issue.Key] = struct{}{}
+	}
+	keys := make([]string, 0, len(issueKeys))
+	for _, key := range issueKeys {
+		if _, ok := keySet[key]; !ok {
+			keys = append(keys, key)
+		}
+	}
+	issueKeys = keys
+
+	// Fetch the additional issues from JIRA.
+	task = "Fetch JIRA issues that modified trunk since the last release"
+	log.Run(task)
+	collectedIssues, err := listStoriesById(newClient(release.tracker.config), issueKeys)
+	if len(collectedIssues) == 0 && err != nil {
+		return false, errs.NewError(task, err)
+	}
+	if len(collectedIssues) != len(issueKeys) {
 		log.Warn("Some issues were dropped since they were not found in JIRA")
 	}
 
-	// Drop the issues that were already assigned to the right version.
-	releaseLabel := release.trunkVersion.ReleaseTagString()
-	filteredIssues := make([]*jira.Issue, 0, len(issues))
-IssueLoop:
+	// Append the collected issues to the assigned issues.
+	issues = append(issues, collectedIssues...)
+
+	// Get the issues to be labeled.
+	log.Run("Collect the issues to be assigned automatically")
+	toLabel := make([]*jira.Issue, 0, len(issues))
+
+	// We push the collected issues onto a stack and we loop over.
+	// During every iteration, we pop an issue, remember it in case it is not labeled,
+	// then we push the parent and all the subtasks to the stask to check them later.
+	// processedKeys is used to remember what issue keys were checked already.
+	processedKeys := make(map[string]struct{}, len(issues))
+
+	// Use list.List as a stack, fill it with the collected issues and loop.
+	// Actually doesn't matter whether we use the list as a queue or a stack.
+	stack := list.New()
 	for _, issue := range issues {
-		// Add only the parent tasks, i.e. skip sub-tasks.
-		if issue.Fields.Parent != nil {
+		stack.PushBack(issue)
+	}
+	for {
+		// Pop the top issue from the stack.
+		e := stack.Back()
+		// No issues left, we are done.
+		if e == nil {
+			break
+		}
+		stack.Remove(e)
+		issue := e.Value.(*jira.Issue)
+
+		// In case this issue has already been processed, continue.
+		if _, processed := processedKeys[issue.Key]; processed {
 			continue
 		}
-		// Add only the issues that have not been assigned to the release yet.
-		for _, label := range issue.Fields.Labels {
-			if label == releaseLabel {
-				continue IssueLoop
-			}
+
+		// In case the issue is not labeled, remember it.
+		if !isLabeled(issue, verLabel) {
+			toLabel = append(toLabel, issue)
 		}
-		filteredIssues = append(filteredIssues, issue)
+
+		// Push the parent task onto the stack.
+		if parent := issue.Fields.Parent; parent != nil {
+			stack.PushBack(parent)
+		}
+
+		// Push the subtasks onto the stack.
+		for _, child := range issue.Fields.Subtasks {
+			stack.PushBack(child)
+		}
+
+		// Mark the issue as processed.
+		processedKeys[issue.Key] = struct{}{}
 	}
-	issues = filteredIssues
 
 	// Present the issues to the user.
-	if len(issues) != 0 {
+	if len(toLabel) != 0 {
 		fmt.Println("\nThe following issues are going to be added to the release:\n")
-		err := prompt.ListStories(toCommonStories(issues, release.tracker), os.Stdout)
+		commonStories := common.Stories(toCommonStories(toLabel, release.tracker))
+		sort.Sort(common.Stories(commonStories))
+		err := prompt.ListStories(commonStories, os.Stdout)
 		if err != nil {
 			return false, err
 		}
@@ -87,11 +152,9 @@ IssueLoop:
 
 	// Ask the user to confirm.
 	ok, err := prompt.Confirm(
-		fmt.Sprintf(
-			"\nAre you sure you want to start release %v?",
-			release.trunkVersion.BaseString()))
+		fmt.Sprintf("\nAre you sure you want to start release %v?", verString))
 	if err == nil {
-		release.additionalIssues = issues
+		release.additionalIssues = toLabel
 	}
 	return ok, err
 }
