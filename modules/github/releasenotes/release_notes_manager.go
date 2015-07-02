@@ -47,9 +47,9 @@ func (rnm *releaseNotesManager) PostReleaseNotes(
 	// Format the release notes.
 	task := "Format the release notes"
 	body := bytes.NewBufferString(`
-## Overview ##
+## Summary ##
 
-**PLEASE FILL IN THE RELEASE OVERVIEW**
+**PLEASE FILL IN THE RELEASE SUMMARY**
 `)
 	encoder, err := notes.NewEncoder(notes.EncodingMarkdown, body)
 	if err != nil {
