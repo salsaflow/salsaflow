@@ -54,7 +54,7 @@ func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action
 		}
 	} else {
 		// Milestone already exists, we are done.
-		log.Log("The review milestone exists already")
+		log.Log(fmt.Sprintf("Review milestone '%v' exists already", milestoneTitle(v)))
 		return nil, nil
 	}
 
