@@ -107,6 +107,11 @@ func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId stri
 	return tag, nil
 }
 
+func (tracker *issueTracker) issueByIdOrKey(issueIdOrKey string) (*jira.Issue, error) {
+	issue, _, err := newClient(tracker.config).Issues.Get(issueIdOrKey)
+	return issue, err
+}
+
 func (tracker *issueTracker) searchIssues(queryFormat string, v ...interface{}) ([]*jira.Issue, error) {
 	query := fmt.Sprintf(queryFormat, v...)
 	jql := fmt.Sprintf("project = \"%v\" AND (%v)", tracker.config.ProjectKey(), query)
