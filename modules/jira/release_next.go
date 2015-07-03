@@ -4,14 +4,17 @@ import (
 	// Stdlib
 	"container/list"
 	"fmt"
+	"io"
 	"os"
 	"sort"
+	"strconv"
+	"strings"
+	"text/tabwriter"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
-	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/prompt"
 	"github.com/salsaflow/salsaflow/releases"
 	"github.com/salsaflow/salsaflow/version"
@@ -54,6 +57,15 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 		return false, errs.NewError(task, err)
 	}
 
+	// Convert []*jira.Issue into []*assignedIssue.
+	assigned := make([]*assignedIssue, 0, len(issues))
+	for _, issue := range issues {
+		assigned = append(assigned, &assignedIssue{
+			Issue:  issue,
+			Reason: "assigned manually",
+		})
+	}
+
 	// Collect the issues that modified trunk since the last release.
 	task = "Collect the issues that modified trunk since the last release"
 	log.Run(task)
@@ -87,76 +99,113 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	}
 
 	// Append the collected issues to the assigned issues.
-	issues = append(issues, collectedIssues...)
-
-	// Get the issues to be labeled.
-	log.Run("Collect the issues to be assigned automatically")
-	toLabel := make([]*jira.Issue, 0, len(issues))
-
-	// We push the collected issues onto a stack and we loop over.
-	// During every iteration, we pop an issue, remember it in case it is not labeled,
-	// then we push the parent and all the subtasks to the stask to check them later.
-	// processedKeys is used to remember what issue keys were checked already.
-	processedKeys := make(map[string]struct{}, len(issues))
-
-	// Use list.List as a stack, fill it with the collected issues and loop.
-	// Actually doesn't matter whether we use the list as a queue or a stack.
-	stack := list.New()
-	for _, issue := range issues {
-		stack.PushBack(issue)
+	for _, issue := range collectedIssues {
+		assigned = append(assigned, &assignedIssue{
+			Issue:  issue,
+			Reason: "modified trunk",
+		})
 	}
-	for {
-		// Pop the top issue from the stack.
-		e := stack.Back()
-		// No issues left, we are done.
-		if e == nil {
-			break
-		}
-		stack.Remove(e)
-		issue := e.Value.(*jira.Issue)
 
-		// In case this issue has already been processed, continue.
-		if _, processed := processedKeys[issue.Key]; processed {
+	// Get all issues that are reachable from the collected issues.
+	log.Run("Collect the issues to be assigned automatically")
+	allIssues, err := release.computeClosure(assigned)
+
+	// Split the result by what is already assigned and what is to be assigned.
+	var (
+		alreadyAssigned  = make([]*assignedIssue, 0, len(allIssues))
+		tasksToAssign    = make([]*assignedIssue, 0, len(allIssues))
+		subtasksToAssign = make([]*assignedIssue, 0, len(allIssues))
+	)
+	for _, issue := range allIssues {
+		if isLabeled(issue.Issue, verLabel) {
+			alreadyAssigned = append(alreadyAssigned, issue)
 			continue
 		}
 
-		// In case the issue is not labeled, remember it.
-		if !isLabeled(issue, verLabel) {
-			toLabel = append(toLabel, issue)
+		if issue.Fields.IssueType.Subtask {
+			subtasksToAssign = append(subtasksToAssign, issue)
+		} else {
+			tasksToAssign = append(tasksToAssign, issue)
 		}
-
-		// Push the parent task onto the stack.
-		if parent := issue.Fields.Parent; parent != nil {
-			stack.PushBack(parent)
-		}
-
-		// Push the subtasks onto the stack.
-		for _, child := range issue.Fields.Subtasks {
-			stack.PushBack(child)
-		}
-
-		// Mark the issue as processed.
-		processedKeys[issue.Key] = struct{}{}
 	}
 
 	// Present the issues to the user.
-	if len(toLabel) != 0 {
-		fmt.Println("\nThe following issues are going to be added to the release:\n")
-		commonStories := common.Stories(toCommonStories(toLabel, release.tracker))
-		sort.Sort(common.Stories(commonStories))
-		err := prompt.ListStories(commonStories, os.Stdout)
-		if err != nil {
-			return false, err
-		}
+	issueLists := []*issueDialogSection{
+		{
+			"The following issues were manually assigned to the release:",
+			alreadyAssigned,
+			true,
+		},
+		{
+			"The following top-level issues are going to be assigned by SalsaFlow:",
+			tasksToAssign,
+			false,
+		},
+		{
+			"The following subtasks are going to be assigned by SalsaFlow as well:",
+			subtasksToAssign,
+			false,
+		},
+	}
+	for _, l := range issueLists {
+		listAssignedIssues(l, os.Stdout)
 	}
 
 	// Ask the user to confirm.
 	ok, err := prompt.Confirm(
 		fmt.Sprintf("\nAre you sure you want to start release %v?", verString))
 	if err == nil {
-		release.additionalIssues = toLabel
+		// Need to make []*jira.Issue out of []*assignedIssues, annoying...
+		issues := append(tasksToAssign, subtasksToAssign...)
+		additional := make([]*jira.Issue, 0, len(issues))
+		for _, issue := range issues {
+			additional = append(additional, issue.Issue)
+		}
+		// Store the issues to be labeled in the release object.
+		release.additionalIssues = additional
 	}
 	return ok, err
+}
+
+type issueDialogSection struct {
+	message    string
+	issues     []*assignedIssue
+	skipReason bool
+}
+
+func listAssignedIssues(section *issueDialogSection, writer io.Writer) {
+	// Do nothing when no issues.
+	if len(section.issues) == 0 {
+		return
+	}
+
+	// Sort the issues by issue key.
+	sort.Sort(assignedIssues(section.issues))
+
+	tw := tabwriter.NewWriter(writer, 0, 8, 2, '\t', 0)
+
+	// Write the message.
+	fmt.Fprintln(tw)
+	fmt.Fprintln(tw, section.message)
+	fmt.Fprintln(tw)
+
+	// Write the issues.
+	if section.skipReason {
+		fmt.Fprint(tw, "  Issue Key\tSummary\n")
+		fmt.Fprint(tw, "  =========\t=======\n")
+		for _, issue := range section.issues {
+			fmt.Fprintf(tw, "  %v\t%v\n", issue.Key, issue.Fields.Summary)
+		}
+	} else {
+		fmt.Fprint(tw, "  Issue Key\tSummary\tReason\n")
+		fmt.Fprint(tw, "  =========\t=======\t======\n")
+		for _, issue := range section.issues {
+			fmt.Fprintf(tw, "  %v\t%v\t%v\n", issue.Key, issue.Fields.Summary, issue.Reason)
+		}
+	}
+
+	// Flush the tabwriter.
+	tw.Flush()
 }
 
 func (release *nextRelease) Start() (action.Action, error) {
@@ -178,4 +227,118 @@ func (release *nextRelease) Start() (action.Action, error) {
 	return action.ActionFunc(func() error {
 		return removeLabel(api, release.additionalIssues, releaseLabel)
 	}), nil
+}
+
+type assignedIssue struct {
+	*jira.Issue
+	Reason string
+}
+
+// assignedIssues implements sort.Interface
+// The issues are sorted by the issue key.
+type assignedIssues []*assignedIssue
+
+func (as assignedIssues) Len() int {
+	return len(as)
+}
+
+func (as assignedIssues) Less(i, j int) bool {
+	seq := func(index int) int {
+		var part string
+		parts := strings.SplitN(as[index].Key, "-", 2)
+		if len(parts) == 2 {
+			part = parts[1]
+		} else {
+			part = parts[0]
+		}
+		seq, _ := strconv.Atoi(part)
+		return seq
+	}
+
+	return seq(i) < seq(j)
+}
+
+func (as assignedIssues) Swap(i, j int) {
+	as[i], as[j] = as[j], as[i]
+}
+
+// computeClosure returns all issues that are reachable from the given list of issues
+// by following the parent/subtask relations. The issues returned are by definition
+// a superset of the issues passed into the function.
+func (release *nextRelease) computeClosure(issues []*assignedIssue) ([]*assignedIssue, error) {
+	closure := make([]*assignedIssue, 0, len(issues))
+
+	// We push the collected issues onto a stack and we loop over.
+	// During every iteration, we pop an issue, remember it in case it is not labeled,
+	// then we push the parent and all the subtasks to the stask to check them later.
+	// processedKeys is used to remember what issue keys were checked already.
+	processedKeys := make(map[string]struct{}, len(issues))
+
+	processed := func(issue *jira.Issue) bool {
+		_, ok := processedKeys[issue.Key]
+		return ok
+	}
+
+	markAsProcessed := func(issue *jira.Issue) {
+		processedKeys[issue.Key] = struct{}{}
+	}
+
+	// Use list.List as a stack, fill it with the collected issues and loop.
+	// Actually doesn't matter whether we use the list as a queue or a stack.
+	stack := list.New()
+	for _, issue := range issues {
+		stack.PushBack(issue)
+	}
+	for {
+		// Pop the top issue from the stack.
+		e := stack.Back()
+		// No issues left, we are done.
+		if e == nil {
+			break
+		}
+		stack.Remove(e)
+		issue := e.Value.(*assignedIssue)
+
+		// In case this issue has already been processed, continue.
+		if processed(issue.Issue) {
+			continue
+		}
+
+		// Add the issue into the closure.
+		closure = append(closure, issue)
+
+		// Push the parent task onto the stack.
+		if parent := issue.Fields.Parent; parent != nil && !processed(parent) {
+			// We need to fetch the parent issue to get the list of subtasks.
+			// The parent link in the subtask issue is not a complete issue resource.
+			task := fmt.Sprintf("Fetch additional JIRA issue resource: %v", parent.Key)
+			log.Run(task)
+			parentIssue, err := release.tracker.issueByIdOrKey(parent.Key)
+			if err != nil {
+				return nil, errs.NewError(task, err)
+			}
+			stack.PushBack(&assignedIssue{
+				Issue:  parentIssue,
+				Reason: fmt.Sprintf("parent of %v", issue.Key),
+			})
+		}
+
+		// Push the subtasks onto the stack.
+		for _, child := range issue.Fields.Subtasks {
+			// No need to fetch additional resources as with the parent link right above.
+			// The subtask resource is incomplete, but we are not going to use that resource
+			// to get the parent link since the parent issue is being processed right now.
+			if !processed(child) {
+				stack.PushBack(&assignedIssue{
+					Issue:  child,
+					Reason: fmt.Sprintf("subtask of %v", issue.Key),
+				})
+			}
+		}
+
+		// Mark the issue as processed.
+		markAsProcessed(issue.Issue)
+	}
+
+	return closure, nil
 }
