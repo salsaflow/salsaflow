@@ -167,14 +167,7 @@ func (release *runningRelease) Release() error {
 }
 
 func ensureStageableIssue(issue *jira.Issue) error {
-	// Check subtasks recursively.
-	for _, subtask := range issue.Fields.Subtasks {
-		if err := ensureStageableIssue(subtask); err != nil {
-			return err
-		}
-	}
-
-	// Check the issue itself.
+	// Make sure the issue is in one of the stageable stages.
 	for _, id := range stageableStateIds {
 		if issue.Fields.Status.Id == id {
 			return nil
