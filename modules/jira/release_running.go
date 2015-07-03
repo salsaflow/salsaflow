@@ -30,7 +30,8 @@ func newRunningRelease(
 ) (*runningRelease, error) {
 
 	// Fetch relevant issues from JIRA.
-	task := fmt.Sprintf("Fetch issues for release '%v'", releaseVersion)
+	verString := releaseVersion.BaseString()
+	task := fmt.Sprintf("Fetch JIRA issues for release %v", verString)
 	log.Run(task)
 	issues, err := tracker.issuesByRelease(releaseVersion)
 	if err != nil {
@@ -149,11 +150,6 @@ IssueLoop:
 }
 
 func (release *runningRelease) Release() error {
-	// TODO: Get rid of this unholy ugliness.
-	if release.issues == nil {
-		panic("bug(release.issues == nil)")
-	}
-
 	// Release all issues that are accepted.
 	issues := make([]*jira.Issue, 0, len(release.issues))
 	for _, issue := range release.issues {

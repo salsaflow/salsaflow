@@ -43,27 +43,21 @@ func (tracker *issueTracker) CurrentUser() (common.User, error) {
 }
 
 func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
-	query := fmt.Sprintf("(%v) AND (%v)",
+	return tracker.searchStories("(%v) AND (%v)",
 		formatInRange("type", codingIssueTypeIds...),
 		formatInRange("status", startableStateIds...))
-
-	return tracker.searchStories(query)
 }
 
 func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
-	query := fmt.Sprintf("(%v) AND (%v)",
+	return tracker.searchStories("(%v) AND (%v)",
 		formatInRange("type", codingIssueTypeIds...),
 		formatInRange("status", inDevelopmentStateIds...))
-
-	return tracker.searchStories(query)
 }
 
 func (tracker *issueTracker) ReviewedStories() (stories []common.Story, err error) {
-	query := fmt.Sprintf("(%v) AND (%v)",
+	return tracker.searchStories("(%v) AND (%v)",
 		formatInRange("type", codingIssueTypeIds...),
 		formatInRange("status", stateIdReviewed))
-
-	return tracker.searchStories(query)
 }
 
 func (tracker *issueTracker) ListStoriesByTag(tags []string) (stories []common.Story, err error) {
@@ -111,34 +105,6 @@ func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId stri
 		return "", fmt.Errorf("not a valid issue key: %v", tag)
 	}
 	return tag, nil
-}
-
-func (tracker *issueTracker) getVersionResource(ver *version.Version) (*jira.Version, error) {
-	var (
-		projectKey  = tracker.config.ProjectKey()
-		versionName = ver.ReleaseTagString()
-		api         = newClient(tracker.config)
-	)
-
-	// In case the resource cache is empty, fill it.
-	if tracker.versionCache == nil {
-		vs, _, err := api.Projects.ListVersions(projectKey)
-		if err != nil {
-			return nil, err
-		}
-
-		m := make(map[string]*jira.Version, len(vs))
-		for _, v := range vs {
-			m[v.Name] = v
-		}
-		tracker.versionCache = m
-	}
-
-	// Return the resource we are looking for.
-	if res, ok := tracker.versionCache[versionName]; ok {
-		return res, nil
-	}
-	return nil, nil
 }
 
 func (tracker *issueTracker) searchIssues(queryFormat string, v ...interface{}) ([]*jira.Issue, error) {
