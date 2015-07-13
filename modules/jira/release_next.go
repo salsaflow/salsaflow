@@ -270,7 +270,7 @@ func (release *nextRelease) computeClosure(issues []*assignedIssue) ([]*assigned
 
 	// We push the collected issues onto a stack and we loop over.
 	// During every iteration, we pop an issue, remember it in case it is not labeled,
-	// then we push the parent and all the subtasks to the stask to check them later.
+	// then we push the parent and all the subtasks to the stack to check them later.
 	// processedKeys is used to remember what issue keys were checked already.
 	processedKeys := make(map[string]struct{}, len(issues))
 
