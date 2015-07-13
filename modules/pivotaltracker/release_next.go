@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
@@ -41,59 +42,70 @@ func newNextRelease(
 }
 
 func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
+	// Fetch the stories already assigned to the release.
 	var (
-		config       = release.tracker.config
-		client       = pivotal.NewClient(config.UserToken())
-		releaseLabel = getReleaseLabel(release.trunkVersion)
+		ver       = release.trunkVersion
+		verString = ver.BaseString()
+		verLabel  = ver.ReleaseTagString()
 	)
-
-	// Collect the commits that modified trunk since the last release.
-	task := "Collect the stories that modified trunk"
+	task := fmt.Sprintf("Fetch the stories already assigned to release %v", verString)
 	log.Run(task)
-	ids, err := releases.ListStoryIdsToBeAssigned(release.tracker)
+	assignedStories, err := release.tracker.storiesByRelease(ver)
 	if err != nil {
 		return false, errs.NewError(task, err)
 	}
 
+	// Collect the story IDs associated with the commits that
+	// modified trunk since the last release.
+	task = "Collect the stories that modified trunk since the last release"
+	log.Run(task)
+	storyIds, err := releases.ListStoryIdsToBeAssigned(release.tracker)
+	if err != nil {
+		return false, errs.NewError(task, err)
+	}
+
+	// Drop the stories that are already assigned.
+	idSet := make(map[string]struct{}, len(assignedStories))
+	for _, story := range assignedStories {
+		idSet[strconv.Itoa(story.Id)] = struct{}{}
+	}
+	ids := make([]string, 0, len(storyIds))
+	for _, id := range storyIds {
+		if _, ok := idSet[id]; !ok {
+			ids = append(ids, id)
+		}
+	}
+	storyIds = ids
+
 	// Fetch the collected stories from Pivotal Tracker, if necessary.
-	var additional []*pivotal.Story
-	if len(ids) != 0 {
+	var additionalStories []*pivotal.Story
+	if len(storyIds) != 0 {
 		task = "Fetch the collected stories from Pivotal Tracker"
 		log.Run(task)
 
 		var err error
-		additional, err = listStoriesById(client, config.ProjectId(), ids)
-		if len(additional) == 0 && err != nil {
+		additionalStories, err = release.tracker.storiesById(storyIds)
+		if len(additionalStories) == 0 && err != nil {
 			return false, errs.NewError(task, err)
 		}
-		if len(additional) != len(ids) {
+		if len(additionalStories) != len(storyIds) {
 			log.Warn("Some stories were dropped since they were not found in PT")
 		}
-
-		// Drop the issues that are already assigned to the right release.
-		unassignedStories := make([]*pivotal.Story, 0, len(additional))
-		for _, story := range additional {
-			if labeled(story, releaseLabel) {
-				continue
-			}
-			unassignedStories = append(unassignedStories, story)
-		}
-		additional = unassignedStories
 	}
 
 	// Check the Point Me label.
 	task = "Make sure there are no unpointed stories"
 	log.Run(task)
-	pmLabel := config.PointMeLabel()
+	pmLabel := release.tracker.config.PointMeLabel()
 
 	// Fetch the already assigned but unpointed stories.
-	pmStories, err := searchStories(client, config.ProjectId(),
-		"label:\"%v\" AND label:\"%v\"", releaseLabel, pmLabel)
+	pmStories, err := release.tracker.searchStories(
+		"label:\"%v\" AND label:\"%v\"", verLabel, pmLabel)
 	if err != nil {
 		return false, errs.NewError(task, err)
 	}
 	// Also add these that are to be added but are unpointed.
-	for _, story := range additional {
+	for _, story := range additionalStories {
 		if labeled(story, pmLabel) {
 			pmStories = append(pmStories, story)
 		}
@@ -109,12 +121,29 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 		return false, errs.NewError(task, errors.New("unpointed stories detected"))
 	}
 
-	// Print the stories to be added to the release.
-	if len(additional) != 0 {
-		fmt.Println("\nThe following stories are going to be added to the release:\n")
-		err := prompt.ListStories(toCommonStories(additional, release.tracker), os.Stdout)
-		if err != nil {
-			return false, err
+	// Print the summary into the console.
+	summary := []struct {
+		header  string
+		stories []*pivotal.Story
+	}{
+		{
+			"The following stories were manually assigned to the release:",
+			assignedStories,
+		},
+		{
+			"The following stories were added automatically (modified trunk):",
+			additionalStories,
+		},
+	}
+	for _, item := range summary {
+		if len(item.stories) != 0 {
+			fmt.Println()
+			fmt.Println(item.header)
+			fmt.Println()
+			err := prompt.ListStories(toCommonStories(item.stories, release.tracker), os.Stdout)
+			if err != nil {
+				return false, err
+			}
 		}
 	}
 
@@ -124,7 +153,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 			"\nAre you sure you want to start release %v?",
 			release.trunkVersion.BaseString()))
 	if err == nil {
-		release.additionalStories = additional
+		release.additionalStories = additionalStories
 	}
 	return ok, err
 }

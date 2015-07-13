@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strconv"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
@@ -29,77 +28,6 @@ func fetchMe() (*pivotal.Me, error) {
 	client := pivotal.NewClient(config.UserToken())
 	me, _, err := client.Me.Get()
 	return me, err
-}
-
-func searchStories(
-	client *pivotal.Client,
-	projectId int,
-	format string, v ...interface{},
-) ([]*pivotal.Story, error) {
-
-	// Generate the query.
-	query := fmt.Sprintf(format, v...)
-
-	// Automatically limit the story type.
-	query = fmt.Sprintf("(type:%v OR type:%v) AND (%v)",
-		pivotal.StoryTypeFeature, pivotal.StoryTypeBug, query)
-
-	stories, _, err := client.Stories.List(projectId, query)
-	return stories, err
-}
-
-type storyGetResult struct {
-	story *pivotal.Story
-	err   error
-}
-
-func listStoriesById(
-	client *pivotal.Client,
-	projectId int,
-	ids []string,
-) ([]*pivotal.Story, error) {
-
-	if len(ids) == 0 {
-		return []*pivotal.Story{}, nil
-	}
-
-	var filter bytes.Buffer
-	fmt.Fprintf(&filter, "id:%v", ids[0])
-	for _, id := range ids[1:] {
-		fmt.Fprintf(&filter, " OR id:%v", id)
-	}
-	return searchStories(client, projectId, filter.String())
-}
-
-func listStoriesByIdOrdered(
-	client *pivotal.Client,
-	projectId int,
-	ids []string,
-) ([]*pivotal.Story, error) {
-
-	// Fetch the stories.
-	stories, err := listStoriesById(client, projectId, ids)
-	if err != nil {
-		return nil, err
-	}
-
-	// Order them.
-	idMap := make(map[string]*pivotal.Story, len(ids))
-	for _, story := range stories {
-		idMap[strconv.Itoa(story.Id)] = story
-	}
-
-	ordered := make([]*pivotal.Story, 0, len(ids))
-	for _, id := range ids {
-		if story, ok := idMap[id]; ok {
-			ordered = append(ordered, story)
-			continue
-		}
-
-		panic("unreachable code reached")
-	}
-
-	return ordered, nil
 }
 
 func addLabelFunc(label string) storyUpdateFunc {

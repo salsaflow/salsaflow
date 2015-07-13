@@ -2,7 +2,9 @@ package pivotaltracker
 
 import (
 	// Stdlib
+	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 
 	// Internal
@@ -101,11 +103,7 @@ func (tracker *issueTracker) ListStoriesByTag(tags []string) ([]common.Story, er
 	}
 
 	// Fetch the relevant stories.
-	var (
-		client    = pivotal.NewClient(tracker.config.UserToken())
-		projectId = tracker.config.ProjectId()
-	)
-	stories, err := listStoriesByIdOrdered(client, projectId, ids)
+	stories, err := tracker.storiesByIdOrdered(ids)
 	if err != nil {
 		return nil, err
 	}
@@ -154,11 +152,64 @@ func (tracker *issueTracker) searchStories(
 	v ...interface{},
 ) ([]*pivotal.Story, error) {
 
+	// Get the client.
 	var (
 		client    = pivotal.NewClient(tracker.config.UserToken())
 		projectId = tracker.config.ProjectId()
 	)
-	return searchStories(client, projectId, queryFormat, v...)
+
+	// Generate the query.
+	query := fmt.Sprintf(queryFormat, v...)
+
+	// Automatically limit the story type.
+	query = fmt.Sprintf("(type:%v OR type:%v) AND (%v)",
+		pivotal.StoryTypeFeature, pivotal.StoryTypeBug, query)
+
+	// Send the query to PT.
+	stories, _, err := client.Stories.List(projectId, query)
+	return stories, err
+}
+
+func (tracker *issueTracker) storiesById(ids []string) ([]*pivotal.Story, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	// Generate the query.
+	var filter bytes.Buffer
+	fmt.Fprintf(&filter, "id:%v", ids[0])
+	for _, id := range ids[1:] {
+		fmt.Fprintf(&filter, " OR id:%v", id)
+	}
+
+	// Send the query.
+	return tracker.searchStories(filter.String())
+}
+
+func (tracker *issueTracker) storiesByIdOrdered(ids []string) ([]*pivotal.Story, error) {
+	// Fetch the stories.
+	stories, err := tracker.storiesById(ids)
+	if err != nil {
+		return nil, err
+	}
+
+	// Order them.
+	idMap := make(map[string]*pivotal.Story, len(ids))
+	for _, story := range stories {
+		idMap[strconv.Itoa(story.Id)] = story
+	}
+
+	ordered := make([]*pivotal.Story, 0, len(ids))
+	for _, id := range ids {
+		if story, ok := idMap[id]; ok {
+			ordered = append(ordered, story)
+			continue
+		}
+
+		panic("unreachable code reached")
+	}
+
+	return ordered, nil
 }
 
 func (tracker *issueTracker) storiesByRelease(v *version.Version) ([]*pivotal.Story, error) {
