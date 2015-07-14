@@ -274,6 +274,8 @@ func IsBranchSynchronized(branch, remote string) (bool, error) {
 	return localHexsha == remoteHexsha, nil
 }
 
+// EnsureBranchSynchronized makes sure the given branch is up to date.
+// If that is not the case, *ErrRefNoInSync is returned.
 func EnsureBranchSynchronized(branch, remote string) error {
 	// Make sure the branch is up to date.
 	upToDate, err := IsBranchSynchronized(branch, remote)
@@ -281,7 +283,7 @@ func EnsureBranchSynchronized(branch, remote string) error {
 		return err
 	}
 	if !upToDate {
-		return fmt.Errorf("branch '%v' is not up to date", branch)
+		return &ErrRefNotInSync{branch}
 	}
 	return nil
 }
@@ -292,6 +294,9 @@ func EnsureBranchSynchronized(branch, remote string) error {
 // So, in case the right remote branch exists and the local does not,
 // the local tracking branch is created. In case the local branch
 // exists already, it is ensured that it is up to date.
+//
+// In case the remote branch does not exist, *ErrRefNotFound is returned.
+// In case the branch is not up to date, *ErrRefNotInSync is returned.
 func CheckOrCreateTrackingBranch(branch, remote string) error {
 	// Check whether the remote counterpart exists.
 	exists, err := RemoteBranchExists(branch, remote)

@@ -29,3 +29,15 @@ func (err *ErrRefNotFound) Error() string {
 func (err *ErrRefNotFound) Ref() string {
 	return err.ref
 }
+
+type ErrRefNotInSync struct {
+	ref string
+}
+
+func (err *ErrRefNotInSync) Error() string {
+	return fmt.Sprintf("ref '%v' is not up to date", err.ref)
+}
+
+func (err *ErrRefNotInSync) Ref() string {
+	return err.ref
+}

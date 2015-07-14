@@ -97,7 +97,7 @@ You need Git version 1.9.0 or newer.
 	)
 
 	// Make sure that the stable branch exists.
-	task = fmt.Sprintf("Make sure branch '%v' exists", stableBranch)
+	task = fmt.Sprintf("Make sure branch '%v' exists and is up to date", stableBranch)
 	log.Run(task)
 	err = git.CheckOrCreateTrackingBranch(stableBranch, remoteName)
 	if err != nil {
@@ -129,8 +129,11 @@ You need Git version 1.9.0 or newer.
 			if err := git.Push(remoteName, trunkBranch+":"+trunkBranch); err != nil {
 				return errs.NewError(task, err)
 			}
+		} else if _, ok := err.(*git.ErrRefNotInSync); !ok {
+			// We ignore ErrRefNotInSync here, so return the error
+			// in case it is of some other kind.
+			return errs.NewError(task, err)
 		}
-		return errs.NewError(task, err)
 	}
 
 	// Verify our git hooks are installed and used.
