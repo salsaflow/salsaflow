@@ -5,13 +5,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	ghutil "github.com/salsaflow/salsaflow/github"
+	ghissues "github.com/salsaflow/salsaflow/github/issues"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/version"
@@ -262,19 +262,18 @@ func createAssignedReviewRequest(
 	opts map[string]interface{},
 ) error {
 
-	var (
-		task       = fmt.Sprintf("Create review issue for story %v", story.ReadableId())
-		issueTitle = fmt.Sprintf("Review story %v: %v", story.ReadableId(), story.Title())
-	)
+	task := fmt.Sprintf("Create review issue for story %v", story.ReadableId())
 
-	// Generate the issue body.
-	var issueBody bytes.Buffer
-	fmt.Fprintf(&issueBody, "Story being reviewed: [%v](%v)\n\n", story.ReadableId(), story.URL())
-	fmt.Fprintf(&issueBody, "SF-Issue-Tracker: %v\n", story.IssueTracker().ServiceName())
-	fmt.Fprintf(&issueBody, "SF-Story-Key: %v\n\n", story.Tag())
-	fmt.Fprintf(&issueBody, "The associated commits are following:")
+	// Prepare the issue object.
+	issue := ghissues.NewStoryReviewIssue(
+		story.ReadableId(),
+		story.URL(),
+		story.Title(),
+		story.IssueTracker().ServiceName(),
+		story.Tag())
+
 	for _, commit := range commits {
-		fmt.Fprintf(&issueBody, "\n- [ ] %v: %v", commit.SHA, commit.MessageTitle)
+		issue.AddCommit(commit.SHA, commit.MessageTitle, false)
 	}
 
 	// Get the right review milestone to add the issue into.
@@ -285,14 +284,15 @@ func createAssignedReviewRequest(
 	}
 
 	// Create a new review issue.
-	issue, err := createIssue(task, config, owner, repo, issueTitle, issueBody.String(), milestone)
+	issueResource, err := createIssue(
+		task, config, owner, repo, issue.FormatTitle(), issue.FormatBody(), milestone)
 	if err != nil {
 		return err
 	}
 
 	// Open the issue if requested.
 	if _, open := opts["open"]; open {
-		return openIssue(issue)
+		return openIssue(issueResource)
 	}
 	return nil
 }
@@ -357,13 +357,10 @@ func createUnassignedReviewRequest(
 	opts map[string]interface{},
 ) error {
 
-	// Generate the issue title and body.
-	var (
-		task       = fmt.Sprintf("Create review issue for commit %v", commit.SHA)
-		issueTitle = fmt.Sprintf("Review commit %v: %v", commit.SHA, commit.MessageTitle)
-		issueBody  = fmt.Sprintf("Commits to be reviewed:\n- [ ] %v: %v",
-			commit.SHA, commit.MessageTitle)
-	)
+	task := fmt.Sprintf("Create review issue for commit %v", commit.SHA)
+
+	// Prepare the issue object.
+	issue := ghissues.NewCommitReviewIssue(commit.SHA, commit.MessageTitle)
 
 	// Get the right review milestone to add the issue into.
 	milestone, err := getOrCreateMilestoneForCommit(config, owner, repo, commit.SHA)
@@ -372,14 +369,15 @@ func createUnassignedReviewRequest(
 	}
 
 	// Create a new review issue.
-	issue, err := createIssue(task, config, owner, repo, issueTitle, issueBody, milestone)
+	issueResource, err := createIssue(
+		task, config, owner, repo, issue.FormatTitle(), issue.FormatBody(), milestone)
 	if err != nil {
 		return errs.NewError(task, err)
 	}
 
 	// Open the issue if requested.
 	if _, open := opts["open"]; open {
-		return openIssue(issue)
+		return openIssue(issueResource)
 	}
 	return nil
 }
@@ -419,38 +417,34 @@ func extendReviewRequest(
 	opts map[string]interface{},
 ) error {
 
-	var (
-		issueNum     = *issue.Number
-		issueBody    = *issue.Body
-		bodyBuffer   = bytes.NewBufferString(issueBody)
-		addedCommits = make([]*git.Commit, 0, len(commits))
-	)
+	issueNum := *issue.Number
 
-	for _, commit := range commits {
-		// Make sure the commit is not added yet.
-		commitString := fmt.Sprintf("] %v: %v", commit.SHA, commit.MessageTitle)
-		if strings.Contains(issueBody, commitString) {
-			log.Log(fmt.Sprintf("Commit %v already listed in issue #%v", commit.SHA, issueNum))
-			continue
-		}
-
-		// Extend the issue body.
-		addedCommits = append(addedCommits, commit)
-		fmt.Fprintf(bodyBuffer, "\n- [ ] %v: %v", commit.SHA, commit.MessageTitle)
+	// Parse the issue.
+	task := fmt.Sprintf("Parse review issue #%v", issueNum)
+	reviewIssue, err := ghissues.ParseReviewIssue(issue)
+	if err != nil {
+		return errs.NewError(task, err)
 	}
 
-	if len(addedCommits) == 0 {
+	// Add the commits.
+	newCommits := make([]*git.Commit, 0, len(commits))
+	for _, commit := range commits {
+		if reviewIssue.AddCommit(commit.SHA, commit.MessageTitle, false) {
+			newCommits = append(newCommits, commit)
+		}
+	}
+	if len(newCommits) == 0 {
 		log.Log(fmt.Sprintf("All commits already listed in issue #%v", issueNum))
 		return nil
 	}
 
 	// Edit the issue.
-	task := fmt.Sprintf("Update GitHub issue #%v", issueNum)
+	task = fmt.Sprintf("Update GitHub issue #%v", issueNum)
 	log.Run(task)
 
 	client := ghutil.NewClient(config.Token())
 	newIssue, _, err := client.Issues.Edit(owner, repo, issueNum, &github.IssueRequest{
-		Body:  github.String(bodyBuffer.String()),
+		Body:  github.String(reviewIssue.FormatBody()),
 		State: github.String("open"),
 	})
 	if err != nil {
@@ -458,7 +452,7 @@ func extendReviewRequest(
 	}
 
 	// Add the review comment.
-	if err := addReviewComment(config, owner, repo, issueNum, addedCommits); err != nil {
+	if err := addReviewComment(config, owner, repo, issueNum, newCommits); err != nil {
 		return err
 	}
 
