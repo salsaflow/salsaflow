@@ -97,7 +97,7 @@ You need Git version 1.9.0 or newer.
 	)
 
 	// Make sure that the stable branch exists.
-	task = fmt.Sprintf("Make sure branch '%v' exists and is up to date", stableBranch)
+	task = fmt.Sprintf("Make sure branch '%v' exists", stableBranch)
 	log.Run(task)
 	err = git.CheckOrCreateTrackingBranch(stableBranch, remoteName)
 	if err != nil {
@@ -105,8 +105,11 @@ You need Git version 1.9.0 or newer.
 			hint := fmt.Sprintf(
 				"Make sure that branch '%v' exists and run init again.\n", ex.Ref())
 			return errs.NewErrorWithHint(task, err, hint)
+		} else if _, ok := err.(*git.ErrRefNotInSync); !ok {
+			// We ignore ErrRefNotInSync here, so return the error
+			// in case it is of some other kind.
+			return errs.NewError(task, err)
 		}
-		return errs.NewError(task, err)
 	}
 
 	// Make sure that the trunk branch exists.
