@@ -11,11 +11,17 @@ import (
 // ReviewIssue represents the common interface for all review issue types.
 type ReviewIssue interface {
 
-	// AddCommit adds the commit to the commit checkbox.
+	// AddCommit adds the commit to the commit checklist.
 	AddCommit(commitSHA, commitTitle string, done bool) (added bool)
+
+	// CommitItems returns the list of commits contained in the commit checklist.
+	CommitItems() []*CommitItem
 
 	// AddReviewBlocker adds the review blocker to the blocker checkbox.
 	AddReviewBlocker(commitSHA, commentURL, blockerSummary string, fixed bool) (added bool)
+
+	// ReviewBlockerItems returns the list of blockers contained in the blocker checklist.
+	ReviewBlockerItems() []*ReviewBlockerItem
 
 	// FormatTitle returns the review issue title for the given issue type.
 	FormatTitle() string

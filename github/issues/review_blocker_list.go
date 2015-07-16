@@ -14,7 +14,7 @@ type ReviewBlockerList struct {
 	items []*ReviewBlockerItem
 }
 
-func (list *ReviewBlockerList) Items() []*ReviewBlockerItem {
+func (list *ReviewBlockerList) ReviewBlockerItems() []*ReviewBlockerItem {
 	return list.items
 }
 

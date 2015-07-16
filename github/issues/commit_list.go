@@ -12,7 +12,7 @@ type CommitList struct {
 	items []*CommitItem
 }
 
-func (list *CommitList) Items() []*CommitItem {
+func (list *CommitList) CommitItems() []*CommitItem {
 	return list.items
 }
 
