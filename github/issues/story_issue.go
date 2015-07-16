@@ -56,9 +56,9 @@ var storyReviewIssueBodyTemplate = fmt.Sprintf(`Story being reviewed: [{{.StoryI
 %v: {{.TrackerName}}
 %v: {{.StoryKey}}
 
-The commits to be reviewed are following:{{range .CommitList.Items}}
+The commits to be reviewed are following:{{range .CommitList.CommitItems}}
 - {{if .Done}}[x]{{else}}[ ]{{end}} {{.CommitSHA}}: {{.CommitTitle}}{{end}}
-{{with .ReviewBlockerList.Items}}
+{{with .ReviewBlockerList.ReviewBlockerItems}}
 The following review blockers were opened by the reviewer:{{range .}}
 - {{if .Fixed}}[x]{{else}}[ ]{{end}} [blocker {{.BlockerNumber}}]({{.CommentURL}}) (commit {{.CommitSHA}}): {{.BlockerSummary}}{{end}}
 {{end}}

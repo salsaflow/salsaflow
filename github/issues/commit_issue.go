@@ -37,9 +37,9 @@ func (ctx *CommitReviewIssue) FormatTitle() string {
 	return fmt.Sprintf("Review commit %v: %v", ctx.CommitSHA, ctx.CommitTitle)
 }
 
-var commitIssueBodyTemplate = fmt.Sprintf(`Commits being reviewed:{{range .CommitList.Items}}
+var commitIssueBodyTemplate = fmt.Sprintf(`Commits being reviewed:{{range .CommitList.CommitItems}}
 - {{if .Done}}[x]{{else}}[ ]{{end}} {{.CommitSHA}}: {{.CommitTitle}}{{end}}
-{{with .ReviewBlockerList.Items}}
+{{with .ReviewBlockerList.ReviewBlockerItems}}
 The following review blockers were opened by the reviewer:{{range .}}
 - {{if .Fixed}}[x]{{else}}[ ]{{end}} [blocker {{.BlockerNumber}}]({{.CommentURL}}) (commit {{.CommitSHA}}): {{.BlockerSummary}}{{end}}
 {{end}}
