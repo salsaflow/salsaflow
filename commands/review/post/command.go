@@ -270,7 +270,7 @@ You are about to post review requests for the following commits:
 	// Use force in case we are not on any SF core branch.
 	if canAmend {
 		// Get the current branch name.
-		current, err := git.CurrentBranch()
+		currentBranch, err := git.CurrentBranch()
 		if err != nil {
 			return nil, err
 		}
@@ -281,14 +281,15 @@ You are about to post review requests for the following commits:
 			return nil, err
 		}
 
-		upToDate, err := git.IsBranchSynchronized(current, gitConfig.RemoteName())
+		remoteName := gitConfig.RemoteName()
+		upToDate, err := git.IsBranchSynchronized(currentBranch, remoteName)
 		if err != nil {
 			return nil, err
 		}
 		if !upToDate {
-			args := make([]string, 0, 1)
-			msg := "Pushing the current branch to synchronize"
-			isCore, err := git.IsCoreBranch(current)
+			args := make([]string, 0, 3)
+			msg := fmt.Sprintf("Pushing branch '%v' to synchronize", currentBranch)
+			isCore, err := git.IsCoreBranch(currentBranch)
 			if err != nil {
 				return nil, err
 			}
@@ -296,6 +297,9 @@ You are about to post review requests for the following commits:
 				args = append(args, "-f")
 				msg += " (using force)"
 			}
+
+			args = append(args, remoteName, currentBranch)
+
 			log.Log(msg)
 			if _, err = git.RunCommand("push", args...); err != nil {
 				return nil, errs.NewError("Push the current branch", err)
