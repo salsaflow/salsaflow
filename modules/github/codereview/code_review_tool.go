@@ -263,7 +263,7 @@ func createAssignedReviewRequest(
 		story.Tag())
 
 	for _, commit := range commits {
-		issue.AddCommit(commit.SHA, commit.MessageTitle, false)
+		issue.AddCommit(false, commit.SHA, commit.MessageTitle)
 	}
 
 	// Get the right review milestone to add the issue into.
@@ -409,7 +409,7 @@ func extendReviewRequest(
 	// Add the commits.
 	newCommits := make([]*git.Commit, 0, len(commits))
 	for _, commit := range commits {
-		if reviewIssue.AddCommit(commit.SHA, commit.MessageTitle, false) {
+		if reviewIssue.AddCommit(false, commit.SHA, commit.MessageTitle) {
 			newCommits = append(newCommits, commit)
 		}
 	}

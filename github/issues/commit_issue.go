@@ -2,11 +2,9 @@ package issues
 
 import (
 	// Stdlib
-	"bufio"
 	"bytes"
 	"fmt"
 	"regexp"
-	"strings"
 
 	// Vendor
 	"github.com/google/go-github/github"
@@ -28,7 +26,7 @@ func NewCommitReviewIssue(commitSHA, commitTitle string) *CommitReviewIssue {
 		CommitTitle:           commitTitle,
 		ReviewIssueCommonBody: newReviewIssueCommonBody(),
 	}
-	ctx.AddCommit(commitSHA, commitTitle, false)
+	ctx.AddCommit(false, commitSHA, commitTitle)
 	return ctx
 }
 
@@ -46,6 +44,8 @@ func (ctx *CommitReviewIssue) FormatBody() string {
 
 // Parsing ---------------------------------------------------------------------
 
+var commitIssueTitleRegexp = regexp.MustCompile(`^Review commit ([^:]+): (.+)$`)
+
 func parseCommitReviewIssue(issue *github.Issue) (*CommitReviewIssue, error) {
 	var (
 		title = *issue.Title
@@ -53,8 +53,7 @@ func parseCommitReviewIssue(issue *github.Issue) (*CommitReviewIssue, error) {
 	)
 
 	// Parse the title.
-	titleRegexp := regexp.MustCompile(`^Review commit ([^:]+): (.+)$`)
-	match := titleRegexp.FindStringSubmatch(title)
+	match := commitIssueTitleRegexp.FindStringSubmatch(title)
 	if len(match) == 0 {
 		return nil, &ErrInvalidTitle{issue}
 	}
@@ -63,12 +62,12 @@ func parseCommitReviewIssue(issue *github.Issue) (*CommitReviewIssue, error) {
 	// Parse the body.
 	// There is actually nothing else than the common part,
 	// so we can simply call parseRemainingIssueBody.
-	scanner := bufio.NewScanner(strings.NewReader(body))
-	bodyCtx, err := parseRemainingIssueBody(issue, scanner, 0)
+	var err error
+	commonBody := parseRemainingIssueBody(&err, newBodyScanner(issue, body))
 	if err != nil {
 		return nil, err
 	}
 
 	// Return the context.
-	return &CommitReviewIssue{commitSHA, commitTitle, bodyCtx}, nil
+	return &CommitReviewIssue{commitSHA, commitTitle, commonBody}, nil
 }

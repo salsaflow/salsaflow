@@ -2,11 +2,11 @@ package issues
 
 // ReviewBlockerItem represents a line in the review blocker checkbox.
 type ReviewBlockerItem struct {
-	CommitSHA      string
+	Fixed          bool
 	CommentURL     string
+	CommitSHA      string
 	BlockerNumber  int
 	BlockerSummary string
-	Fixed          bool
 }
 
 // ReviewBlockerList is a placeholder for multiple review blockers.
@@ -21,10 +21,10 @@ func (list *ReviewBlockerList) ReviewBlockerItems() []*ReviewBlockerItem {
 // AddReviewBlocker adds the blocker to the list unless the blocker is already there.
 // The field that is check and must be unique is the comment URL.
 func (list *ReviewBlockerList) AddReviewBlocker(
-	commitSHA string,
-	commentURL string,
-	summary string,
 	fixed bool,
+	commentURL string,
+	commitSHA string,
+	blockerSummary string,
 ) bool {
 
 	for _, item := range list.items {
@@ -34,11 +34,11 @@ func (list *ReviewBlockerList) AddReviewBlocker(
 	}
 
 	list.items = append(list.items, &ReviewBlockerItem{
-		CommitSHA:      commitSHA,
-		CommentURL:     commentURL,
-		BlockerNumber:  len(list.items) + 1,
-		BlockerSummary: summary,
 		Fixed:          fixed,
+		CommentURL:     commentURL,
+		CommitSHA:      commitSHA,
+		BlockerNumber:  len(list.items) + 1,
+		BlockerSummary: blockerSummary,
 	})
 	return true
 }

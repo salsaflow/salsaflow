@@ -34,7 +34,7 @@ type ErrInvalidBody struct {
 }
 
 func (err *ErrInvalidBody) Error() string {
-	return fmt.Sprintf("issue %v: invalid issue body (line %v): %v",
+	return fmt.Sprintf(`issue %v: failed to parse issue body [lineNo=%v, line="%v"]`,
 		*err.issue.HTMLURL, err.lineNo, err.line)
 }
 
@@ -46,4 +46,17 @@ type ErrTagNotFound struct {
 
 func (err *ErrTagNotFound) Error() string {
 	return fmt.Sprintf("issue %v: tag not found: %v", *err.issue.HTMLURL, err.tag)
+}
+
+// ErrScanning is returned from bodyScanner.ReadLine when the internal scanner returns an error.
+type ErrScanning struct {
+	issue  *github.Issue
+	lineNo int
+	line   string
+	err    error
+}
+
+func (err *ErrScanning) Error() string {
+	return fmt.Sprintf(`issue %v: scanner error: %v [lineNo=%v, line="%v"]`,
+		*err.issue.HTMLURL, err.err, err.lineNo, err.line)
 }
