@@ -61,7 +61,7 @@ func Confirm(question string, defaultChoice bool) (bool, error) {
 		if defaultChoice {
 			fmt.Fprint(stdout, " [Y/n]: ")
 		} else {
-			fmt.Fprint(stdout, " [n/Y]: ")
+			fmt.Fprint(stdout, " [y/N]: ")
 		}
 	}
 	printQuestion()
