@@ -235,7 +235,7 @@ have not been cherry-picked onto the release branch yet.
 	}
 	fmt.Println()
 
-	confirmed, err := prompt.Confirm("Are you sure you really want to stage the release?")
+	confirmed, err := prompt.Confirm("Are you sure you really want to stage the release?", false)
 	if err != nil {
 		return errs.NewError(task, err)
 	}

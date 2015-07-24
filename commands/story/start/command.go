@@ -226,7 +226,10 @@ Insert an empty string to skip the branch creation step: `)
 
 	branchName := "story/" + sluggedLine
 	ok, err := prompt.Confirm(
-		fmt.Sprintf("\nThe branch that is going to be created will be called '%s'.\nIs that alright?", branchName))
+		fmt.Sprintf(
+			"\nThe branch that is going to be created will be called '%s'.\nIs that alright?",
+			branchName),
+		true)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}

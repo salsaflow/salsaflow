@@ -151,7 +151,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	ok, err := prompt.Confirm(
 		fmt.Sprintf(
 			"\nAre you sure you want to start release %v?",
-			release.trunkVersion.BaseString()))
+			release.trunkVersion.BaseString()), false)
 	if err == nil {
 		release.additionalStories = additionalStories
 	}

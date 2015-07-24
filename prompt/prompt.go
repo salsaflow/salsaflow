@@ -38,7 +38,7 @@ func (i *OutOfBoundsError) Error() string {
 	return "index out of bounds: " + i.Input
 }
 
-func Confirm(question string) (bool, error) {
+func Confirm(question string, defaultChoice bool) (bool, error) {
 	// Opening the console for O_RDWR doesn't work on Windows,
 	// hence we one the device twice with a different flag set.
 	// This works everywhere.
@@ -58,19 +58,24 @@ func Confirm(question string) (bool, error) {
 
 	printQuestion := func() {
 		fmt.Fprint(stdout, question)
-		fmt.Fprint(stdout, " [y/N]: ")
+		if defaultChoice {
+			fmt.Fprint(stdout, " [Y/n]: ")
+		} else {
+			fmt.Fprint(stdout, " [n/Y]: ")
+		}
 	}
 	printQuestion()
 
-	var line string
+	var choice bool
 	scanner := bufio.NewScanner(stdin)
 	for scanner.Scan() {
-		line = strings.ToLower(scanner.Text())
-		switch line {
+		switch strings.ToLower(scanner.Text()) {
 		case "":
-			line = "n"
+			choice = defaultChoice
 		case "y":
+			choice = true
 		case "n":
+			choice = false
 		default:
 			printQuestion()
 			continue
@@ -81,7 +86,7 @@ func Confirm(question string) (bool, error) {
 		return false, err
 	}
 
-	return line == "y", nil
+	return choice, nil
 }
 
 // Prompt prints the given message and waits for user input.

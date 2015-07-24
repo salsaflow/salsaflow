@@ -153,7 +153,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 
 	// Ask the user to confirm.
 	ok, err := prompt.Confirm(
-		fmt.Sprintf("\nAre you sure you want to start release %v?", verString))
+		fmt.Sprintf("\nAre you sure you want to start release %v?", verString), false)
 	if err == nil {
 		// Need to make []*jira.Issue out of []*assignedIssues, annoying...
 		issues := append(tasksToAssign, subtasksToAssign...)

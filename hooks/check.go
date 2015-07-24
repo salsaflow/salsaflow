@@ -96,8 +96,8 @@ func CheckAndUpsert(hookType HookType, force bool) error {
 	// Prompt the user to confirm the SalsaFlow git commit-task hook.
 	task = fmt.Sprintf("Prompt the user to confirm the %v hook", hookType)
 	confirmed, err = prompt.Confirm(`
-I need my own git ` + string(hookType) + ` hook to be placed in the repository.
-Shall I create or replace your current ` + string(hookType) + ` hook?`)
+I need my own git `+string(hookType)+` hook to be placed in the repository.
+Shall I create or replace your current `+string(hookType)+` hook?`, true)
 	fmt.Println()
 	if err != nil {
 		return errs.NewError(task, err)

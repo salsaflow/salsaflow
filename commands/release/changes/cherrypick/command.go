@@ -238,7 +238,7 @@ Only then we can proceed and cherry-pick the changes.
 	task = "Ask the user to confirm cherry-picking"
 	fmt.Println(`
 The changes listed above will be cherry-picked into the release branch.`)
-	confirmed, err := prompt.Confirm("Are you sure you want to continue?")
+	confirmed, err := prompt.Confirm("Are you sure you want to continue?", false)
 	if err != nil {
 		return errs.NewError(task, err)
 	}

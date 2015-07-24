@@ -91,7 +91,7 @@ func Upgrade(opts *InstallOptions) error {
 	task = "Prompt the user to confirm upgrade"
 	fmt.Println()
 	confirmed, err := prompt.Confirm(fmt.Sprintf(
-		"SalsaFlow version %v is available. Upgrade now?", release.version))
+		"SalsaFlow version %v is available. Upgrade now?", release.version), true)
 	if err != nil {
 		return errs.NewError(task, err)
 	}

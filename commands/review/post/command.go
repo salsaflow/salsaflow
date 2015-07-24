@@ -34,7 +34,7 @@ var Command = &gocli.Command{
   post [-update=RRID] [-fixes=RRID] [-open] [REVISION]
 
   post [-fixes=RRID] [-no_fetch] [-no_rebase] [-ask_once]
-       [-no_seq] [-open] [-no_dialog] -parent=BRANCH`,
+       [-pick] [-open] [-no_dialog] -parent=BRANCH`,
 	Short: "post code review requests",
 	Long: `
   Post a code review request for each commit specified.
@@ -64,6 +64,7 @@ var (
 	flagNoRebase bool
 	flagOpen     bool
 	flagParent   string
+	flagPick     bool
 	flagUpdate   uint
 )
 
@@ -83,6 +84,8 @@ func init() {
 		"open the review requests in the browser")
 	Command.Flags.StringVar(&flagParent, "parent", flagParent,
 		"branch to be used in computing the revision range")
+	Command.Flags.BoolVar(&flagPick, "pick", flagPick,
+		"pick only some of the selected commits for review")
 	Command.Flags.UintVar(&flagUpdate, "update", flagUpdate,
 		"update an existing review request with REVISION")
 
@@ -243,14 +246,14 @@ func postReviewRequests(commits []*git.Commit, canAmend bool) (action.Action, er
 
 	// Tell the user what is going to happen.
 	fmt.Print(`
-You are about to post review requests for the following commits:
+You are about to post some of the following commits for code review:
 
 `)
 	mustListCommits(os.Stdout, commits, "  ")
 
 	// Ask the user for confirmation.
 	task = "Prompt the user for confirmation"
-	confirmed, err := prompt.Confirm("\nYou cool with that?")
+	confirmed, err := prompt.Confirm("\nYou cool with that?", true)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
@@ -309,6 +312,15 @@ You are about to post review requests for the following commits:
 			if _, err = git.RunCommand("push", args...); err != nil {
 				return nil, errs.NewError("Push the current branch", err)
 			}
+		}
+	}
+
+	// Pick the commits to be posted for review.
+	if flagPick {
+		task = "Select the commits to be posted for review"
+		commits, err = selectCommitsForReview(commits)
+		if err != nil {
+			return nil, errs.NewError(task, err)
 		}
 	}
 
@@ -573,6 +585,25 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 	must(0, tw.Flush())
 }
 
+func selectCommitsForReview(commits []*git.Commit) ([]*git.Commit, error) {
+	cs := make([]*git.Commit, 0, len(commits))
+
+	fmt.Println("\nSelect the commits to be posted for code review (-pick flag set):")
+
+	for _, commit := range commits {
+		selected, err := prompt.Confirm(
+			fmt.Sprintf("  %v | %v", commit.SHA, commit.MessageTitle), true)
+		if err != nil {
+			return nil, err
+		}
+		if selected {
+			cs = append(cs, commit)
+		}
+	}
+
+	return cs, nil
+}
+
 func commitsToReviewContexts(commits []*git.Commit) ([]*common.ReviewContext, error) {
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
@@ -791,7 +822,7 @@ func implementedDialog(ctxs []*common.ReviewContext) (action.Action, error) {
 	prompt.ListStories(stories, os.Stdout)
 	fmt.Println()
 	confirmed, err := prompt.Confirm(
-		"Do you wish to mark these stories as implemented?")
+		"Do you wish to mark these stories as implemented?", false)
 	if err != nil {
 		return nil, err
 	}
