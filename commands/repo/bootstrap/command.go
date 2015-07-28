@@ -10,6 +10,7 @@ import (
 	"time"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/config"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/flag"
@@ -99,6 +100,7 @@ var (
 )
 
 func init() {
+	// Register flags.
 	Command.Flags.Var(flagCodeReviewTool, "code_review_tool",
 		"code review tool that is being used for the project")
 	Command.Flags.Var(flagIssueTracker, "issue_tracker",
@@ -107,6 +109,9 @@ func init() {
 		"release notes module that is being used for the project")
 	Command.Flags.StringVar(&flagSkeleton, "skeleton", flagSkeleton,
 		"skeleton to be used to bootstrap the repository")
+
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
 }
 
 func run(cmd *gocli.Command, args []string) {

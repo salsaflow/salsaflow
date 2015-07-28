@@ -8,6 +8,7 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/log"
@@ -45,8 +46,12 @@ var (
 )
 
 func init() {
+	// Register flags.
 	Command.Flags.Var(&flagNextTrunk, "next_trunk_version", "the next trunk version string")
 	Command.Flags.BoolVar(&flagNoFetch, "no_fetch", flagNoFetch, "do not fetch the remote")
+
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
 }
 
 func run(cmd *gocli.Command, args []string) {

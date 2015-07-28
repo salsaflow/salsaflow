@@ -6,6 +6,7 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/releases/commands"
 
@@ -27,6 +28,11 @@ var Command = &gocli.Command{
     5) Push the changes.
 	`,
 	Action: run,
+}
+
+func init() {
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
 }
 
 func run(cmd *gocli.Command, args []string) {

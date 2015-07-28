@@ -6,6 +6,7 @@ import (
 	"os"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/commands/version/bump"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/version"
@@ -38,5 +39,9 @@ var Command = &gocli.Command{
 }
 
 func init() {
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
+
+	// Register subcommands.
 	Command.MustRegisterSubcommand(bumpCmd.Command)
 }

@@ -1,6 +1,7 @@
 package storyCmd
 
 import (
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/commands/story/changes"
 	"github.com/salsaflow/salsaflow/commands/story/open"
 	"github.com/salsaflow/salsaflow/commands/story/start"
@@ -17,6 +18,10 @@ var Command = &gocli.Command{
 }
 
 func init() {
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
+
+	// Register subcommands.
 	Command.MustRegisterSubcommand(changesCmd.Command)
 	Command.MustRegisterSubcommand(openCmd.Command)
 	Command.MustRegisterSubcommand(startCmd.Command)

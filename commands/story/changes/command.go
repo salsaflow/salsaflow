@@ -7,6 +7,7 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/changes"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
@@ -39,7 +40,11 @@ var (
 )
 
 func init() {
+	// Register flags.
 	Command.Flags.BoolVar(&porcelain, "porcelain", false, "enable script-friendly output")
+
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
 }
 
 func run(cmd *gocli.Command, args []string) {

@@ -1,6 +1,7 @@
 package releaseCmd
 
 import (
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/commands/release/changes"
 	"github.com/salsaflow/salsaflow/commands/release/deploy"
 	"github.com/salsaflow/salsaflow/commands/release/notes"
@@ -19,6 +20,10 @@ var Command = &gocli.Command{
 }
 
 func init() {
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
+
+	// Register subcommands.
 	Command.MustRegisterSubcommand(changesCmd.Command)
 	Command.MustRegisterSubcommand(deployCmd.Command)
 	Command.MustRegisterSubcommand(notesCmd.Command)

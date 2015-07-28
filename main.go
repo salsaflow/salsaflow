@@ -7,7 +7,7 @@ import (
 	"os/signal"
 
 	// Internal
-	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/app/metadata"
 	"github.com/salsaflow/salsaflow/commands/pkg"
 	"github.com/salsaflow/salsaflow/commands/release"
@@ -42,7 +42,7 @@ func main() {
 	}
 
 	// Register global flags.
-	app.RegisterGlobalFlags(&trunk.Flags)
+	appflags.RegisterGlobalFlags(&trunk.Flags)
 
 	// Register subcommands.
 	trunk.MustRegisterSubcommand(pkgCmd.Command)

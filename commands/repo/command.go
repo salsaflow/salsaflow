@@ -1,6 +1,7 @@
 package repoCmd
 
 import (
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/commands/repo/bootstrap"
 	"github.com/salsaflow/salsaflow/commands/repo/init"
 
@@ -16,6 +17,10 @@ var Command = &gocli.Command{
 }
 
 func init() {
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
+
+	// Register subcommands.
 	Command.MustRegisterSubcommand(bootstrapCmd.Command)
 	Command.MustRegisterSubcommand(initCmd.Command)
 }

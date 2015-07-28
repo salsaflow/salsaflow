@@ -1,6 +1,7 @@
 package pkgCmd
 
 import (
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/commands/pkg/install"
 	"github.com/salsaflow/salsaflow/commands/pkg/upgrade"
 
@@ -16,6 +17,10 @@ var Command = &gocli.Command{
 }
 
 func init() {
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
+
+	// Register subcommands.
 	Command.MustRegisterSubcommand(installCmd.Command)
 	Command.MustRegisterSubcommand(upgradeCmd.Command)
 }

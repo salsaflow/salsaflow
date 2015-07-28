@@ -7,6 +7,7 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules"
@@ -22,6 +23,11 @@ var Command = &gocli.Command{
   Open the issue tracker in the web browser at the home page of the given story.
 	`,
 	Action: run,
+}
+
+func init() {
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
 }
 
 func run(cmd *gocli.Command, args []string) {

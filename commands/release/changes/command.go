@@ -8,6 +8,7 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/changes"
 	"github.com/salsaflow/salsaflow/commands/release/changes/cherrypick"
 	"github.com/salsaflow/salsaflow/errs"
@@ -44,11 +45,14 @@ var (
 )
 
 func init() {
-	// Register the command line flags.
+	// Register flags.
 	Command.Flags.BoolVar(&flagPorcelain, "porcelain", flagPorcelain,
 		"enable script-friendly output")
 	Command.Flags.BoolVar(&flagToCherryPick, "to_cherrypick", flagToCherryPick,
 		"list the changes to cherry-pick")
+
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
 
 	// Register the subcommands.
 	Command.MustRegisterSubcommand(cherrypickCmd.Command)

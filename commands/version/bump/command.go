@@ -5,6 +5,7 @@ import (
 	"os"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/version"
 
@@ -21,6 +22,11 @@ var Command = &gocli.Command{
   This command only affects the working tree, it is not committing the changes.
 	`,
 	Action: run,
+}
+
+func init() {
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
 }
 
 func run(cmd *gocli.Command, args []string) {

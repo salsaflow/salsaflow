@@ -15,6 +15,7 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/asciiart"
 	"github.com/salsaflow/salsaflow/commands/review/post/constants"
 	"github.com/salsaflow/salsaflow/errs"
@@ -67,6 +68,7 @@ var (
 )
 
 func init() {
+	// Register flags.
 	Command.Flags.BoolVar(&flagAskOnce, "ask_once", flagAskOnce,
 		"ask once and reuse the story ID for all commits")
 	Command.Flags.UintVar(&flagFixes, "fixes", flagFixes,
@@ -83,6 +85,9 @@ func init() {
 		"branch to be used in computing the revision range")
 	Command.Flags.UintVar(&flagUpdate, "update", flagUpdate,
 		"update an existing review request with REVISION")
+
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
 }
 
 var ErrNoCommits = errors.New("no commits selected for code review")

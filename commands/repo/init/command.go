@@ -6,6 +6,7 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/repo"
@@ -26,7 +27,11 @@ var Command = &gocli.Command{
 var flagForce bool
 
 func init() {
+	// Register flags.
 	Command.Flags.BoolVar(&flagForce, "force", flagForce, "force repo init process")
+
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
 }
 
 func run(cmd *gocli.Command, args []string) {

@@ -34,17 +34,19 @@ var Command = &gocli.Command{
 }
 
 var (
-	flagIncludeDelivered bool
-	flagAllOwners        bool
-	flagLocalOnly        bool
-	flagRemoteOnly       bool
+	flagLocalOnly  bool
+	flagRemoteOnly bool
 )
 
 func init() {
+	// Register flags.
 	Command.Flags.BoolVar(&flagLocalOnly, "local_only", flagLocalOnly,
 		"prune local branches only")
 	Command.Flags.BoolVar(&flagRemoteOnly, "remote_only", flagRemoteOnly,
 		"prune remote branches only")
+
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
 }
 
 func run(cmd *gocli.Command, args []string) {

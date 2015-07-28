@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git/gitutil"
 
@@ -115,6 +116,13 @@ func UnmarshalGlobalConfig(v interface{}) error {
 
 func GlobalConfigFileAbsolutePath() (string, error) {
 	task := "Get the global configuration file absolute path"
+
+	// Check the command line flag for custom path first.
+	if path := appflags.FlagConfig; path != "" {
+		return path, nil
+	}
+
+	// Otherwise use the default file in the user's home directory.
 	me, err := user.Current()
 	if err != nil {
 		return "", errs.NewError(task, err)

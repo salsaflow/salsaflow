@@ -9,6 +9,7 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/app"
+	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/log"
@@ -45,10 +46,14 @@ var (
 )
 
 func init() {
+	// Register flags.
 	Command.Flags.BoolVar(&flagNoBranch, "no_branch", flagNoBranch,
 		"do not create a new story branch")
 	Command.Flags.BoolVar(&flagNoPush, "no_push", flagNoPush,
 		"do not push the newly created story branch")
+
+	// Register global flags.
+	appflags.RegisterGlobalFlags(&Command.Flags)
 }
 
 func run(cmd *gocli.Command, args []string) {
