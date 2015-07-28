@@ -117,10 +117,13 @@ func FixCommitSources(commits []*Commit) error {
 	if err := CheckOrCreateTrackingBranch(releaseBranch, remoteName); err != nil {
 		// No need to do a rollback.
 		// In the worst case there will be a new local tracking branch.
-		if _, ok := err.(*ErrRefNotFound); !ok {
+		if _, ok := err.(*ErrRefNotFound); ok {
+			releaseExists = false
+		}
+		// Return the err. But we don't care when the local branch is not in sync.
+		if _, ok := err.(*ErrRefNotInSync); !ok {
 			return err
 		}
-		releaseExists = false
 	}
 
 	// Get the release commits in case the release branch exists.
