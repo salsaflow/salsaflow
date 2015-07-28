@@ -83,9 +83,14 @@ func parseRemainingIssueBody(err *error, scanner *bodyScanner) *ReviewIssueCommo
 	// Parse user content.
 	userContent := parseCommonBodyUserContent(err, scanner)
 
-	// Check for errors.
-	if *err != nil {
-		return nil
+	// Check for errors, but ignore io.EOF since that is ok.
+	// The parsing functions return some reasonable empty values
+	// even when there is an error.
+	if ex := *err; ex != nil {
+		if ex != io.EOF {
+			return nil
+		}
+		*err = nil
 	}
 
 	// Return the common body object on success.
@@ -97,15 +102,17 @@ func parseRemainingIssueBody(err *error, scanner *bodyScanner) *ReviewIssueCommo
 }
 
 func parseCommonBodyCommitList(err *error, scanner *bodyScanner) *CommitList {
+	emptyList := &CommitList{}
+
 	if *err != nil {
-		return nil
+		return emptyList
 	}
 
 	// Read the list heading.
 	_, _, ex := scanner.ReadLine()
 	if ex != nil {
 		*err = ex
-		return nil
+		return emptyList
 	}
 
 	// Read the list items.
@@ -115,7 +122,7 @@ func parseCommonBodyCommitList(err *error, scanner *bodyScanner) *CommitList {
 		line, _, ex := scanner.ReadLine()
 		if ex != nil {
 			*err = ex
-			return nil
+			return commitList
 		}
 
 		// In case this is an empty line, we are done.
@@ -127,7 +134,7 @@ func parseCommonBodyCommitList(err *error, scanner *bodyScanner) *CommitList {
 		match := commonBodyCommitItemRegexp.FindStringSubmatch(line)
 		if len(match) == 0 {
 			*err = scanner.CurrentLineInvalid()
-			return nil
+			return commitList
 		}
 
 		// Add the commit to the commit list.
@@ -138,15 +145,16 @@ func parseCommonBodyCommitList(err *error, scanner *bodyScanner) *CommitList {
 }
 
 func parseCommonBodyBlockerList(err *error, scanner *bodyScanner) *ReviewBlockerList {
+	emptyList := &ReviewBlockerList{}
+
 	if *err != nil {
-		return nil
+		return emptyList
 	}
 
 	// Check the current line for the user content separator.
 	line, _, _ := scanner.CurrentLine()
 	if line == userContentSeparator {
-		// Return empty blocker list.
-		return &ReviewBlockerList{}
+		return emptyList
 	}
 
 	// Drop the list heading line.
@@ -154,11 +162,10 @@ func parseCommonBodyBlockerList(err *error, scanner *bodyScanner) *ReviewBlocker
 	line, _, ex := scanner.ReadLine()
 	if ex != nil {
 		*err = ex
-		return nil
+		return emptyList
 	}
 	if line == userContentSeparator {
-		// Return empty blocker list.
-		return &ReviewBlockerList{}
+		return emptyList
 	}
 
 	// Read the list items.
@@ -168,7 +175,7 @@ func parseCommonBodyBlockerList(err *error, scanner *bodyScanner) *ReviewBlocker
 		line, _, ex := scanner.ReadLine()
 		if ex != nil {
 			*err = ex
-			return nil
+			return reviewBlockerList
 		}
 
 		// In case this is an empty line, we are done.
@@ -180,7 +187,7 @@ func parseCommonBodyBlockerList(err *error, scanner *bodyScanner) *ReviewBlocker
 		match := commonBodyBlockerItemRegexp.FindStringSubmatch(line)
 		if len(match) == 0 {
 			*err = scanner.CurrentLineInvalid()
-			return nil
+			return reviewBlockerList
 		}
 
 		// Add the blocker to the blocker list.
