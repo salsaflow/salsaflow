@@ -25,7 +25,10 @@ const (
 	DefaultGitHubRepo  = "salsaflow"
 )
 
-var ErrAborted = errors.New("aborted by the user")
+var (
+	ErrAborted            = errors.New("aborted by the user")
+	ErrInstallationFailed = errors.New("failed to install SalsaFlow")
+)
 
 // doInstall performs the common step that both install and upgrade need to do.
 //
@@ -125,11 +128,13 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 		}(file)
 	}
 
+	task = "install given SalsaFlow package"
+	var ex error
 	for i := 0; i < numThreads; i++ {
 		if err := <-errCh; err != nil {
 			errs.Log(err)
+			ex = errs.NewError(task, ErrInstallationFailed)
 		}
 	}
-
-	return nil
+	return ex
 }
