@@ -125,7 +125,7 @@ func postRevision(revision string) error {
 
 	// Get the commit to be posted
 	task := "Get the commit to be posted for code review"
-	commits, err := git.ShowCommits(revision)
+	commits, err := git.ShowCommit(revision)
 	if err != nil {
 		return errs.NewError(task, err)
 	}
