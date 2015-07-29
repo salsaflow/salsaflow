@@ -52,8 +52,6 @@ var Command = &gocli.Command{
 	Action: run,
 }
 
-const unsetValue = `""`
-
 func init() {
 	var (
 		issueTrackerKeys        = modules.AvailableIssueTrackerKeys()
@@ -87,9 +85,9 @@ func init() {
 	Command.Long = fmt.Sprintf("%v\n%v", Command.Long, help.String())
 
 	// Initialise the enum flags.
-	flagIssueTracker = flag.NewStringEnumFlag(issueTrackerKeys, unsetValue)
-	flagCodeReviewTool = flag.NewStringEnumFlag(codeReviewToolKeys, unsetValue)
-	flagReleaseNotesManager = flag.NewStringEnumFlag(releaseNotesManagerKeys, unsetValue)
+	flagIssueTracker = flag.NewStringEnumFlag(issueTrackerKeys, "")
+	flagCodeReviewTool = flag.NewStringEnumFlag(codeReviewToolKeys, "")
+	flagReleaseNotesManager = flag.NewStringEnumFlag(releaseNotesManagerKeys, "")
 }
 
 var (
@@ -122,13 +120,13 @@ func run(cmd *gocli.Command, args []string) {
 
 	// Make sure the required flags are set.
 	issueTrackerKey := flagIssueTracker.Value()
-	if issueTrackerKey == unsetValue {
+	if issueTrackerKey == "" {
 		cmd.Usage()
 		errs.Fatal(errors.New("flag 'issue_tracker' is not set"))
 	}
 
 	codeReviewToolKey := flagCodeReviewTool.Value()
-	if codeReviewToolKey == unsetValue {
+	if codeReviewToolKey == "" {
 		cmd.Usage()
 		errs.Fatal(errors.New("flag 'code_review_tool' is not set"))
 	}

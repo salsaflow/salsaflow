@@ -42,7 +42,7 @@ func NewStringEnumFlag(choices []string, defaultChoice string) *StringEnumFlag {
 }
 
 func (enum *StringEnumFlag) String() string {
-	return enum.value
+	return fmt.Sprintf(`"%s"`, enum.value)
 }
 
 func (enum *StringEnumFlag) Set(value string) error {
