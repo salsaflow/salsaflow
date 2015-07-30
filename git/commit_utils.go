@@ -120,9 +120,8 @@ func FixCommitSources(commits []*Commit) error {
 		// In the worst case there will be a new local tracking branch.
 		if _, ok := err.(*ErrRefNotFound); ok {
 			releaseExists = false
-		}
-		// Return the err. But we don't care when the local branch is not in sync.
-		if _, ok := err.(*ErrRefNotInSync); !ok {
+		} else if _, ok := err.(*ErrRefNotInSync); !ok {
+			// Return the err. But we don't care when the local branch is not in sync.
 			return err
 		}
 	}

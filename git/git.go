@@ -298,21 +298,29 @@ func EnsureBranchSynchronized(branch, remote string) error {
 // In case the remote branch does not exist, *ErrRefNotFound is returned.
 // In case the branch is not up to date, *ErrRefNotInSync is returned.
 func CheckOrCreateTrackingBranch(branch, remote string) error {
-	// Check whether the remote counterpart exists.
-	exists, err := RemoteBranchExists(branch, remote)
+	// Get the data on the local branch.
+	localExists, err := LocalBranchExists(branch)
 	if err != nil {
 		return err
 	}
-	if !exists {
+
+	// Check whether the remote counterpart exists.
+	remoteExists, err := RemoteBranchExists(branch, remote)
+	if err != nil {
+		return err
+	}
+	if !remoteExists {
+		if localExists {
+			log.Warn(fmt.Sprintf(
+				"Local branch '%v' found, but the remote counterpart is missing", branch))
+			log.NewLine(fmt.Sprintf(
+				"Please delete or push local branch '%v'", branch))
+		}
 		return &ErrRefNotFound{remote + "/" + branch}
 	}
 
 	// Check whether the local branch exists.
-	exists, err = LocalBranchExists(branch)
-	if err != nil {
-		return err
-	}
-	if !exists {
+	if !localExists {
 		if err := Branch(branch, remote+"/"+branch); err != nil {
 			return err
 		}

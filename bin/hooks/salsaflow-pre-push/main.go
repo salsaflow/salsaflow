@@ -180,12 +180,13 @@ perhaps by executing 'git pull'.
 	// Prompt for confirmation in case that is needed.
 	if len(missing) != 0 {
 		// Fill in the commit sources.
+		task := "Fix commit sources"
 		if err := git.FixCommitSources(missing); err != nil {
-			return err
+			return errs.NewError(task, err)
 		}
 
 		// Prompt the user for confirmation.
-		task := "Prompt the user for confirmation"
+		task = "Prompt the user for confirmation"
 		confirmed, err := promptUserForConfirmation(missing)
 		if err != nil {
 			return errs.NewError(task, err)
