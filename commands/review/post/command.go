@@ -209,7 +209,7 @@ to make your repository clean again.
 In any case, you have to rebase your current branch onto '%v'
 if you want to continue and post a review request. In the edge cases
 you can as well use -no_rebase to skip this step, but try not to do it.
-`, parentBranch)
+`, parentBranch, parentBranch)
 			return ex
 		}
 	}
