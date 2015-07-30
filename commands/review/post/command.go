@@ -322,6 +322,12 @@ You are about to post some of the following commits for code review:
 		if err != nil {
 			return nil, errs.NewError(task, err)
 		}
+
+		if len(commits) == 0 {
+			log.NewLine("")
+			log.Log("No commits left, aborting...")
+			prompt.PanicCancel()
+		}
 	}
 
 	// Print Snoopy.
@@ -588,7 +594,7 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 func selectCommitsForReview(commits []*git.Commit) ([]*git.Commit, error) {
 	cs := make([]*git.Commit, 0, len(commits))
 
-	fmt.Println("\nSelect the commits to be posted for code review (-pick flag set):")
+	fmt.Println("\nSelect the commits to be posted for code review (-pick flag set):\n")
 
 	for _, commit := range commits {
 		selected, err := prompt.Confirm(
