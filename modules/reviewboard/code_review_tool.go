@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 
@@ -41,11 +43,11 @@ func Factory() (common.CodeReviewTool, error) {
 }
 
 func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action, error) {
-	return action.ActionFunc(func() error { return nil }), nil
+	return action.Noop, nil
 }
 
 func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, error) {
-	return action.ActionFunc(func() error { return nil }), nil
+	return action.Noop, nil
 }
 
 func (tool *codeReviewTool) PostReviewRequests(
@@ -53,7 +55,7 @@ func (tool *codeReviewTool) PostReviewRequests(
 	opts map[string]interface{},
 ) (err error) {
 
-	// Use PostReviewRequestForCommit for every commit on the branch.
+	// Use postReviewRequestForCommit for every commit on the branch.
 	// Try to post a review request for every commit and keep printing the errors.
 	// Return a common error in case there is any partial error encountered.
 	for _, ctx := range ctxs {
@@ -150,22 +152,18 @@ func postReviewRequestForCommit(
 		task = "Create a Review Board review request for commit " + commit.SHA
 	}
 	log.Run(task)
-	stdout, stderr, err := shell.Run("rbt", args...)
-	if err != nil {
-		// rbt is retarded and sometimes prints stderr to stdout.
-		// That is why we return stdout when stderr is empty.
-		if stderr.Len() == 0 {
-			return errs.NewErrorWithHint(task, err, stdout.String())
-		} else {
-			return errs.NewErrorWithHint(task, err, stderr.String())
-		}
+
+	// Run rbt.
+	cmd := exec.Command("rbt", args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return errs.NewError(task, err)
 	}
-	logger := log.V(log.Info)
-	logger.Lock()
-	logger.UnsafeNewLine("")
-	logger.UnsafeOk(task)
-	fmt.Print(stdout)
-	logger.Unlock()
+	fmt.Println()
+
 	return nil
 }
 
