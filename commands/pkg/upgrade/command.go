@@ -6,7 +6,6 @@ import (
 	"os"
 
 	// Internal
-	"github.com/salsaflow/salsaflow/app"
 	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
@@ -48,9 +47,8 @@ func run(cmd *gocli.Command, args []string) {
 		os.Exit(2)
 	}
 
-	app.InitOrDie()
-
-	if err := pkg.Upgrade(&pkg.InstallOptions{flagOwner, flagRepo}); err != nil {
+	upgraded, err := pkg.Upgrade(&pkg.InstallOptions{flagOwner, flagRepo})
+	if err != nil {
 		if err == pkg.ErrAborted {
 			fmt.Println("\nYour wish is my command, exiting now!")
 			return
@@ -58,5 +56,7 @@ func run(cmd *gocli.Command, args []string) {
 		errs.Fatal(err)
 	}
 
-	log.Log("SalsaFlow was upgraded successfully")
+	if upgraded {
+		log.Log("SalsaFlow was upgraded successfully")
+	}
 }

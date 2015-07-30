@@ -6,7 +6,6 @@ import (
 	"os"
 
 	// Internal
-	"github.com/salsaflow/salsaflow/app"
 	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
@@ -48,8 +47,6 @@ func run(cmd *gocli.Command, args []string) {
 		cmd.Usage()
 		os.Exit(2)
 	}
-
-	app.InitOrDie()
 
 	if err := runMain(args[0]); err != nil {
 		if err == pkg.ErrAborted {

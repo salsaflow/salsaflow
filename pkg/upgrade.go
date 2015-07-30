@@ -18,7 +18,7 @@ import (
 	"github.com/google/go-github/github"
 )
 
-func Upgrade(opts *InstallOptions) error {
+func Upgrade(opts *InstallOptions) (upgraded bool, err error) {
 	// Get GitHub owner and repository names.
 	var (
 		owner = DefaultGitHubOwner
@@ -37,7 +37,7 @@ func Upgrade(opts *InstallOptions) error {
 	task := "Instantiate a GitHub client"
 	client, err := newGitHubClient()
 	if err != nil {
-		return errs.NewError(task, err)
+		return false, errs.NewError(task, err)
 	}
 
 	// Fetch the list of available GitHub releases.
@@ -45,7 +45,7 @@ func Upgrade(opts *InstallOptions) error {
 	log.Run(task)
 	releases, _, err := client.Repositories.ListReleases(owner, repo, nil)
 	if err != nil {
-		return errs.NewError(task, err)
+		return false, errs.NewError(task, err)
 	}
 
 	// Sort the releases by version and get the most recent release.
@@ -69,7 +69,7 @@ func Upgrade(opts *InstallOptions) error {
 		})
 	}
 	if rs.Len() == 0 {
-		return errs.NewError(task, errors.New("no suitable GitHub releases found"))
+		return false, errs.NewError(task, errors.New("no suitable GitHub releases found"))
 	}
 
 	sort.Sort(rs)
@@ -84,7 +84,7 @@ func Upgrade(opts *InstallOptions) error {
 		log.Log("SalsaFlow is up to date")
 		asciiart.PrintThumbsUp()
 		fmt.Println()
-		return nil
+		return false, nil
 	}
 
 	// Prompt the user to confirm the upgrade.
@@ -93,15 +93,16 @@ func Upgrade(opts *InstallOptions) error {
 	confirmed, err := prompt.Confirm(fmt.Sprintf(
 		"SalsaFlow version %v is available. Upgrade now?", release.version), true)
 	if err != nil {
-		return errs.NewError(task, err)
+		return false, errs.NewError(task, err)
 	}
 	if !confirmed {
-		return ErrAborted
+		return false, ErrAborted
 	}
 	fmt.Println()
 
 	// Proceed to actually install the executables.
-	return doInstall(client, owner, repo, release.resource.Assets, release.version.String())
+	err = doInstall(client, owner, repo, release.resource.Assets, release.version.String())
+	return err == nil, err
 }
 
 type githubRelease struct {
