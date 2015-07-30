@@ -68,7 +68,7 @@ func Install(version string, opts *InstallOptions) error {
 	task = "Prompt the user to confirm the installation"
 	fmt.Println()
 	confirmed, err := prompt.Confirm(fmt.Sprintf(
-		"SalsaFlow version %v is about to be installed. Shall we proceed?", version))
+		"SalsaFlow version %v is about to be installed. Shall we proceed?", version), true)
 	if err != nil {
 		return errs.NewError(task, err)
 	}
