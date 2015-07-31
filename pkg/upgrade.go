@@ -8,7 +8,6 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/app/metadata"
-	"github.com/salsaflow/salsaflow/asciiart"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/prompt"
@@ -81,9 +80,6 @@ func Upgrade(opts *InstallOptions) (upgraded bool, err error) {
 		panic(err)
 	}
 	if release.version.String() == metadata.Version || release.version.LT(currentVersion.Version) {
-		log.Log("SalsaFlow is up to date")
-		asciiart.PrintThumbsUp()
-		fmt.Println()
 		return false, nil
 	}
 

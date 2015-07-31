@@ -7,6 +7,7 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/app/appflags"
+	"github.com/salsaflow/salsaflow/asciiart"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/pkg"
@@ -58,5 +59,9 @@ func run(cmd *gocli.Command, args []string) {
 
 	if upgraded {
 		log.Log("SalsaFlow was upgraded successfully")
+	} else {
+		log.Log("SalsaFlow is up to date")
+		asciiart.PrintThumbsUp()
+		fmt.Println()
 	}
 }
