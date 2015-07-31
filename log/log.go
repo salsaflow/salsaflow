@@ -1,6 +1,7 @@
 package log
 
 import (
+	// Stdlib
 	"errors"
 	"fmt"
 	"io"
@@ -8,6 +9,10 @@ import (
 	"os"
 	"sync"
 	"sync/atomic"
+
+	// Vendor
+	"github.com/fatih/color"
+	"github.com/shiena/ansicolor"
 )
 
 type (
@@ -25,12 +30,16 @@ const (
 
 var lock sync.Mutex
 
-var logWriter io.Writer = os.Stderr
+var logWriter io.Writer
+
+func init() {
+	Replace(os.Stderr)
+}
 
 func Replace(newWriter io.Writer) (formerWriter io.Writer) {
 	lock.Lock()
 	formerWriter = logWriter
-	logWriter = newWriter
+	logWriter = ansicolor.NewAnsiColorWriter(newWriter)
 	lock.Unlock()
 	return
 }
@@ -175,11 +184,11 @@ func (l Logger) UnsafeSkip(msg string) {
 }
 
 func (l Logger) Warn(msg string) {
-	l.logf("[WARN]     %v\n", msg)
+	l.logf("%v     %v\n", color.YellowString("[WARN]"), msg)
 }
 
 func (l Logger) UnsafeWarn(msg string) {
-	l.unsafeLogf("[WARN]     %v\n", msg)
+	l.unsafeLogf("%v     %v\n", color.YellowString("[WARN]"), msg)
 }
 
 func (l Logger) Go(msg string) {
@@ -207,11 +216,11 @@ func (l Logger) UnsafeOk(msg string) {
 }
 
 func (l Logger) Fail(msg string) {
-	l.logf("[FAIL]     %v\n", msg)
+	l.logf("%v     %v\n", color.RedString("[FAIL]"), msg)
 }
 
 func (l Logger) UnsafeFail(msg string) {
-	l.unsafeLogf("[FAIL]     %v\n", msg)
+	l.unsafeLogf("%v     %v\n", color.RedString("[FAIL]"), msg)
 }
 
 func (l Logger) Rollback(msg string) {
