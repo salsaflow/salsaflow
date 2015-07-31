@@ -35,12 +35,12 @@ func ListNewTrunkCommits() ([]*git.Commit, error) {
 	// In case the staging branch doesn't exist, take the whole trunk.
 	// That probably means that no release has ever been started,
 	// so the staging branch has not been created yet.
-	var rangeStart string
+	var revRange string
 	for _, branch := range [...]string{releaseBranch, stagingBranch} {
 		err := git.CheckOrCreateTrackingBranch(branch, remoteName)
 		// In case the branch is ok, we use it.
 		if err == nil {
-			rangeStart = branch
+			revRange = fmt.Sprintf("%v..%v", branch, trunkBranch)
 			break
 		}
 		// In case the branch does not exist, it's ok and we continue.
@@ -51,26 +51,27 @@ func ListNewTrunkCommits() ([]*git.Commit, error) {
 		// This can mean that the branch is not up to date, but that is an error as well.
 		return nil, err
 	}
+	if revRange == "" {
+		revRange = trunkBranch
+	}
 
 	// Get the commits in range.
-	commits, err := git.ShowCommitRange(fmt.Sprintf("%v..%v", rangeStart, trunkBranch))
+	commits, err := git.ShowCommitRange(revRange)
 	if err != nil {
 		return nil, err
 	}
 
-	// In case we were doing ..trunk, limit the commits by date.
-	if rangeStart != "" {
-		return commits, nil
-	}
-
+	// Limit the commits by date.
 	repoConfig, err := repo.LoadConfig()
 	if err != nil {
 		return nil, err
 	}
+
 	enabledTimestamp := repoConfig.SalsaFlowEnabledTimestamp()
 	commits = git.FilterCommits(commits, func(commit *git.Commit) bool {
 		return commit.AuthorDate.After(enabledTimestamp)
 	})
+
 	return commits, nil
 }
 
