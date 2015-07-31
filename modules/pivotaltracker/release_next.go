@@ -91,6 +91,22 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 		if len(additionalStories) != len(storyIds) {
 			log.Warn("Some stories were dropped since they were not found in PT")
 		}
+
+		// Drop stories already assigned to another release.
+		notAssigned := make([]*pivotal.Story, 0, len(additionalStories))
+	NotAssignedLoop:
+		for _, story := range additionalStories {
+			for _, label := range story.Labels {
+				if isReleaseLabel(label.Name) {
+					log.Warn(fmt.Sprintf(
+						"Skipping story %v: modified trunk, but already labeled '%v'",
+						story.Id, label.Name))
+					continue NotAssignedLoop
+				}
+			}
+			notAssigned = append(notAssigned, story)
+		}
+		additionalStories = notAssigned
 	}
 
 	// Check the Point Me label.
