@@ -99,7 +99,17 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	}
 
 	// Append the collected issues to the assigned issues.
+	// Drop issues already assigned to another release.
+IssueLoop:
 	for _, issue := range collectedIssues {
+		for _, label := range issue.Fields.Labels {
+			if isReleaseLabel(label) {
+				log.Warn(fmt.Sprintf(
+					"Skipping issue %v: modified trunk, but already labeled '%v'",
+					issue.Key, label))
+				continue IssueLoop
+			}
+		}
 		assigned = append(assigned, &assignedIssue{
 			Issue:  issue,
 			Reason: "modified trunk",
