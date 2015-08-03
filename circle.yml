@@ -39,6 +39,8 @@ dependencies:
           PATH:   "$HOME/cache/gonative/go/bin:$PATH"
 test:
   override:
-    - "echo \"NO TESTS\""
+    - "make godep-test":
+        environment:
+          GOPATH: "$HOME/workspace:$GOPATH"
   post:
     - "$WORKSPACE/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/circle_pack.bash"

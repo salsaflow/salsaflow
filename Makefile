@@ -1,14 +1,26 @@
+INSTALL=go install
+GODEP_INSTALL=godep $(INSTALL)
+
+TEST=go test -v
+GODEP_TEST=godep $(TEST)
+
 install:
-	go install github.com/salsaflow/salsaflow
-	go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-commit-msg
-	go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-post-checkout
-	go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-pre-push
+	${INSTALL} github.com/salsaflow/salsaflow
+	${INSTALL} github.com/salsaflow/salsaflow/bin/hooks/salsaflow-commit-msg
+	${INSTALL} github.com/salsaflow/salsaflow/bin/hooks/salsaflow-post-checkout
+	${INSTALL} github.com/salsaflow/salsaflow/bin/hooks/salsaflow-pre-push
+
+test:
+	${TEST} github.com/salsaflow/salsaflow/github/issues
 
 godep-install:
-	godep go install github.com/salsaflow/salsaflow
-	godep go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-commit-msg
-	godep go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-post-checkout
-	godep go install github.com/salsaflow/salsaflow/bin/hooks/salsaflow-pre-push
+	${GODEP_INSTALL} github.com/salsaflow/salsaflow
+	${GODEP_INSTALL} github.com/salsaflow/salsaflow/bin/hooks/salsaflow-commit-msg
+	${GODEP_INSTALL} github.com/salsaflow/salsaflow/bin/hooks/salsaflow-post-checkout
+	${GODEP_INSTALL} github.com/salsaflow/salsaflow/bin/hooks/salsaflow-pre-push
+
+godep-test:
+	${GODEP_TEST} github.com/salsaflow/salsaflow/github/issues
 
 deps.fetch:
 	@cat Godeps/Godeps.json | \
