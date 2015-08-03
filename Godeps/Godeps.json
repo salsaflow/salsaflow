@@ -32,6 +32,16 @@
 			"Rev": "6e7f843663477789fac7c02def0d0909e969b4e5"
 		},
 		{
+			"ImportPath": "github.com/onsi/ginkgo",
+			"Comment": "v1.2.0-8-g25380c6",
+			"Rev": "25380c62e61d3f90436be125b8127dbae578fdef"
+		},
+		{
+			"ImportPath": "github.com/onsi/gomega",
+			"Comment": "v1.0-52-ga2ab864",
+			"Rev": "a2ab8644e0b6a33df2cbe44673bd0f6ebba9abc3"
+		},
+		{
 			"ImportPath": "github.com/salsita/go-jira/v2/jira",
 			"Rev": "96f003574571a8b744e2f2a6df6fe52dd1d09c4c"
 		},
