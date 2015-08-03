@@ -14,6 +14,10 @@ type ReviewBlockerList struct {
 	items []*ReviewBlockerItem
 }
 
+func NewReviewBlockerList(items []*ReviewBlockerItem) *ReviewBlockerList {
+	return &ReviewBlockerList{items}
+}
+
 func (list *ReviewBlockerList) ReviewBlockerItems() []*ReviewBlockerItem {
 	return list.items
 }

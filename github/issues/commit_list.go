@@ -12,6 +12,10 @@ type CommitList struct {
 	items []*CommitItem
 }
 
+func NewCommitList(items []*CommitItem) *CommitList {
+	return &CommitList{items}
+}
+
 func (list *CommitList) CommitItems() []*CommitItem {
 	return list.items
 }
