@@ -34,8 +34,13 @@ type ErrInvalidBody struct {
 }
 
 func (err *ErrInvalidBody) Error() string {
-	return fmt.Sprintf(`issue %v: failed to parse issue body [lineNo=%v, line="%v"]`,
-		*err.issue.HTMLURL, err.lineNo, err.line)
+	var prefix string
+	if err.issue != nil {
+		prefix = fmt.Sprintf("issue %v: ", *err.issue.HTMLURL)
+	}
+
+	return fmt.Sprintf(`%vfailed to parse issue body [lineNo=%v, line="%v"]`,
+		prefix, err.lineNo, err.line)
 }
 
 // ErrTagNotFound is returned when there is a SalsaFlow metadata tag missing in the body.
