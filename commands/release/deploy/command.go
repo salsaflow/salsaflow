@@ -195,7 +195,7 @@ func runMain() (err error) {
 		// Generate the release notes.
 		nts = notes.GenerateReleaseNotes(stableVersion, stories)
 	} else {
-		log.Log("Release notes module disabled, skipping ...")
+		log.Log("Release notes module disabled, not doing anything")
 	}
 
 	// Push the changes to the remote repository.
