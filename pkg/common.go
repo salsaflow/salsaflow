@@ -34,7 +34,15 @@ var (
 //
 // Given a GitHub release, it downloads and unpacks the fitting artifacts
 // and replaces the current executables with the ones just downloaded.
-func doInstall(client *github.Client, owner, repo string, assets []github.ReleaseAsset, version string) error {
+func doInstall(
+	client *github.Client,
+	owner string,
+	repo string,
+	assets []github.ReleaseAsset,
+	version string,
+	dstDir string,
+) error {
+
 	// Choose the asset to be downloaded.
 	task := "Pick the most suitable release asset"
 	var (
@@ -51,14 +59,14 @@ func doInstall(client *github.Client, owner, repo string, assets []github.Releas
 	}
 
 	// Download the selected release asset.
-	return downloadAndInstallAsset(assetName, assetURL)
+	return downloadAndInstallAsset(assetName, assetURL, dstDir)
 }
 
 func getAssetName(version string) string {
 	return fmt.Sprintf("salsaflow-%v-%v-%v.zip", version, runtime.GOOS, runtime.GOARCH)
 }
 
-func downloadAndInstallAsset(assetName, assetURL string) error {
+func downloadAndInstallAsset(assetName, assetURL, dstDir string) error {
 	// Download the asset.
 	task := "Download " + assetName
 	log.Run(task)
@@ -87,9 +95,11 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 		return errs.NewError(task, err)
 	}
 
-	exeDir, err := osext.ExecutableFolder()
-	if err != nil {
-		return errs.NewError(task, err)
+	if dstDir == "" {
+		dstDir, err = osext.ExecutableFolder()
+		if err != nil {
+			return errs.NewError(task, err)
+		}
 	}
 
 	var numThreads int
@@ -117,7 +127,7 @@ func downloadAndInstallAsset(assetName, assetURL string) error {
 
 			task = fmt.Sprintf("Move executable '%v' into place", baseName)
 			log.Go(task)
-			if err := replaceExecutable(src, exeDir, baseName); err != nil {
+			if err := replaceExecutable(src, dstDir, baseName); err != nil {
 				src.Close()
 				errCh <- errs.NewError(task, err)
 				return
