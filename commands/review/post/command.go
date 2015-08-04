@@ -325,7 +325,7 @@ You are about to post some of the following commits for code review:
 
 		if len(commits) == 0 {
 			log.NewLine("")
-			log.Log("No commits left, aborting...")
+			log.Log("No commits selected, aborting...")
 			prompt.PanicCancel()
 		}
 	}
