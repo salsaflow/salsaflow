@@ -9,6 +9,7 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/shell"
 )
 
@@ -18,6 +19,7 @@ func Run(args ...string) (stdout *bytes.Buffer, err error) {
 	argsList = append(argsList, args...)
 
 	task := fmt.Sprintf("Run git with args = %#v", args)
+	log.V(log.Debug).Log(task)
 	stdout, stderr, err := shell.Run("git", argsList...)
 	if err != nil {
 		return nil, errs.NewErrorWithHint(task, err, stderr.String())
@@ -31,6 +33,7 @@ func RunCommand(command string, args ...string) (stdout *bytes.Buffer, err error
 	argsList = append(argsList, args...)
 
 	task := fmt.Sprintf("Run 'git %v' with args = %#v", command, args)
+	log.V(log.Debug).Log(task)
 	stdout, stderr, err := shell.Run("git", argsList...)
 	if err != nil {
 		return nil, errs.NewErrorWithHint(task, err, stderr.String())
