@@ -7,6 +7,7 @@ Install the specified SalsaFlow release.
 ```
 pkg install [-github_owner=OWNER]
             [-github_repo=REPO]
+            [-dst=DST]
             <version>
 ```
 
@@ -18,6 +19,10 @@ as release assets to the GitHub release specified by the given version.
 
 The repository that the assets are fetched from can be specified using
 the available command line flags. By default it is `salsaflow/salsaflow`.
+
+By default the current executables of SalsaFlow are replaced by
+the executables being installed, but -dst can be used to specify a custom
+target directory that the downloaded executables are moved to.
 
 ## Release Assets ##
 

@@ -14,15 +14,17 @@ import (
 )
 
 type InstallOptions struct {
-	GitHubOwner string
-	GitHubRepo  string
+	GitHubOwner     string
+	GitHubRepo      string
+	TargetDirectory string
 }
 
 func Install(version string, opts *InstallOptions) error {
 	// Get GitHub owner and repository names.
 	var (
-		owner = DefaultGitHubOwner
-		repo  = DefaultGitHubRepo
+		owner     = DefaultGitHubOwner
+		repo      = DefaultGitHubRepo
+		targetDir string
 	)
 	if opts != nil {
 		if opts.GitHubOwner != "" {
@@ -31,6 +33,7 @@ func Install(version string, opts *InstallOptions) error {
 		if opts.GitHubRepo != "" {
 			repo = opts.GitHubRepo
 		}
+		targetDir = opts.TargetDirectory
 	}
 
 	// Instantiate a GitHub client.
@@ -78,5 +81,5 @@ func Install(version string, opts *InstallOptions) error {
 	fmt.Println()
 
 	// Proceed to actually install the executables.
-	return doInstall(client, owner, repo, release.Assets, version)
+	return doInstall(client, owner, repo, release.Assets, version, targetDir)
 }

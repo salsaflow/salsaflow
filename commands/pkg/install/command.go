@@ -17,24 +17,29 @@ import (
 )
 
 var Command = &gocli.Command{
-	UsageLine: "install [-github_owner=OWNER] [-github_repo=REPO] VERSION",
+	UsageLine: "install [-github_owner=OWNER] [-github_repo=REPO] [-dst=DST] VERSION",
 	Short:     "install chosen SalsaFlow version",
 	Long: `
   Install SalsaFlow of the given version.
 
   The default GitHub repository to be used to fetch SalsaFlow releases
   can be overwritten using the available command line flags.
+
+  -dst can be used to specify the directory to move the executables into.
+  When no directory is specified, the current executables are replaced.
 	`,
 	Action: run,
 }
 
 var (
+	flagDst   string
 	flagOwner = pkg.DefaultGitHubOwner
 	flagRepo  = pkg.DefaultGitHubRepo
 )
 
 func init() {
 	// Register flags.
+	Command.Flags.StringVar(&flagDst, "dst", flagDst, "directory to place the executables into")
 	Command.Flags.StringVar(&flagOwner, "github_owner", flagOwner, "GitHub account name")
 	Command.Flags.StringVar(&flagRepo, "github_repo", flagRepo, "GitHub repository name")
 
@@ -64,5 +69,9 @@ func runMain(versionString string) error {
 		return err
 	}
 
-	return pkg.Install(versionString, &pkg.InstallOptions{flagOwner, flagRepo})
+	return pkg.Install(versionString, &pkg.InstallOptions{
+		GitHubOwner:     flagOwner,
+		GitHubRepo:      flagRepo,
+		TargetDirectory: flagDst,
+	})
 }

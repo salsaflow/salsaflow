@@ -48,7 +48,10 @@ func run(cmd *gocli.Command, args []string) {
 		os.Exit(2)
 	}
 
-	upgraded, err := pkg.Upgrade(&pkg.InstallOptions{flagOwner, flagRepo})
+	upgraded, err := pkg.Upgrade(&pkg.InstallOptions{
+		GitHubOwner: flagOwner,
+		GitHubRepo:  flagRepo,
+	})
 	if err != nil {
 		if err == pkg.ErrAborted {
 			fmt.Println("\nYour wish is my command, exiting now!")

@@ -97,7 +97,7 @@ func Upgrade(opts *InstallOptions) (upgraded bool, err error) {
 	fmt.Println()
 
 	// Proceed to actually install the executables.
-	err = doInstall(client, owner, repo, release.resource.Assets, release.version.String())
+	err = doInstall(client, owner, repo, release.resource.Assets, release.version.String(), "")
 	return err == nil, err
 }
 
