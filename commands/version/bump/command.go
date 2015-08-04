@@ -7,6 +7,7 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/version"
 
 	// Other
@@ -14,17 +15,26 @@ import (
 )
 
 var Command = &gocli.Command{
-	UsageLine: "bump VERSION",
+	UsageLine: "bump [-commit] VERSION",
 	Short:     "bump version to the specified value",
 	Long: `
   Bump the version string to the specified value.
 
-  This command only affects the working tree, it is not committing the changes.
+  In case -commit is set, the changes are committed as well.
+  The repository must be clean for the commit to be created.
 	`,
 	Action: run,
 }
 
+var (
+	flagCommit bool
+)
+
 func init() {
+	// Register flags.
+	Command.Flags.BoolVar(&flagCommit, "commit", flagCommit,
+		"commit the new version string")
+
 	// Register global flags.
 	appflags.RegisterGlobalFlags(&Command.Flags)
 }
@@ -47,6 +57,17 @@ func runMain(versionString string) error {
 		return err
 	}
 
-	// Set the version.
+	// In case -commit is set, set and commit the version string.
+	if flagCommit {
+		currentBranch, err := git.CurrentBranch()
+		if err != nil {
+			return err
+		}
+
+		_, err = version.SetForBranch(ver, currentBranch)
+		return err
+	}
+
+	// Otherwise just set the version.
 	return version.Set(ver)
 }
