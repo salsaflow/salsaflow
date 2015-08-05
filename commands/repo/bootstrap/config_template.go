@@ -26,9 +26,10 @@ issue_tracker: "{{.IssueTrackerKey}}"
 #
 #  labels:
 #    point_me: "point_me"
-#    no_review: "no review"
 #    reviewed: "reviewed"
-#    verified: "qa+"
+#    skip_review: "no review"
+#    tested: "qa+"
+#    skip_testing: "no qa"
 #    skip_check_labels:
 #      - "wontfix"
 #      - "dupe"
