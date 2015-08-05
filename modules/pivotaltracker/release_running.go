@@ -53,18 +53,38 @@ func (release *runningRelease) EnsureStageable() error {
 		return errs.NewError(task, err)
 	}
 
+	// Check the states.
 	var details bytes.Buffer
 	tw := tabwriter.NewWriter(&details, 0, 8, 4, '\t', 0)
 	io.WriteString(tw, "\n")
 	io.WriteString(tw, "Story URL\tError\n")
 	io.WriteString(tw, "=========\t=====\n")
 
-	// For a story to be stageable, it must be in the Finished stage.
-	// That by definition means that it has been reviewed and verified.
 	for _, story := range stories {
-		if !stateAtLeast(story, pivotal.StoryStateFinished) {
-			fmt.Fprintf(tw, "%v\t%v\n", story.URL, "story not finished yet")
+		// Rejected stories are no good.
+		if story.State == pivotal.StoryStateRejected {
+			fmt.Fprintf(tw, "%v\tstory state: %v\n", story.URL, story.State)
 			err = common.ErrNotStageable
+			continue
+		}
+
+		// Stories that are delivered and further are otherwise OK.
+		if stateAtLeast(story, pivotal.StoryStateDelivered) {
+			continue
+		}
+
+		// Unfinished stories are no good.
+		if story.State != pivotal.StoryStateFinished {
+			fmt.Fprintf(tw, "%v\tstory state: %v\n", story.URL, story.State)
+			err = common.ErrNotStageable
+			continue
+		}
+
+		// Finished stories need to be checked for the review and QA labels.
+		if !release.tracker.canStoryBeStaged(story) {
+			fmt.Fprintf(tw, "%v\t%v\n", story.URL, "story not reviewed and tested yet")
+			err = common.ErrNotStageable
+			continue
 		}
 	}
 	if err != nil {
@@ -76,7 +96,8 @@ func (release *runningRelease) EnsureStageable() error {
 }
 
 func (release *runningRelease) Stage() (action.Action, error) {
-	stageTask := "Mark the stories as delivered in Pivotal Tracker"
+	stageTask := fmt.Sprintf(
+		"Mark the stories as %v in Pivotal Tracker", pivotal.StoryStateDelivered)
 	log.Run(stageTask)
 
 	// Load the assigned stories.
@@ -85,40 +106,28 @@ func (release *runningRelease) Stage() (action.Action, error) {
 		return nil, errs.NewError(stageTask, err)
 	}
 
-	// Pick only the stories that are finished.
-	// All other stories are delivered or further.
-	// That is checked in EnsureStageable().
+	// Pick only the stories that are in the right state,
+	// i.e. state:finished label:reviewed/no review label:qa+/no qa.
 	ss := make([]*pivotal.Story, 0, len(stories))
 	for _, s := range stories {
-		if s.State == pivotal.StoryStateFinished {
+		if release.tracker.canStoryBeStaged(s) {
 			ss = append(ss, s)
 		}
 	}
 	stories = ss
 
-	// Save the original states into a map.
-	originalStates := make(map[int]string, len(stories))
-	for _, story := range stories {
-		originalStates[story.Id] = story.State
-	}
-
-	// Set all the states to Delivered.
+	// Mark the selected stories as delivered. Leave the labels as they are.
 	updateRequest := &pivotal.StoryRequest{State: pivotal.StoryStateDelivered}
 	updateFunc := func(story *pivotal.Story) *pivotal.StoryRequest {
 		return updateRequest
 	}
-	// On rollback, get the original state from the map.
+	// On rollback, set the story state to finished again.
 	rollbackFunc := func(story *pivotal.Story) *pivotal.StoryRequest {
-		return &pivotal.StoryRequest{State: originalStates[story.Id]}
+		return &pivotal.StoryRequest{State: pivotal.StoryStateFinished}
 	}
 
 	// Update the stories.
-	var (
-		config    = release.tracker.config
-		client    = pivotal.NewClient(config.UserToken())
-		projectId = config.ProjectId()
-	)
-	updatedStories, err := updateStories(client, projectId, stories, updateFunc, rollbackFunc)
+	updatedStories, err := release.tracker.updateStories(stories, updateFunc, rollbackFunc)
 	if err != nil {
 		return nil, errs.NewError(stageTask, err)
 	}
@@ -128,8 +137,8 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	return action.ActionFunc(func() error {
 		// On error, set the states back to the original ones.
 		log.Rollback(stageTask)
-		task := "Reset the story states back to the original ones"
-		updatedStories, err := updateStories(client, projectId, release.stories, rollbackFunc, nil)
+		task := fmt.Sprintf("Reset the story states back to %v", pivotal.StoryStateFinished)
+		updatedStories, err := release.tracker.updateStories(release.stories, rollbackFunc, nil)
 		if err != nil {
 			return errs.NewError(task, err)
 		}
