@@ -22,10 +22,11 @@ const LocalConfigTemplate = `
 #  otherwise uncomment what you need to change.
 #
 #  labels:
-#    point_me: "point me"
-#    no_review: "no review"
+#    point_me: "point_me"
 #    reviewed: "reviewed"
-#    verified: "qa+"
+#    skip_review: "no review"
+#    tested: "qa+"
+#    skip_testing: "no qa"
 #    skip_check_labels:
 #      - "wontfix"
 #      - "dupe"
