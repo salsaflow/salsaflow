@@ -91,6 +91,7 @@ func FilterCommits(commits []*Commit, filterFunc CommitFilterFunc) []*Commit {
 //    commits on release..origin/release -> refs/remotes/origin/release
 //
 func FixCommitSources(commits []*Commit) error {
+	// Load config.
 	config, err := LoadConfig()
 	if err != nil {
 		return err
@@ -99,76 +100,82 @@ func FixCommitSources(commits []*Commit) error {
 		remoteName    = config.RemoteName()
 		trunkBranch   = config.TrunkBranchName()
 		releaseBranch = config.ReleaseBranchName()
+
+		remoteTrunkBranch   = fmt.Sprintf("%v/%v", remoteName, trunkBranch)
+		remoteReleaseBranch = fmt.Sprintf("%v/%v", remoteName, releaseBranch)
 	)
 
-	// Get the trunk commits.
-	trunkCommits, err := ShowCommitRange(trunkBranch)
-	if err != nil {
-		return err
-	}
-
-	remoteTrunkCommits, err := ShowCommitRange(
-		fmt.Sprintf("%v..%v@{upstream}", trunkBranch, trunkBranch))
-	if err != nil {
-		return err
-	}
-
-	// Check whether the release branch exists.
-	releaseExists := true
-	if err := CheckOrCreateTrackingBranch(releaseBranch, remoteName); err != nil {
+	trunkUpToDate := true
+	if err := CheckOrCreateTrackingBranch(trunkBranch, remoteName); err != nil {
 		// No need to do a rollback.
 		// In the worst case there will be a new local tracking branch.
-		if _, ok := err.(*ErrRefNotFound); ok {
-			releaseExists = false
-		} else if _, ok := err.(*ErrRefNotInSync); !ok {
-			// Return the err. But we don't care when the local branch is not in sync.
+		// Return an error unless not up to date, we can handle that.
+		if _, ok := err.(*ErrRefNotInSync); ok {
+			trunkUpToDate = false
+		} else {
 			return err
 		}
 	}
 
-	// Get the release commits in case the release branch exists.
-	var (
-		releaseCommits       []*Commit
-		remoteReleaseCommits []*Commit
-	)
-	if releaseExists {
-		// Collect the commits.
-		var err error
-		releaseCommits, err = ShowCommitRange(
-			fmt.Sprintf("%v..%v", trunkBranch, releaseBranch))
-		if err != nil {
-			return err
-		}
-
-		remoteReleaseCommits, err = ShowCommitRange(
-			fmt.Sprintf("%v..%v@{upstream}", releaseBranch, releaseBranch))
-		if err != nil {
-			return err
-		}
+	releaseExists, err := LocalBranchExists(releaseBranch)
+	if err != nil {
+		return err
 	}
 
-	// Collect the right commit sources.
-	sourceMap := make(map[string]string,
-		len(trunkCommits)+len(remoteTrunkCommits)+len(releaseCommits)+len(remoteReleaseCommits))
+	remoteReleaseExists, err := RemoteBranchExists(releaseBranch, remoteName)
+	if err != nil {
+		return err
+	}
+
+	// Fill the commit source map
+	sourceMap := make(map[string]string)
+
+	// trunk
+	cs, err := ShowCommitRange(trunkBranch)
+	if err != nil {
+		return err
+	}
 
 	src := fmt.Sprintf("refs/heads/%v", trunkBranch)
-	for _, commit := range trunkCommits {
+	for _, commit := range cs {
 		sourceMap[commit.SHA] = src
 	}
 
-	src = fmt.Sprintf("refs/remotes/%v/%v", remoteName, trunkBranch)
-	for _, commit := range remoteTrunkCommits {
-		sourceMap[commit.SHA] = src
+	if !trunkUpToDate {
+		// trunk..origin/trunk
+		cs, err := ShowCommitRange(fmt.Sprintf("%v..%v", trunkBranch, remoteTrunkBranch))
+		if err != nil {
+			return err
+		}
+
+		src := fmt.Sprintf("refs/remotes/%v/%v", remoteName, trunkBranch)
+		for _, commit := range cs {
+			sourceMap[commit.SHA] = src
+		}
+	}
+
+	if remoteReleaseExists {
+		// origin/trunk..origin/release
+		cs, err := ShowCommitRange(fmt.Sprintf("%v..%v", remoteTrunkBranch, remoteReleaseBranch))
+		if err != nil {
+			return err
+		}
+
+		src := fmt.Sprintf("refs/remotes/%v", remoteReleaseBranch)
+		for _, commit := range cs {
+			sourceMap[commit.SHA] = src
+		}
 	}
 
 	if releaseExists {
-		src = fmt.Sprintf("refs/heads/%v", releaseBranch)
-		for _, commit := range releaseCommits {
-			sourceMap[commit.SHA] = src
+		// trunk..release
+		cs, err := ShowCommitRange(fmt.Sprintf("%v..%v", trunkBranch, releaseBranch))
+		if err != nil {
+			return err
 		}
 
-		src = fmt.Sprintf("refs/remotes/%v/%v", remoteName, releaseBranch)
-		for _, commit := range remoteReleaseCommits {
+		src := fmt.Sprintf("refs/heads/%v", releaseBranch)
+		for _, commit := range cs {
 			sourceMap[commit.SHA] = src
 		}
 	}
