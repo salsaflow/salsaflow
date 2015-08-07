@@ -63,6 +63,7 @@ The complete list of SalsaFlow commands follows (links pointing to the `develop`
 * [release start](https://github.com/salsaflow/salsaflow/blob/develop/commands/release/start/README.md)
 * [repo bootstrap](https://github.com/salsaflow/salsaflow/blob/develop/commands/repo/bootstrap/README.md)
 * [repo init](https://github.com/salsaflow/salsaflow/blob/develop/commands/repo/init/README.md)
+* [repo prune](https://github.com/salsaflow/salsaflow/blob/develop/commands/repo/prune/README.md)
 * [review post](https://github.com/salsaflow/salsaflow/blob/develop/commands/review/post/README.md)
 * [story changes](https://github.com/salsaflow/salsaflow/blob/develop/commands/story/changes/README.md)
 * [story open](https://github.com/salsaflow/salsaflow/blob/develop/commands/story/open/README.md)
