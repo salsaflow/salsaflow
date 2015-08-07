@@ -68,11 +68,9 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 	return toCommonStories(ptStories, tracker), nil
 }
 
-func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
+func (tracker *issueTracker) ReviewedStories() (stories []common.Story, err error) {
 	ptStories, err := tracker.searchStories(
-		`(state:%v OR state:%v) AND -label:"%v" AND -label:"%v"`,
-		pivotal.StoryStateStarted, pivotal.StoryStateFinished,
-		tracker.config.ReviewedLabel(), tracker.config.SkipReviewLabel())
+		"state:%v AND label:\"%v\"", pivotal.StoryStateStarted, tracker.config.ReviewedLabel())
 	if err != nil {
 		return nil, err
 	}
@@ -81,9 +79,10 @@ func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err
 	return toCommonStories(ptStories, tracker), nil
 }
 
-func (tracker *issueTracker) ReviewedStories() (stories []common.Story, err error) {
+func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
 	ptStories, err := tracker.searchStories(
-		"state:%v AND label:\"%v\"", pivotal.StoryStateFinished, tracker.config.ReviewedLabel())
+		"state:%v AND -label:\"%v\" AND -label:\"%v\"",
+		pivotal.StoryStateStarted, tracker.config.ReviewedLabel(), tracker.config.NoReviewLabel())
 	if err != nil {
 		return nil, err
 	}
@@ -171,18 +170,6 @@ func (tracker *issueTracker) searchStories(
 	return stories, err
 }
 
-func (tracker *issueTracker) updateStories(
-	stories []*pivotal.Story,
-	updateFunc storyUpdateFunc,
-	rollbackFunc storyUpdateFunc,
-) ([]*pivotal.Story, error) {
-	var (
-		client    = pivotal.NewClient(tracker.config.UserToken())
-		projectId = tracker.config.ProjectId()
-	)
-	return updateStories(client, projectId, stories, updateFunc, rollbackFunc)
-}
-
 func (tracker *issueTracker) storiesById(ids []string) ([]*pivotal.Story, error) {
 	if len(ids) == 0 {
 		return nil, nil
@@ -227,19 +214,4 @@ func (tracker *issueTracker) storiesByIdOrdered(ids []string) ([]*pivotal.Story,
 
 func (tracker *issueTracker) storiesByRelease(v *version.Version) ([]*pivotal.Story, error) {
 	return tracker.searchStories(`label:"%v"`, getReleaseLabel(v))
-}
-
-func (tracker *issueTracker) canStoryBeStaged(story *pivotal.Story) bool {
-	var (
-		config           = tracker.config
-		reviewedLabel    = config.ReviewedLabel()
-		skipReviewLabel  = config.SkipReviewLabel()
-		testedLabel      = config.TestedLabel()
-		skipTestingLabel = config.SkipTestingLabel()
-	)
-	var (
-		reviewed = labeled(story, reviewedLabel) || labeled(story, skipReviewLabel)
-		tested   = labeled(story, testedLabel) || labeled(story, skipTestingLabel)
-	)
-	return story.State == pivotal.StoryStateFinished && reviewed && tested
 }

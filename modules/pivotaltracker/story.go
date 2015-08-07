@@ -36,46 +36,38 @@ func (story *story) Type() string {
 func (story *story) State() common.StoryState {
 	var (
 		config           = story.tracker.config
+		implementedLabel = config.ImplementedLabel()
 		reviewedLabel    = config.ReviewedLabel()
-		skipReviewLabel  = config.SkipReviewLabel()
-		testedLabel      = config.TestedLabel()
-		skipTestingLabel = config.SkipTestingLabel()
 	)
 
 	switch story.Story.State {
 	case pivotal.StoryStateUnscheduled:
 		return common.StoryStateNew
-
 	case pivotal.StoryStatePlanned:
 		fallthrough
 	case pivotal.StoryStateUnstarted:
 		return common.StoryStateApproved
-
 	case pivotal.StoryStateStarted:
-		return common.StoryStateBeingImplemented
-
-	case pivotal.StoryStateFinished:
-		reviewed := story.isLabeled(reviewedLabel) || story.isLabeled(skipReviewLabel)
-		tested := story.isLabeled(testedLabel) || story.isLabeled(skipTestingLabel)
-
+		// We do not handle testing passed and testing failed labels here.
+		// That is because it is not really important. Once the reviewed
+		// label is there, the daemon will make the transition in the bg
+		// in case one of the testing labels is there.
 		switch {
-		case reviewed && tested:
-			return common.StoryStateTested
-		case reviewed:
+		case story.isLabeled(implementedLabel):
+			return common.StoryStateImplemented
+		case story.isLabeled(reviewedLabel):
 			return common.StoryStateReviewed
 		default:
-			return common.StoryStateImplemented
+			return common.StoryStateBeingImplemented
 		}
-
+	case pivotal.StoryStateFinished:
+		return common.StoryStateTested
 	case pivotal.StoryStateDelivered:
 		return common.StoryStateStaged
-
 	case pivotal.StoryStateAccepted:
 		return common.StoryStateAccepted
-
 	case pivotal.StoryStateRejected:
 		return common.StoryStateRejected
-
 	default:
 		panic("unknown Pivotal Tracker story state: " + story.Story.State)
 	}
@@ -162,27 +154,28 @@ func (story *story) Start() error {
 }
 
 func (story *story) MarkAsImplemented() (action.Action, error) {
-	// Make sure the story is started.
-	switch story.Story.State {
-	case pivotal.StoryStateStarted:
-		// Continue further to set the state to finished.
-	case pivotal.StoryStateFinished:
-		// Nothing to do here.
-		return nil, nil
-	default:
-		// Foobar, an unexpected story state encountered.
-		return nil, fmt.Errorf("unexpected story state: %v", story.State)
-	}
-
-	// Set the story state to finished.
 	var (
 		config    = story.tracker.config
 		client    = pivotal.NewClient(config.UserToken())
 		projectId = config.ProjectId()
+		label     = config.ImplementedLabel()
 	)
 
+	var alreadyThere bool
+	ls := make([]*pivotal.Label, 0, len(story.Labels))
+	for _, l := range story.Labels {
+		if l.Name == label {
+			alreadyThere = true
+		}
+		ls = append(ls, &pivotal.Label{Name: l.Name})
+	}
+	if alreadyThere {
+		return nil, nil
+	}
+	ls = append(ls, &pivotal.Label{Name: label})
+
 	updateTask := fmt.Sprintf("Update Pivotal Tracker story (id = %v)", story.Story.Id)
-	updateRequest := &pivotal.StoryRequest{State: pivotal.StoryStateFinished}
+	updateRequest := &pivotal.StoryRequest{Labels: &ls}
 	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
 	if err != nil {
 		return nil, errs.NewError(updateTask, err)
@@ -192,7 +185,7 @@ func (story *story) MarkAsImplemented() (action.Action, error) {
 
 	return action.ActionFunc(func() error {
 		log.Rollback(updateTask)
-		updateRequest := &pivotal.StoryRequest{State: originalStory.State}
+		updateRequest := &pivotal.StoryRequest{Labels: &originalStory.Labels}
 		updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
 		if err != nil {
 			return err
