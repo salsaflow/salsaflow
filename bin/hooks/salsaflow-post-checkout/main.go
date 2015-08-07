@@ -95,6 +95,11 @@ func hook() error {
 		return nil
 	}
 
+	// Fix commit sources.
+	if err := git.FixCommitSources(missing); err != nil {
+		return err
+	}
+
 	// Print the warning.
 	return printWarning(missing)
 }
