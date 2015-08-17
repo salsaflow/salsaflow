@@ -12,7 +12,7 @@ salsaflow repo prune -state=STATE
 
 Delete Git branches that are no longer needed.
 
-All story branches are checked and the branches are only contain commits
+All story branches are checked and the branches that only contain commits
 associated with stories that are in the selected state or further
 are offered to be deleted. Both local and remote branches are affected.
 
