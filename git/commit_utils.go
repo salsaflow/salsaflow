@@ -85,10 +85,10 @@ func FilterCommits(commits []*Commit, filterFunc CommitFilterFunc) []*Commit {
 //
 // More precisely, the Source field is set in the following way:
 //
-//    commits on trunk                   -> refs/heads/trunk
-//    commits on trunk..origin/trunk     -> refs/remotes/origin/trunk
-//    commits on trunk..release          -> refs/heads/release
-//    commits on release..origin/release -> refs/remotes/origin/release
+//    commits on trunk                        -> refs/heads/trunk
+//    commits on trunk..origin/trunk          -> refs/remotes/origin/trunk
+//    commits on trunk..release               -> refs/heads/release
+//    commits on origin/trunk..origin/release -> refs/remotes/origin/release
 //
 func FixCommitSources(commits []*Commit) error {
 	// Load config.
