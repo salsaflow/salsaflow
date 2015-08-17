@@ -60,7 +60,7 @@ func init() {
 
 	// Register flags.
 	flagState = flag.NewStringEnumFlag(states, string(common.StoryStateAccepted))
-	Command.Flags.Var(flagState, "state", "set the required story state")
+	Command.Flags.Var(flagState, "state", "set the required story state for branch removal")
 
 	// Register global flags.
 	appflags.RegisterGlobalFlags(&Command.Flags)
