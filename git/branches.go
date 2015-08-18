@@ -148,82 +148,80 @@ RemoteLoop:
 }
 
 func localBranches() ([]*GitBranch, error) {
-	// Get raw data.
-	task := "Get Git branch data"
-	stdout, err := Run("branch", "-vv")
-	if err != nil {
-		return nil, errs.NewError(task, err)
-	}
+	return branches(
+		"vv",
+		regexp.MustCompile(`^[ *]+([^ \t]+)[ \t]+[^ \t]+[ \t]+(\[([^\]:]+))?`),
+		func(match []string) *GitBranch {
+			branch := match[1]
 
-	// Parse the data.
-	task = "Parse 'git branch -vv' output"
-	scanner := bufio.NewScanner(stdout)
-	lineRegexp := regexp.MustCompile(`^[ *]+([^ \t]+)[ \t]+[^ \t]+[ \t]+(\[([^\]:]+))?`)
-	branches := make([]*GitBranch, 0)
+			// The branch being tracked may be empty.
+			var remote, remoteBranch string
+			parts := strings.SplitN(match[3], "/", 2)
+			if len(parts) == 2 {
+				remote, remoteBranch = parts[0], parts[1]
+			}
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		match := lineRegexp.FindStringSubmatch(line)
-		if len(match) == 0 {
-			err := fmt.Errorf("failed to parse output line: %v", line)
-			return nil, errs.NewError(task, err)
-		}
-
-		branch := match[1]
-		var remote, remoteBranch string
-
-		parts := strings.SplitN(match[3], "/", 2)
-		if len(parts) == 2 {
-			remote, remoteBranch = parts[0], parts[1]
-		}
-
-		branches = append(branches, &GitBranch{
-			BranchName:       branch,
-			RemoteBranchName: remoteBranch,
-			Remote:           remote,
-		})
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, errs.NewError(task, err)
-	}
-	return branches, nil
+			return &GitBranch{
+				BranchName:       branch,
+				RemoteBranchName: remoteBranch,
+				Remote:           remote,
+			}
+		},
+	)
 }
 
 func remoteBranches() ([]*GitBranch, error) {
+	return branches(
+		"rvv",
+		regexp.MustCompile(`^[ *]+([^ \t]+)`),
+		func(match []string) *GitBranch {
+			var remote, remoteBranch string
+			parts := strings.SplitN(match[1], "/", 2)
+			remote, remoteBranch = parts[0], parts[1]
+
+			// Do not return HEAD.
+			if remoteBranch == "HEAD" {
+				return nil
+			}
+
+			return &GitBranch{
+				RemoteBranchName: remoteBranch,
+				Remote:           remote,
+			}
+		},
+	)
+}
+
+func branches(
+	gitBranchFlags string,
+	lineRegexp *regexp.Regexp,
+	lineMatchFunc func(match []string) *GitBranch,
+) ([]*GitBranch, error) {
+
 	// Get raw data.
 	task := "Get Git branch data"
-	stdout, err := Run("branch", "-rvv")
+	stdout, err := Run("branch", "-"+gitBranchFlags)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
 
 	// Parse the data.
-	task = "Parse 'git branch -rvv' output"
+	task = fmt.Sprintf("Parse 'git branch -%v' output", gitBranchFlags)
 	scanner := bufio.NewScanner(stdout)
-	lineRegexp := regexp.MustCompile(`^[ *]+([^ \t]+)`)
 	branches := make([]*GitBranch, 0)
 
 	for scanner.Scan() {
 		line := scanner.Text()
 		match := lineRegexp.FindStringSubmatch(line)
+
 		if len(match) == 0 {
 			err := fmt.Errorf("failed to parse output line: %v", line)
 			return nil, errs.NewError(task, err)
 		}
 
-		var remote, remoteBranch string
-		parts := strings.SplitN(match[1], "/", 2)
-		remote, remoteBranch = parts[0], parts[1]
-
-		// Do not return HEAD.
-		if remoteBranch == "HEAD" {
-			continue
+		if branch := lineMatchFunc(match); branch != nil {
+			branches = append(branches, branch)
 		}
-
-		branches = append(branches, &GitBranch{
-			RemoteBranchName: remoteBranch,
-			Remote:           remote,
-		})
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, errs.NewError(task, err)
