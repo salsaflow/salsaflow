@@ -105,18 +105,22 @@ func FixCommitSources(commits []*Commit) error {
 		remoteReleaseBranch = fmt.Sprintf("%v/%v", remoteName, releaseBranch)
 	)
 
-	trunkUpToDate := true
-	if err := CheckOrCreateTrackingBranch(trunkBranch, remoteName); err != nil {
-		// No need to do a rollback.
-		// In the worst case there will be a new local tracking branch.
-		// Return an error unless not up to date, we can handle that.
-		if _, ok := err.(*ErrRefNotInSync); ok {
-			trunkUpToDate = false
-		} else {
-			return err
-		}
+	// Make sure trunk exists.
+	exists, err := LocalBranchExists(trunkBranch)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return &ErrRefNotFound{trunkBranch}
 	}
 
+	// Check whether trunk is up to date.
+	trunkUpToDate, err := IsBranchSynchronized(trunkBranch, remoteName)
+	if err != nil {
+		return err
+	}
+
+	// Check the release branch as well.
 	releaseExists, err := LocalBranchExists(releaseBranch)
 	if err != nil {
 		return err
