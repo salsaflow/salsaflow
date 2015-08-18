@@ -19,6 +19,40 @@ var (
 	commitTitle = "Update README"
 )
 
+// Setup helpers ---------------------------------------------------------------
+
+func newGitHubCommitReviewIssue(body string) *github.Issue {
+	title := fmt.Sprintf("Review commit %v: %v", commitSHA, commitTitle)
+	return &github.Issue{
+		Title: &title,
+		Body:  &body,
+	}
+}
+
+func newCommitReviewIssue(
+	commits *CommitList,
+	reviewBlockers *ReviewBlockerList,
+	userContent string,
+) *CommitReviewIssue {
+
+	if commits == nil {
+		commits = &CommitList{}
+	}
+	if reviewBlockers == nil {
+		reviewBlockers = &ReviewBlockerList{}
+	}
+
+	return &CommitReviewIssue{
+		CommitSHA:   commitSHA,
+		CommitTitle: commitTitle,
+		ReviewIssueCommonBody: &ReviewIssueCommonBody{
+			CommitList:        commits,
+			ReviewBlockerList: reviewBlockers,
+			UserContent:       userContent,
+		},
+	}
+}
+
 // Tests -----------------------------------------------------------------------
 
 var _ = Describe("parsing a commit review issue", func() {
@@ -30,30 +64,12 @@ var _ = Describe("parsing a commit review issue", func() {
 		expectedUserContent string,
 	) {
 		// Set up the input, which is a GitHub issue.
-		issueTitle := fmt.Sprintf("Review commit %v: %v", commitSHA, commitTitle)
 		issueBody := strings.Join(issueBodyLines, "\n")
-		githubIssue := &github.Issue{
-			Title: &issueTitle,
-			Body:  &issueBody,
-		}
+		githubIssue := newGitHubCommitReviewIssue(issueBody)
 
 		// Set up the expected CommitReviewIssue object.
-		if expectedCommits == nil {
-			expectedCommits = &CommitList{}
-		}
-		if expectedReviewBlockers == nil {
-			expectedReviewBlockers = &ReviewBlockerList{}
-		}
-
-		expectedReviewIssue := &CommitReviewIssue{
-			CommitSHA:   commitSHA,
-			CommitTitle: commitTitle,
-			ReviewIssueCommonBody: &ReviewIssueCommonBody{
-				CommitList:        expectedCommits,
-				ReviewBlockerList: expectedReviewBlockers,
-				UserContent:       expectedUserContent,
-			},
-		}
+		expectedReviewIssue := newCommitReviewIssue(
+			expectedCommits, expectedReviewBlockers, expectedUserContent)
 
 		// Try to parse the input and make sure it succeeded.
 		It("should yield corresponding CommitReviewIssue instance", func() {
@@ -159,19 +175,7 @@ var _ = Describe("formatting a commit review issue", func() {
 	) {
 
 		// Set up the input, which is a CommitReviewIssue object.
-		if reviewBlockers == nil {
-			reviewBlockers = &ReviewBlockerList{}
-		}
-
-		reviewIssue := &CommitReviewIssue{
-			CommitSHA:   commitSHA,
-			CommitTitle: commitTitle,
-			ReviewIssueCommonBody: &ReviewIssueCommonBody{
-				CommitList:        commits,
-				ReviewBlockerList: reviewBlockers,
-				UserContent:       userContent,
-			},
-		}
+		reviewIssue := newCommitReviewIssue(commits, reviewBlockers, userContent)
 
 		// Generate expected review issue body string.
 		expectedBody := strings.Join(expectedBodyLines, "\n")
@@ -184,10 +188,7 @@ var _ = Describe("formatting a commit review issue", func() {
 
 	// Tests, at last!
 	It("should return the expected GitHub issue title", func() {
-		reviewIssue := &CommitReviewIssue{
-			CommitSHA:   commitSHA,
-			CommitTitle: commitTitle,
-		}
+		reviewIssue := newCommitReviewIssue(nil, nil, "")
 
 		expectedTitle := fmt.Sprintf("Review commit %v: %v", commitSHA, commitTitle)
 		Expect(reviewIssue.FormatTitle()).To(Equal(expectedTitle))

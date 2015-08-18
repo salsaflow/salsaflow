@@ -23,11 +23,47 @@ var (
 )
 
 var (
-	storyTitle           = fmt.Sprintf("Review story %s: %s", storyId, storySummary)
 	storyLinkSection     = fmt.Sprintf("Story being reviewed: [%s](%s)", storyId, storyURL)
 	storyMetadataSection = fmt.Sprintf(
 		"SF-Issue-Tracker: %v\nSF-Story-Key: %v", storyTrackerName, storyKey)
 )
+
+// Setup helpers ---------------------------------------------------------------
+
+func newGitHubStoryReviewIssue(body string) *github.Issue {
+	title := fmt.Sprintf("Review story %s: %s", storyId, storySummary)
+	return &github.Issue{
+		Title: &title,
+		Body:  &body,
+	}
+}
+
+func newStoryReviewIssue(
+	commits *CommitList,
+	reviewBlockers *ReviewBlockerList,
+	userContent string,
+) *StoryReviewIssue {
+
+	if commits == nil {
+		commits = &CommitList{}
+	}
+	if reviewBlockers == nil {
+		reviewBlockers = &ReviewBlockerList{}
+	}
+
+	return &StoryReviewIssue{
+		StoryId:      storyId,
+		StoryURL:     storyURL,
+		StorySummary: storySummary,
+		TrackerName:  storyTrackerName,
+		StoryKey:     storyKey,
+		ReviewIssueCommonBody: &ReviewIssueCommonBody{
+			CommitList:        commits,
+			ReviewBlockerList: reviewBlockers,
+			UserContent:       userContent,
+		},
+	}
+}
 
 // Tests -----------------------------------------------------------------------
 
@@ -41,31 +77,11 @@ var _ = Describe("parsing a story review issue", func() {
 	) {
 		// Set up the input, which is a GitHub issue.
 		issueBody := strings.Join(issueBodyLines, "\n")
-		githubIssue := &github.Issue{
-			Title: &storyTitle,
-			Body:  &issueBody,
-		}
+		githubIssue := newGitHubStoryReviewIssue(issueBody)
 
 		// Set up the expected CommitReviewIssue object.
-		if expectedCommits == nil {
-			expectedCommits = &CommitList{}
-		}
-		if expectedReviewBlockers == nil {
-			expectedReviewBlockers = &ReviewBlockerList{}
-		}
-
-		expectedReviewIssue := &StoryReviewIssue{
-			StoryId:      storyId,
-			StoryURL:     storyURL,
-			StorySummary: storySummary,
-			TrackerName:  storyTrackerName,
-			StoryKey:     storyKey,
-			ReviewIssueCommonBody: &ReviewIssueCommonBody{
-				CommitList:        expectedCommits,
-				ReviewBlockerList: expectedReviewBlockers,
-				UserContent:       expectedUserContent,
-			},
-		}
+		expectedReviewIssue := newStoryReviewIssue(
+			expectedCommits, expectedReviewBlockers, expectedUserContent)
 
 		// Try to parse the input and make sure it succeeded.
 		It("should yield corresponding StoryReviewIssue instance", func() {
@@ -80,10 +96,7 @@ var _ = Describe("parsing a story review issue", func() {
 	) {
 		// Set up the input, which is a GitHub issue.
 		issueBody := strings.Join(issueBodyLines, "\n")
-		githubIssue := &github.Issue{
-			Title: &storyTitle,
-			Body:  &issueBody,
-		}
+		githubIssue := newGitHubStoryReviewIssue(issueBody)
 
 		// Try to parse the input and make sure it failed.
 		It("should return a parsing error", func() {
@@ -186,22 +199,7 @@ var _ = Describe("formatting a story review issue", func() {
 	) {
 
 		// Set up the input, which is a StoryReviewIssue object.
-		if reviewBlockers == nil {
-			reviewBlockers = &ReviewBlockerList{}
-		}
-
-		reviewIssue := &StoryReviewIssue{
-			StoryId:      storyId,
-			StoryURL:     storyURL,
-			StorySummary: storySummary,
-			TrackerName:  storyTrackerName,
-			StoryKey:     storyKey,
-			ReviewIssueCommonBody: &ReviewIssueCommonBody{
-				CommitList:        commits,
-				ReviewBlockerList: reviewBlockers,
-				UserContent:       userContent,
-			},
-		}
+		reviewIssue := newStoryReviewIssue(commits, reviewBlockers, userContent)
 
 		// Generate expected review issue body string.
 		expectedBody := strings.Join(expectedBodyLines, "\n")
@@ -214,10 +212,7 @@ var _ = Describe("formatting a story review issue", func() {
 
 	// Tests, at last!
 	It("should return the expected GitHub issue title", func() {
-		reviewIssue := &StoryReviewIssue{
-			StoryId:      storyId,
-			StorySummary: storySummary,
-		}
+		reviewIssue := newStoryReviewIssue(nil, nil, "")
 
 		expectedTitle := fmt.Sprintf("Review story %v: %v", storyId, storySummary)
 		Expect(reviewIssue.FormatTitle()).To(Equal(expectedTitle))
