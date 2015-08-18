@@ -45,6 +45,18 @@ func (branch *GitBranch) FullRemoteBranchName() string {
 	return fmt.Sprintf("%v/%v", branch.Remote, branch.RemoteBranchName)
 }
 
+// CanonicalName returns
+//
+//   "{{.BranchName}}" in case it is not empty, and
+//   "{{.Remote}}/{{.RemoteBranchName}}" otherwise.
+func (branch *GitBranch) CanonicalName() string {
+	if name := branch.BranchName; name != "" {
+		return name
+	} else {
+		return branch.FullRemoteBranchName()
+	}
+}
+
 // IsUpToDate returns true when the local and remote references
 // point to the same commit.
 func (branch *GitBranch) IsUpToDate() (bool, error) {

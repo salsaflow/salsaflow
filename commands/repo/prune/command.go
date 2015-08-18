@@ -321,41 +321,48 @@ BranchLoop:
 	}
 
 	allowedStates := allowedStoryStates()
-	bs := make([]*git.GitBranch, 0, len(branches))
-FilterLoop:
-	for _, branch := range branches {
-	CommitLoop:
-		for _, commit := range branch.commits {
-			// In case the story is not found, the tag is no recognized
+
+	// checkCommits returns whether the commits passed in are ok
+	// considering the state of the stories found in these commits.
+	// In case there is a state that is not allowed detected,
+	// the state is returned from the function as well.
+	checkCommits := func(commits []*git.Commit) (common.StoryState, bool) {
+		for _, commit := range commits {
+			// In case the story is not found, the tag is not recognized
 			// by the current issue tracker. In that case we just skip the commit.
 			story, ok := storyByTag[commit.StoryIdTag]
 			if !ok {
-				continue CommitLoop
+				continue
 			}
 
-			// When the story state associated with the commit is ok,
-			// we just continue with checking the next commit.
+			// When the story state associated with the commit is not ok,
+			// we can return false here to reject the branch.
 			storyState := story.State()
-			if _, ok := allowedStates[storyState]; ok {
-				continue CommitLoop
+			if _, ok := allowedStates[storyState]; !ok {
+				return storyState, false
 			}
-
-			// Reaching this code means that the associated story state is not ok,
-			// so we just skip the branch by continuing with the top loop.
-			var branchName string
-			tip := branch.tip
-			if name := tip.BranchName; name != "" {
-				branchName = name
-			} else {
-				branchName = tip.FullRemoteBranchName()
-			}
-
-			log.V(log.Debug).Log(
-				fmt.Sprintf("Skipping branch '%v', story state is '%v'", branchName, storyState))
-			continue FilterLoop
 		}
 
-		bs = append(bs, branch.tip)
+		// We went through all the commits and they are fine, check passed.
+		return common.StoryStateInvalid, true
+	}
+
+	// Go through the branches and only return these that
+	// comply with the story state requirements.
+	bs := make([]*git.GitBranch, 0, len(branches))
+	for _, branch := range branches {
+		tip := branch.tip
+
+		// In case the commit check passed, we append the branch.
+		state, ok := checkCommits(branch.commits)
+		if ok {
+			bs = append(bs, tip)
+			continue
+		}
+
+		// Otherwise we print the skip warning.
+		log.V(log.Debug).Log(fmt.Sprintf(
+			"Skipping branch '%v', story state is '%v'", tip.CanonicalName(), state))
 	}
 
 	return bs, nil
