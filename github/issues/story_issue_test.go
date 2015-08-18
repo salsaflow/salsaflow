@@ -33,34 +33,28 @@ var (
 
 var _ = Describe("parsing a story review issue", func() {
 
-	// Input lines to be parsed
-	var (
-		issueBodyLines []string
-	)
-
-	// Parts to asseble the expected review issue object
-	var (
-		expectedCommits        *CommitList
-		expectedReviewBlockers *ReviewBlockerList
-		expectedUserContent    string
-	)
-
-	// Internal variables for assertion closures
-	var (
-		githubIssue         *github.Issue
-		expectedReviewIssue *StoryReviewIssue
-	)
-
-	// Common initialisation before every It run sets the internal variables.
-	JustBeforeEach(func() {
-		issueTitle := fmt.Sprintf("Review story %v: %v", storyId, storySummary)
+	assertMatch := func(
+		issueBodyLines []string,
+		expectedCommits *CommitList,
+		expectedReviewBlockers *ReviewBlockerList,
+		expectedUserContent string,
+	) {
+		// Set up the input, which is a GitHub issue.
 		issueBody := strings.Join(issueBodyLines, "\n")
-		githubIssue = &github.Issue{
-			Title: &issueTitle,
+		githubIssue := &github.Issue{
+			Title: &storyTitle,
 			Body:  &issueBody,
 		}
 
-		expectedReviewIssue = &StoryReviewIssue{
+		// Set up the expected CommitReviewIssue object.
+		if expectedCommits == nil {
+			expectedCommits = &CommitList{}
+		}
+		if expectedReviewBlockers == nil {
+			expectedReviewBlockers = &ReviewBlockerList{}
+		}
+
+		expectedReviewIssue := &StoryReviewIssue{
 			StoryId:      storyId,
 			StoryURL:     storyURL,
 			StorySummary: storySummary,
@@ -72,149 +66,131 @@ var _ = Describe("parsing a story review issue", func() {
 				UserContent:       expectedUserContent,
 			},
 		}
-	})
 
-	// Assertion closures
-	shouldMatch := func() {
-		reviewIssue, err := ParseReviewIssue(githubIssue)
-		Expect(reviewIssue).To(Equal(expectedReviewIssue))
-		Expect(err).To(BeNil())
+		// Try to parse the input and make sure it succeeded.
+		It("should yield corresponding StoryReviewIssue instance", func() {
+			reviewIssue, err := ParseReviewIssue(githubIssue)
+			Expect(reviewIssue).To(Equal(expectedReviewIssue))
+			Expect(err).To(BeNil())
+		})
 	}
 
-	shouldFail := func() {
-		reviewIssue, err := ParseReviewIssue(githubIssue)
-		Expect(reviewIssue).To(BeNil())
-		Expect(err).ToNot(BeNil())
-	}
+	assertParsingFailure := func(
+		issueBodyLines []string,
+	) {
+		// Set up the input, which is a GitHub issue.
+		issueBody := strings.Join(issueBodyLines, "\n")
+		githubIssue := &github.Issue{
+			Title: &storyTitle,
+			Body:  &issueBody,
+		}
 
-	assertMatch := func() {
-		It("should yield corresponding StoryReviewIssue instance", shouldMatch)
-	}
-
-	assertParsingFailure := func() {
-		It("should return a parsing error", shouldFail)
+		// Try to parse the input and make sure it failed.
+		It("should return a parsing error", func() {
+			reviewIssue, err := ParseReviewIssue(githubIssue)
+			Expect(reviewIssue).To(BeNil())
+			Expect(err).ToNot(BeNil())
+		})
 	}
 
 	// Tests, at last!
 	Context("containing the commit list, the review blocker list and some user content", func() {
 
-		BeforeEach(func() {
-			// Review issue
-			issueBodyLines = []string{
-				storyLinkSection,
-				emptyLine,
-				storyMetadataSection,
-				emptyLine,
-				commitListString,
-				emptyLine,
-				reviewBlockerListString,
-				emptyLine,
-				userContentSeparator,
-				userContentSection,
-			}
+		issueBodyLines := []string{
+			storyLinkSection,
+			emptyLine,
+			storyMetadataSection,
+			emptyLine,
+			commitListString,
+			emptyLine,
+			reviewBlockerListString,
+			emptyLine,
+			userContentSeparator,
+			userContentSection,
+		}
 
-			// Expected review issue object
-			expectedCommits = commitList
-			expectedReviewBlockers = reviewBlockerList
-			expectedUserContent = userContentSection
-		})
-
-		assertMatch()
+		assertMatch(
+			issueBodyLines,
+			commitList,
+			reviewBlockerList,
+			userContentSection,
+		)
 	})
 
 	Context("containing the commit list and the review blocker list", func() {
 
-		BeforeEach(func() {
-			// Review issue
-			issueBodyLines = []string{
-				storyLinkSection,
-				emptyLine,
-				storyMetadataSection,
-				emptyLine,
-				commitListString,
-				emptyLine,
-				reviewBlockerListString,
-				emptyLine,
-			}
+		issueBodyLines := []string{
+			storyLinkSection,
+			emptyLine,
+			storyMetadataSection,
+			emptyLine,
+			commitListString,
+			emptyLine,
+			reviewBlockerListString,
+			emptyLine,
+		}
 
-			// Expected review issue object
-			expectedCommits = commitList
-			expectedReviewBlockers = reviewBlockerList
-			expectedUserContent = ""
-		})
-
-		assertMatch()
+		assertMatch(
+			issueBodyLines,
+			commitList,
+			reviewBlockerList,
+			"",
+		)
 	})
 
 	Context("containing the commit list and some user content", func() {
 
-		BeforeEach(func() {
-			// Review issue
-			issueBodyLines = []string{
-				storyLinkSection,
-				emptyLine,
-				storyMetadataSection,
-				emptyLine,
-				commitListString,
-				emptyLine,
-				userContentSeparator,
-				userContentSection,
-			}
+		issueBodyLines := []string{
+			storyLinkSection,
+			emptyLine,
+			storyMetadataSection,
+			emptyLine,
+			commitListString,
+			emptyLine,
+			userContentSeparator,
+			userContentSection,
+		}
 
-			// Expected review issue object
-			expectedCommits = commitList
-			expectedReviewBlockers = &ReviewBlockerList{}
-			expectedUserContent = userContentSection
-		})
-
-		assertMatch()
+		assertMatch(
+			issueBodyLines,
+			commitList,
+			nil,
+			userContentSection,
+		)
 	})
 
 	Context("missing the commit list", func() {
 
-		BeforeEach(func() {
-			// Review issue
-			issueBodyLines = []string{
-				storyLinkSection,
-				emptyLine,
-				storyMetadataSection,
-				emptyLine,
-				reviewBlockerListString,
-				emptyLine,
-				userContentSeparator,
-				userContentSection,
-			}
-		})
+		issueBodyLines := []string{
+			storyLinkSection,
+			emptyLine,
+			storyMetadataSection,
+			emptyLine,
+			reviewBlockerListString,
+			emptyLine,
+			userContentSeparator,
+			userContentSection,
+		}
 
-		assertParsingFailure()
+		assertParsingFailure(issueBodyLines)
 	})
 })
 
-var _ = Describe("formatting a commit review issue", func() {
+var _ = Describe("formatting a story review issue", func() {
 
-	// Parts used to construct the review issue
-	var (
-		commits        *CommitList
-		reviewBlockers *ReviewBlockerList
-		userContent    string
-	)
+	assertBodyMatches := func(
+		commits *CommitList,
+		reviewBlockers *ReviewBlockerList,
+		userContent string,
+		expectedBodyLines []string,
+	) {
 
-	// Expected formatting output lines
-	var (
-		expectedBodyLines []string
-	)
+		// Set up the input, which is a StoryReviewIssue object.
+		if reviewBlockers == nil {
+			reviewBlockers = &ReviewBlockerList{}
+		}
 
-	// Internal variables for assertion closured
-	var (
-		reviewIssue *StoryReviewIssue
-
-		expectedTitle string
-		expectedBody  string
-	)
-
-	// Common initialisation before every It run sets the internal variables.
-	JustBeforeEach(func() {
-		reviewIssue = &StoryReviewIssue{
+		reviewIssue := &StoryReviewIssue{
 			StoryId:      storyId,
 			StoryURL:     storyURL,
 			StorySummary: storySummary,
@@ -227,125 +203,113 @@ var _ = Describe("formatting a commit review issue", func() {
 			},
 		}
 
-		expectedTitle = fmt.Sprintf("Review story %v: %v", storyId, storySummary)
-		expectedBody = strings.Join(expectedBodyLines, "\n")
-	})
+		// Generate expected review issue body string.
+		expectedBody := strings.Join(expectedBodyLines, "\n")
 
-	// Assertion closures
-	matchBody := func() {
-		Expect(reviewIssue.FormatBody()).To(Equal(expectedBody))
-	}
-
-	matchTitle := func() {
-		Expect(reviewIssue.FormatTitle()).To(Equal(expectedTitle))
-	}
-
-	assertBodyMatches := func() {
-		It("should return the expected GitHub issue body", matchBody)
+		// Format the body and try to match against the expected string.
+		It("should return the expected GitHub issue body", func() {
+			Expect(reviewIssue.FormatBody()).To(Equal(expectedBody))
+		})
 	}
 
 	// Tests, at last!
-	It("should return the expected GitHub issue title", matchTitle)
+	It("should return the expected GitHub issue title", func() {
+		reviewIssue := &StoryReviewIssue{
+			StoryId:      storyId,
+			StorySummary: storySummary,
+		}
+
+		expectedTitle := fmt.Sprintf("Review story %v: %v", storyId, storySummary)
+		Expect(reviewIssue.FormatTitle()).To(Equal(expectedTitle))
+	})
 
 	Context("containing the commit list only", func() {
 
-		BeforeEach(func() {
-			// Review issue
-			commits = commitList
-			reviewBlockers = &ReviewBlockerList{}
-			userContent = ""
+		expectedBodyLines := []string{
+			storyLinkSection,
+			emptyLine,
+			storyMetadataSection,
+			emptyLine,
+			commitListString,
+			emptyLine,
+			emptyLine,
+			userContentSeparator,
+			defaultUserContentString,
+		}
 
-			// Expected body.
-			expectedBodyLines = []string{
-				storyLinkSection,
-				emptyLine,
-				storyMetadataSection,
-				emptyLine,
-				commitListString,
-				emptyLine,
-				emptyLine,
-				userContentSeparator,
-				defaultUserContentString,
-			}
-		})
-
-		assertBodyMatches()
+		assertBodyMatches(
+			commitList,
+			nil,
+			"",
+			expectedBodyLines,
+		)
 	})
 
 	Context("containing the commit list and the review blocker list", func() {
 
-		BeforeEach(func() {
-			// Review issue
-			commits = commitList
-			reviewBlockers = reviewBlockerList
-			userContent = ""
+		expectedBodyLines := []string{
+			storyLinkSection,
+			emptyLine,
+			storyMetadataSection,
+			emptyLine,
+			commitListString,
+			emptyLine,
+			reviewBlockerListString,
+			emptyLine,
+			userContentSeparator,
+			defaultUserContentString,
+		}
 
-			// Expected body
-			expectedBodyLines = []string{
-				storyLinkSection,
-				emptyLine,
-				storyMetadataSection,
-				emptyLine,
-				commitListString,
-				emptyLine,
-				reviewBlockerListString,
-				emptyLine,
-				userContentSeparator,
-				defaultUserContentString,
-			}
-		})
-
-		assertBodyMatches()
+		assertBodyMatches(
+			commitList,
+			reviewBlockerList,
+			"",
+			expectedBodyLines,
+		)
 	})
 
 	Context("containing the commit list and some user content", func() {
 
-		BeforeEach(func() {
-			// Review issue
-			commits = commitList
-			reviewBlockers = &ReviewBlockerList{}
-			userContent = userContentSection
+		expectedBodyLines := []string{
+			storyLinkSection,
+			emptyLine,
+			storyMetadataSection,
+			emptyLine,
+			commitListString,
+			emptyLine,
+			emptyLine,
+			userContentSeparator,
+			userContentSection,
+		}
 
-			// Expected body
-			expectedBodyLines = []string{
-				storyLinkSection,
-				emptyLine,
-				storyMetadataSection,
-				emptyLine,
-				commitListString,
-				emptyLine,
-				emptyLine,
-				userContentSeparator,
-				userContentSection,
-			}
-		})
-
-		assertBodyMatches()
+		assertBodyMatches(
+			commitList,
+			nil,
+			userContentSection,
+			expectedBodyLines,
+		)
 	})
 
 	Context("containing the commit list, the review blocker list and some user content", func() {
 
-		BeforeEach(func() {
-			// Review issue
-			commits = commitList
-			reviewBlockers = reviewBlockerList
-			userContent = userContentSection
+		expectedBodyLines := []string{
+			storyLinkSection,
+			emptyLine,
+			storyMetadataSection,
+			emptyLine,
+			commitListString,
+			emptyLine,
+			reviewBlockerListString,
+			emptyLine,
+			userContentSeparator,
+			userContentSection,
+		}
 
-			// Expected body
-			expectedBodyLines = []string{
-				storyLinkSection,
-				emptyLine,
-				storyMetadataSection,
-				emptyLine,
-				commitListString,
-				emptyLine,
-				reviewBlockerListString,
-				emptyLine,
-				userContentSeparator,
-				userContentSection,
-			}
-		})
-
-		assertBodyMatches()
+		assertBodyMatches(
+			commitList,
+			reviewBlockerList,
+			userContentSection,
+			expectedBodyLines,
+		)
 	})
 })

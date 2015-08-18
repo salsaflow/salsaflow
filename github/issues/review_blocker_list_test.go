@@ -13,27 +13,25 @@ var _ = Describe("ReviewBlockerList", func() {
 		blockerSummary    = "Please fix this and that"
 	)
 
-	list := &ReviewBlockerList{}
-	add := func(fixed bool, commentURL, commitSHA, blockerSummar string) bool {
-		return list.AddReviewBlocker(fixed, commentURL, commitSHA, blockerSummary)
-	}
-	length := func() int {
-		return len(list.ReviewBlockerItems())
-	}
+	var list *ReviewBlockerList
+
+	BeforeEach(func() {
+		list = &ReviewBlockerList{}
+	})
 
 	It("should not accept duplicate comment URLs", func() {
-		Expect(length()).To(Equal(0))
+		Expect(len(list.ReviewBlockerItems())).To(Equal(0))
 
-		added := add(fixed, commentURL, commitSHA, blockerSummary)
-		Expect(added).To(Equal(true))
-		Expect(length()).To(Equal(1))
+		added := list.AddReviewBlocker(fixed, commentURL, commitSHA, blockerSummary)
+		Expect(added).To(BeTrue())
+		Expect(len(list.ReviewBlockerItems())).To(Equal(1))
 
-		added = add(fixed, commentURL, commitSHA, blockerSummary)
-		Expect(added).To(Equal(false))
-		Expect(length()).To(Equal(1))
+		added = list.AddReviewBlocker(fixed, commentURL, commitSHA, blockerSummary)
+		Expect(added).ToNot(BeTrue())
+		Expect(len(list.ReviewBlockerItems())).To(Equal(1))
 
-		added = add(fixed, anotherCommentURL, commitSHA, blockerSummary)
-		Expect(added).To(Equal(true))
-		Expect(length()).To(Equal(2))
+		added = list.AddReviewBlocker(fixed, anotherCommentURL, commitSHA, blockerSummary)
+		Expect(added).To(BeTrue())
+		Expect(len(list.ReviewBlockerItems())).To(Equal(2))
 	})
 })

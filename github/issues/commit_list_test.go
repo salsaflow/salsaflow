@@ -13,26 +13,27 @@ var _ = Describe("CommitList", func() {
 		anotherCommitTitle = "Another commit title"
 	)
 
-	list := &CommitList{}
-	add := func(reviewed bool, commitSHA, commitTitle string) {
-		list.AddCommit(reviewed, commitSHA, commitTitle)
-	}
-	length := func() int {
-		return len(list.CommitItems())
-	}
+	var list *CommitList
+
+	BeforeEach(func() {
+		list = &CommitList{}
+	})
 
 	Describe("CommitList", func() {
 		It("should not accept duplicate commit SHAs", func() {
-			Expect(length()).To(Equal(0))
+			Expect(len(list.CommitItems())).To(Equal(0))
 
-			add(reviewed, commitSHA, commitTitle)
-			Expect(length()).To(Equal(1))
+			added := list.AddCommit(reviewed, commitSHA, commitTitle)
+			Expect(added).To(BeTrue())
+			Expect(len(list.CommitItems())).To(Equal(1))
 
-			add(reviewed, commitSHA, commitTitle)
-			Expect(length()).To(Equal(1))
+			added = list.AddCommit(reviewed, commitSHA, commitTitle)
+			Expect(added).ToNot(BeTrue())
+			Expect(len(list.CommitItems())).To(Equal(1))
 
-			add(reviewed, anotherCommitSHA, anotherCommitTitle)
-			Expect(length()).To(Equal(2))
+			added = list.AddCommit(reviewed, anotherCommitSHA, anotherCommitTitle)
+			Expect(added).To(BeTrue())
+			Expect(len(list.CommitItems())).To(Equal(2))
 		})
 	})
 })
