@@ -8,7 +8,6 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
-	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/github"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules/common"
@@ -32,7 +31,7 @@ func (rnm *releaseNotesManager) PostReleaseNotes(
 ) (action.Action, error) {
 
 	// Get the GitHub owner and repository from the upstream URL.
-	owner, repo, err := git.ParseUpstreamURL()
+	owner, repo, err := github.ParseUpstreamURL()
 	if err != nil {
 		return nil, err
 	}

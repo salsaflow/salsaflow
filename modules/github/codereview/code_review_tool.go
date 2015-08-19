@@ -38,7 +38,7 @@ func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action
 		return nil, err
 	}
 
-	owner, repo, err := git.ParseUpstreamURL()
+	owner, repo, err := ghutil.ParseUpstreamURL()
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 	}
 	client := ghutil.NewClient(config.Token())
 
-	owner, repo, err := git.ParseUpstreamURL()
+	owner, repo, err := ghutil.ParseUpstreamURL()
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (tool *codeReviewTool) PostReviewRequests(
 	}
 
 	// Get the GitHub owner and repository from the upstream URL.
-	owner, repo, err := git.ParseUpstreamURL()
+	owner, repo, err := ghutil.ParseUpstreamURL()
 	if err != nil {
 		return err
 	}
