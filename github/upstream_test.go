@@ -56,28 +56,28 @@ var _ = Describe("parsing a GitHub remote upstream URL", func() {
 			"",
 			true,
 		},
-		// SSH URL, .git suffix
+		// SSH address, .git suffix
 		{
 			"git@github.com:owner/repo.git",
 			"owner",
 			"repo",
 			false,
 		},
-		// SSH URL
+		// SSH address
 		{
 			"git@github.com:owner/repo",
 			"owner",
 			"repo",
 			false,
 		},
-		// SSH URL, custom host (can be specified in .git/config)
+		// SSH address, custom host (can be specified in .git/config)
 		{
 			"git@github-custom:owner/repo.git",
 			"owner",
 			"repo",
 			false,
 		},
-		// SSH URL, error - incomplete URL path
+		// SSH address, error - incomplete URL path
 		{
 			"git@github.com:owner/",
 			"",

@@ -51,7 +51,7 @@ func parseUpstreamURL(remoteURL string) (owner, repo string, err error) {
 	}
 
 	// Try to parse the URL as a regular URL.
-	owner, repo, ok = tryParseUpstreamAsHTTP(remoteURL)
+	owner, repo, ok = tryParseUpstreamAsURL(remoteURL)
 	if ok {
 		return owner, repo, nil
 	}
@@ -61,6 +61,8 @@ func parseUpstreamURL(remoteURL string) (owner, repo string, err error) {
 	return "", "", errs.NewError(task, err)
 }
 
+// tryParseUpstreamAsSSH tries to parse the address as an SSH address,
+// e.g. git@github.com:owner/repo.git
 func tryParseUpstreamAsSSH(remoteURL string) (owner, repo string, ok bool) {
 	re := regexp.MustCompile("^git@[^:]+:([^/]+)/(.+)$")
 	match := re.FindStringSubmatch(remoteURL)
@@ -72,7 +74,9 @@ func tryParseUpstreamAsSSH(remoteURL string) (owner, repo string, ok bool) {
 	return "", "", false
 }
 
-func tryParseUpstreamAsHTTP(remoteURL string) (owner, repo string, ok bool) {
+// tryParseUpstreamAsURL tries to parse the address as a regular URL,
+// e.g. https://github.com/owner/repo
+func tryParseUpstreamAsURL(remoteURL string) (owner, repo string, ok bool) {
 	u, err := url.Parse(remoteURL)
 	if err != nil {
 		return "", "", false
