@@ -7,22 +7,15 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/modules/common"
-
-	// Internal: modules
-	github "github.com/salsaflow/salsaflow/modules/github/releasenotes"
 )
 
 // ReleaseNotesManager instantiation --------------------------------------------------
 
 type ReleaseNotesManagerFactory func() (common.ReleaseNotesManager, error)
 
-var notesManagerFactories = map[string]ReleaseNotesManagerFactory{
-	github.Id: github.Factory,
-}
-
 func AvailableReleaseNotesManagerKeys() []string {
-	keys := make([]string, 0, len(notesManagerFactories))
-	for key := range notesManagerFactories {
+	keys := make([]string, 0, len(releaseNotesManagerFactories))
+	for key := range releaseNotesManagerFactories {
 		keys = append(keys, key)
 	}
 	return keys
@@ -43,11 +36,11 @@ func GetReleaseNotesManager() (common.ReleaseNotesManager, error) {
 	if id == "" {
 		return nil, nil
 	}
-	factory, ok := notesManagerFactories[id]
+	factory, ok := releaseNotesManagerFactories[id]
 	if !ok {
 		// Collect the available tracker ids.
-		ids := make([]string, 0, len(notesManagerFactories))
-		for id := range notesManagerFactories {
+		ids := make([]string, 0, len(releaseNotesManagerFactories))
+		for id := range releaseNotesManagerFactories {
 			ids = append(ids, id)
 		}
 

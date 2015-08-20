@@ -7,20 +7,11 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/modules/common"
-
-	// Internal: modules
-	github "github.com/salsaflow/salsaflow/modules/github/codereview"
-	"github.com/salsaflow/salsaflow/modules/reviewboard"
 )
 
 // CodeReviewTool instantiation ------------------------------------------------
 
 type CodeReviewToolFactory func() (common.CodeReviewTool, error)
-
-var codeReviewToolFactories = map[string]CodeReviewToolFactory{
-	github.Id:      github.Factory,
-	reviewboard.Id: reviewboard.Factory,
-}
 
 func AvailableCodeReviewToolKeys() []string {
 	keys := make([]string, 0, len(codeReviewToolFactories))

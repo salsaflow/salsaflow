@@ -7,20 +7,11 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/modules/common"
-
-	// Internal: modules
-	"github.com/salsaflow/salsaflow/modules/jira"
-	"github.com/salsaflow/salsaflow/modules/pivotaltracker"
 )
 
 // IssueTracker instantiation --------------------------------------------------
 
 type IssueTrackerFactory func() (common.IssueTracker, error)
-
-var issueTrackerFactories = map[string]IssueTrackerFactory{
-	jira.Id:           jira.Factory,
-	pivotaltracker.Id: pivotaltracker.Factory,
-}
 
 func AvailableIssueTrackerKeys() []string {
 	keys := make([]string, 0, len(issueTrackerFactories))
