@@ -205,15 +205,18 @@ func collectStoryBranches(remoteName string) ([]*git.GitBranch, error) {
 			continue
 		}
 
+		var (
+			isLocalStoryBranch  = strings.HasPrefix(branch.BranchName, StoryBranchPrefix)
+			isRemoteStoryBranch = strings.HasPrefix(branch.RemoteBranchName, StoryBranchPrefix)
+		)
+
 		// Exclude the current branch.
-		if branch.BranchName == currentBranch {
+		if isLocalStoryBranch && branch.BranchName == currentBranch {
 			log.Warn(fmt.Sprintf("Branch '%v' is checked out, it cannot be deleted", currentBranch))
 			continue
 		}
 
 		// Keep the story branches only.
-		isLocalStoryBranch := strings.HasPrefix(branch.BranchName, StoryBranchPrefix)
-		isRemoteStoryBranch := strings.HasPrefix(branch.RemoteBranchName, StoryBranchPrefix)
 		if isLocalStoryBranch || isRemoteStoryBranch {
 			storyBranches = append(storyBranches, branch)
 		}
