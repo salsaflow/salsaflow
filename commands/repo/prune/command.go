@@ -191,11 +191,23 @@ func collectStoryBranches(remoteName string) ([]*git.GitBranch, error) {
 		return nil, err
 	}
 
+	// Get the current branch name so that it can be excluded.
+	currentBranch, err := git.CurrentBranch()
+	if err != nil {
+		return nil, err
+	}
+
 	// Filter the branches.
 	storyBranches := make([]*git.GitBranch, 0, len(branches))
 	for _, branch := range branches {
 		// Drop branches not corresponding to the project remote.
 		if branch.Remote != "" && branch.Remote != remoteName {
+			continue
+		}
+
+		// Exclude the current branch.
+		if branch.BranchName == currentBranch {
+			log.Warn(fmt.Sprintf("Branch '%v' is checked out, it cannot be deleted", currentBranch))
 			continue
 		}
 
