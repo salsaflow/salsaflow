@@ -117,9 +117,10 @@ func postReviewRequestForCommit(
 
 	// Parse the options.
 	var (
-		fixes  = formatOptInteger(opts["fixes"])
-		update = formatOptInteger(opts["update"])
-		open   bool
+		fixes    = formatOptInteger(opts["fixes"])
+		update   = formatOptInteger(opts["update"])
+		reviewer = formatOptString(opts["reviewer"])
+		open     bool
 	)
 	if _, ok := opts["open"]; ok {
 		open = true
@@ -139,6 +140,9 @@ func postReviewRequestForCommit(
 	}
 	if update != "" {
 		args = append(args, "--review-request-id", update)
+	}
+	if reviewer != "" {
+		args = append(args, "--target-people", reviewer)
 	}
 	if open {
 		args = append(args, "--open")
@@ -189,6 +193,13 @@ func formatOptInteger(value interface{}) string {
 
 	// Format the integer and return the string representation.
 	return fmt.Sprintf("%v", value)
+}
+
+func formatOptString(value interface{}) string {
+	if value == nil {
+		return ""
+	}
+	return value.(string)
 }
 
 func ensureRbtVersion() error {

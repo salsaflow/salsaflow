@@ -31,10 +31,10 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  post [-update=RRID] [-fixes=RRID] [-open] [REVISION]
+  post [-update=RRID] [-fixes=RRID] [-reviewer=REVIEWER] [-open] [REVISION]
 
   post [-fixes=RRID] [-no_fetch] [-no_rebase] [-ask_once]
-       [-pick] [-open] [-no_dialog] -parent=BRANCH`,
+       [-pick] [-reviewer=REVIEWER] [-open] [-no_dialog] -parent=BRANCH`,
 	Short: "post code review requests",
 	Long: `
   Post a code review request for each commit specified.
@@ -65,6 +65,7 @@ var (
 	flagOpen     bool
 	flagParent   string
 	flagPick     bool
+	flagReviewer string
 	flagUpdate   uint
 )
 
@@ -86,6 +87,8 @@ func init() {
 		"branch to be used in computing the revision range")
 	Command.Flags.BoolVar(&flagPick, "pick", flagPick,
 		"pick only some of the selected commits for review")
+	Command.Flags.StringVar(&flagReviewer, "reviewer", flagReviewer,
+		"reviewer to assign to the newly created review requests")
 	Command.Flags.UintVar(&flagUpdate, "update", flagUpdate,
 		"update an existing review request with REVISION")
 
@@ -686,6 +689,9 @@ func sendReviewRequests(ctxs []*common.ReviewContext) error {
 	}
 	if flagUpdate != 0 {
 		postOpts["update"] = flagUpdate
+	}
+	if flagReviewer != "" {
+		postOpts["reviewer"] = flagReviewer
 	}
 	if flagOpen {
 		postOpts["open"] = true

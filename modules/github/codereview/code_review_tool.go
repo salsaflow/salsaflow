@@ -281,7 +281,9 @@ func createAssignedReviewRequest(
 
 	// Create a new review issue.
 	issueResource, err := createIssue(
-		task, config, owner, repo, issue.FormatTitle(), issue.FormatBody(), milestone)
+		task, config, owner, repo,
+		issue.FormatTitle(), issue.FormatBody(),
+		optValueString(opts["reviewer"]), milestone)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
@@ -374,7 +376,9 @@ func createUnassignedReviewRequest(
 
 	// Create a new review issue.
 	issueResource, err := createIssue(
-		task, config, owner, repo, issue.FormatTitle(), issue.FormatBody(), milestone)
+		task, config, owner, repo,
+		issue.FormatTitle(), issue.FormatBody(),
+		optValueString(opts["reviewer"]), milestone)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
@@ -544,6 +548,7 @@ func createIssue(
 	repo string,
 	issueTitle string,
 	issueBody string,
+	assignee string,
 	milestone *github.Milestone,
 ) (issue *github.Issue, err error) {
 
@@ -554,6 +559,7 @@ func createIssue(
 		Title:     github.String(issueTitle),
 		Body:      github.String(issueBody),
 		Labels:    &labels,
+		Assignee:  github.String(assignee),
 		Milestone: milestone.Number,
 	})
 	if err != nil {
@@ -657,4 +663,11 @@ func getOrCreateMilestoneForCommit(
 
 func milestoneTitle(v *version.Version) string {
 	return fmt.Sprintf("%v-review", v.BaseString())
+}
+
+func optValueString(value interface{}) string {
+	if value == nil {
+		return ""
+	}
+	return value.(string)
 }
