@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"regexp"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/git"
@@ -27,12 +28,21 @@ func PrintUnassignedWarning(writer io.Writer, commits []*git.Commit) (n int64, e
 	fmt.Fprint(&output,
 		red("Make sure that this is alright before proceeding further.\n\n"))
 
+	hashRe := regexp.MustCompile("^[0-9a-f]{40}$")
+
 	yellow := color.New(color.FgYellow).SprintFunc()
-	refPrefixLen := len("refs/heads/")
+
 	for _, commit := range commits {
-		fmt.Fprintf(&output, "  %v | %v | %v\n",
-			yellow(commit.SHA), yellow(commit.Source[refPrefixLen:]),
-			prompt.ShortenCommitTitle(commit.MessageTitle))
+		var (
+			sha    = commit.SHA
+			source = commit.Source
+			title  = prompt.ShortenCommitTitle(commit.MessageTitle)
+		)
+		if hashRe.MatchString(commit.Source) {
+			source = "unknown commit source branch"
+		}
+
+		fmt.Fprintf(&output, "  %v | %v | %v\n", yellow(sha), yellow(source), title)
 	}
 
 	// Write the output to the writer.
