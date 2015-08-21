@@ -3,6 +3,12 @@
 set -e
 set -x
 
+# Make sure we are running on CircleCI.
+if  [ -z "$CIRCLECI" ]; then
+	echo "This script can only be executed on CircleCI."
+	exit 1
+fi
+
 PREFIX="$HOME/cache"
 
 # Exit in case the gonative directory exists already.
