@@ -170,7 +170,7 @@ func runMain() error {
 
 	// Delete chosen remote branches.
 	if len(remoteToDelete) != 0 {
-		task := "Delete chosen remote story branches"
+		task := "Delete chosen remote branches"
 		log.Run(task)
 		args := make([]string, 1, 1+len(remoteToDelete))
 		args[0] = "--delete"
