@@ -6,13 +6,15 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mattn/go-isatty"
 	"github.com/shiena/ansicolor"
 )
 
-// NoColor defines if the output is colorized or not. By default it's set to
-// false. This is a global option and affects all colors. For more control over
-// each color block use the methods DisableColor() individually.
-var NoColor = false
+// NoColor defines if the output is colorized or not. It's dynamically set to
+// false or true based on the stdout's file descriptor referring to a terminal
+// or not. This is a global option and affects all colors. For more control
+// over each color block use the methods DisableColor() individually.
+var NoColor = !isatty.IsTerminal(os.Stdout.Fd())
 
 // Color defines a custom color object which is defined by SGR parameters.
 type Color struct {
@@ -180,7 +182,7 @@ func (c *Color) PrintlnFunc() func(a ...interface{}) {
 // string. Windows users should use this in conjuction with color.Output, example:
 //
 //	put := New(FgYellow).SprintFunc()
-//	fmt.Ffprintf(color.Output, "This is a %s", put("warning"))
+//	fmt.Fprintf(color.Output, "This is a %s", put("warning"))
 func (c *Color) SprintFunc() func(a ...interface{}) string {
 	return func(a ...interface{}) string {
 		return c.wrap(fmt.Sprint(a...))

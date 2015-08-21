@@ -1,14 +1,14 @@
 {
 	"ImportPath": "github.com/salsaflow/salsaflow",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.5",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/blang/semver",
-			"Comment": "v3.0.0",
-			"Rev": "2f3112b6f8f18f9df8743cc75ed51da08094ef6a"
+			"Comment": "v3.0.1",
+			"Rev": "31b736133b98f26d5e078ec9eb591666edfd091f"
 		},
 		{
 			"ImportPath": "github.com/extemporalgenome/slug",
@@ -16,12 +16,12 @@
 		},
 		{
 			"ImportPath": "github.com/fatih/color",
-			"Comment": "v0.1",
-			"Rev": "1b35f289c47d5c73c398cea8e006b7bcb6234a96"
+			"Comment": "v0.1-6-g2f37699",
+			"Rev": "2f376994f3b3cae1602f63eb5bdfb58101a94a08"
 		},
 		{
 			"ImportPath": "github.com/google/go-github/github",
-			"Rev": "3d36a514f203c05496af26634d367a27305156af"
+			"Rev": "7277108aa3e8823e0e028f6c74aea2f4ce4a1b5a"
 		},
 		{
 			"ImportPath": "github.com/google/go-querystring/query",
@@ -32,9 +32,13 @@
 			"Rev": "6e7f843663477789fac7c02def0d0909e969b4e5"
 		},
 		{
+			"ImportPath": "github.com/mattn/go-isatty",
+			"Rev": "7fcbc72f853b92b5720db4a6b8482be612daef24"
+		},
+		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.2.0-8-g25380c6",
-			"Rev": "25380c62e61d3f90436be125b8127dbae578fdef"
+			"Comment": "v1.2.0-11-gd94e2f4",
+			"Rev": "d94e2f4000332f62b356ecb2840c98f4218f5358"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
@@ -47,7 +51,7 @@
 		},
 		{
 			"ImportPath": "github.com/salsita/go-pivotaltracker/v5/pivotal",
-			"Rev": "c0f7a1cefce399e2fe46024b4d0dd8b5a159c7af"
+			"Rev": "dc37ad47ba1561abbcc74e01000cf71f16352523"
 		},
 		{
 			"ImportPath": "github.com/salsita/go-sprintly/sprintly",
@@ -55,7 +59,7 @@
 		},
 		{
 			"ImportPath": "github.com/shiena/ansicolor",
-			"Rev": "8368d3b31cf6f2c2464c7a91675342c9a0ac6658"
+			"Rev": "a5e2b567a4dd6cc74545b8a4f27c9d63b9e7735b"
 		},
 		{
 			"ImportPath": "github.com/tchap/oauth",
@@ -63,23 +67,24 @@
 		},
 		{
 			"ImportPath": "github.com/toqueteos/webbrowser",
-			"Rev": "deae73f90f5a4fdc611c46625197f6166c9f3316"
+			"Comment": "v1.0",
+			"Rev": "21fc9f95c83442fd164094666f7cb4f9fdd56cd6"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "7212a0803472eb1ec2686896a7c626528172a7a6"
+			"Rev": "66f0418ca41253f8d1a024eb9754e9441a8e79b9"
 		},
 		{
 			"ImportPath": "golang.org/x/oauth2",
-			"Rev": "f98d0160877ab4712b906626425ed8b0b320907c"
+			"Rev": "397fe7649477ff2e8ced8fc0b2696f781e53745a"
 		},
 		{
 			"ImportPath": "golang.org/x/text/transform",
-			"Rev": "df923bbb63f8ea3a26bb743e2a497abd0ab585f7"
+			"Rev": "723492b65e225eafcba054e76ba18bb9c5ac1ea2"
 		},
 		{
 			"ImportPath": "golang.org/x/text/unicode/norm",
-			"Rev": "df923bbb63f8ea3a26bb743e2a497abd0ab585f7"
+			"Rev": "723492b65e225eafcba054e76ba18bb9c5ac1ea2"
 		},
 		{
 			"ImportPath": "gopkg.in/tchap/gocli.v2",
@@ -88,7 +93,7 @@
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
-			"Rev": "49c95bdc21843256fb6c4e0d370a05f24a0bf213"
+			"Rev": "7ad95dd0798a40da1ccdff6dff35fd177b5edf40"
 		}
 	]
 }

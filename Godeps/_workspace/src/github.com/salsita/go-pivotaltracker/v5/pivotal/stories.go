@@ -1,4 +1,5 @@
 // Copyright (c) 2014 Salsita Software
+// Copyright (C) 2015 Scott Devoid
 // Use of this source code is governed by the MIT License.
 // The license can be found in the LICENSE file.
 
@@ -6,6 +7,7 @@ package pivotal
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -137,6 +139,40 @@ func (service *StoryService) List(projectId int, filter string) ([]*Story, *http
 	}
 
 	return stories, resp, err
+}
+
+type StoryCursor struct {
+	*cursor
+	buff []*Story
+}
+
+func (c *StoryCursor) Next() (s *Story, err error) {
+	if len(c.buff) == 0 {
+		_, err = c.next(&c.buff)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if len(c.buff) == 0 {
+		err = io.EOF
+	} else {
+		s, c.buff = c.buff[0], c.buff[1:]
+	}
+	return s, err
+}
+
+func (service *StoryService) Iterate(projectId int, filter string) (c *StoryCursor, err error) {
+	reqfn := func() (req *http.Request) {
+		u := fmt.Sprintf("projects/%v/stories", projectId)
+		if filter != "" {
+			u += "?filter=" + url.QueryEscape(filter)
+		}
+		req, _ = service.client.NewRequest("GET", u, nil)
+		return req
+	}
+	cc, err := newCursor(service.client, reqfn, 10)
+	return &StoryCursor{cc, make([]*Story, 0)}, err
 }
 
 func (service *StoryService) Get(projectId, storyId int) (*Story, *http.Response, error) {
