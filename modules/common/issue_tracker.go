@@ -6,6 +6,13 @@ import (
 	"github.com/salsaflow/salsaflow/version"
 )
 
+// IssueTrackerFactory interface -----------------------------------------------
+
+type IssueTrackerFactory interface {
+	LocalConfigTemplate() string
+	NewIssueTracker() (IssueTracker, error)
+}
+
 // IssueTracker interface ------------------------------------------------------
 
 type IssueTracker interface {

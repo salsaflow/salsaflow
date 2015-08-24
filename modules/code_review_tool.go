@@ -15,11 +15,9 @@ import (
 
 // CodeReviewTool instantiation ------------------------------------------------
 
-type CodeReviewToolFactory func() (common.CodeReviewTool, error)
-
-var codeReviewToolFactories = map[string]CodeReviewToolFactory{
-	github.Id:      github.Factory,
-	reviewboard.Id: reviewboard.Factory,
+var codeReviewToolFactories = map[string]common.CodeReviewToolFactory{
+	github.Id:      github.NewFactory(),
+	reviewboard.Id: reviewboard.NewFactory(),
 }
 
 func AvailableCodeReviewToolKeys() []string {
@@ -30,16 +28,9 @@ func AvailableCodeReviewToolKeys() []string {
 	return keys
 }
 
-func GetCodeReviewTool() (common.CodeReviewTool, error) {
-	// Load configuration.
-	config, err := common.LoadConfig()
-	if err != nil && config == nil {
-		return nil, err
-	}
-
+func GetCodeReviewToolFactory(id string) (common.CodeReviewToolFactory, error) {
 	// Choose the code review tool based on the configuration.
 	var task = "Instantiate the selected code review plugin"
-	id := config.CodeReviewToolId()
 	factory, ok := codeReviewToolFactories[id]
 	if !ok {
 		// Collect the available code review tool ids.
@@ -53,11 +44,22 @@ func GetCodeReviewTool() (common.CodeReviewTool, error) {
 			task, fmt.Errorf("unknown code review tool: '%v'", id), hint)
 	}
 
-	// Try to instantiate the code review tool.
-	tool, err := factory()
-	if err != nil {
-		return nil, errs.NewError(task, err)
+	return factory, nil
+}
+
+func GetCodeReviewTool() (common.CodeReviewTool, error) {
+	// Load configuration.
+	config, err := common.LoadConfig()
+	if err != nil && config == nil {
+		return nil, err
 	}
 
-	return tool, nil
+	// Get the factory.
+	factory, err := GetCodeReviewToolFactory(config.CodeReviewToolId())
+	if err != nil {
+		return nil, err
+	}
+
+	// Return a new module instance.
+	return factory.NewCodeReviewTool()
 }

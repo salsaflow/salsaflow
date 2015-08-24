@@ -10,6 +10,13 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 )
 
+const Id = "review_board"
+
+const LocalConfigTemplate = `
+#review_board:
+#  server_url: "https://review.example.com"
+`
+
 // Local configuration -------------------------------------------------------
 
 type LocalConfig struct {

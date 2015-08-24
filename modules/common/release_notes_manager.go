@@ -5,6 +5,15 @@ import (
 	"github.com/salsaflow/salsaflow/version"
 )
 
+// ReleaseNotesManagerFactory interface ----------------------------------------
+
+type ReleaseNotesManagerFactory interface {
+	LocalConfigTemplate() string
+	NewReleaseNotesManager() (ReleaseNotesManager, error)
+}
+
+// ReleaseNotesManager interface -----------------------------------------------
+
 // ReleaseNotesManager is used to post release notes once a release is closed.
 type ReleaseNotesManager interface {
 

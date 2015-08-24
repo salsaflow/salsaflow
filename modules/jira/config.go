@@ -14,6 +14,12 @@ import (
 
 const Id = "jira"
 
+const LocalConfigTemplate = `
+#jira:
+#  server_url: "https://example.com/jira"
+#  project_key: "EX"
+`
+
 // Local configuration -------------------------------------------------------
 
 type LocalConfig struct {

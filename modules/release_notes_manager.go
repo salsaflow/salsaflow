@@ -14,10 +14,8 @@ import (
 
 // ReleaseNotesManager instantiation --------------------------------------------------
 
-type ReleaseNotesManagerFactory func() (common.ReleaseNotesManager, error)
-
-var notesManagerFactories = map[string]ReleaseNotesManagerFactory{
-	github.Id: github.Factory,
+var notesManagerFactories = map[string]common.ReleaseNotesManagerFactory{
+	github.Id: github.NewFactory(),
 }
 
 func AvailableReleaseNotesManagerKeys() []string {
@@ -28,16 +26,9 @@ func AvailableReleaseNotesManagerKeys() []string {
 	return keys
 }
 
-func GetReleaseNotesManager() (common.ReleaseNotesManager, error) {
-	// Load configuration.
-	config, err := common.LoadConfig()
-	if err != nil && config == nil {
-		return nil, err
-	}
-
+func GetReleaseNotesManagerFactory(id string) (common.ReleaseNotesManagerFactory, error) {
 	// Choose the release notes manager based on the configuration.
 	var task = "Instantiate the selected release notes manager plugin"
-	id := config.ReleaseNotesManagerId()
 	// In case the id is not set, we simply return nil.
 	// This means that this module is disabled.
 	if id == "" {
@@ -56,11 +47,22 @@ func GetReleaseNotesManager() (common.ReleaseNotesManager, error) {
 			task, fmt.Errorf("unknown release notes manager: '%v'", id), hint)
 	}
 
-	// Try to instantiate the release notes manager.
-	rnm, err := factory()
-	if err != nil {
-		return nil, errs.NewError(task, err)
+	return factory, nil
+}
+
+func GetReleaseNotesManager() (common.ReleaseNotesManager, error) {
+	// Load configuration.
+	config, err := common.LoadConfig()
+	if err != nil && config == nil {
+		return nil, err
 	}
 
-	return rnm, nil
+	// Get the factory.
+	factory, err := GetReleaseNotesManagerFactory(config.ReleaseNotesManagerId())
+	if err != nil {
+		return nil, err
+	}
+
+	// Return a new module instance.
+	return factory.NewReleaseNotesManager()
 }

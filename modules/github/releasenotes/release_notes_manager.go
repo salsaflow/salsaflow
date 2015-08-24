@@ -20,11 +20,23 @@ import (
 
 const Id = "github"
 
-type releaseNotesManager struct{}
+const LocalConfigTemplate = "# no additional config required"
 
-func Factory() (common.ReleaseNotesManager, error) {
+type moduleFactory struct{}
+
+func NewFactory() common.ReleaseNotesManagerFactory {
+	return &moduleFactory{}
+}
+
+func (factory *moduleFactory) LocalConfigTemplate() string {
+	return LocalConfigTemplate
+}
+
+func (factory *moduleFactory) NewReleaseNotesManager() (common.ReleaseNotesManager, error) {
 	return &releaseNotesManager{}, nil
 }
+
+type releaseNotesManager struct{}
 
 func (rnm *releaseNotesManager) PostReleaseNotes(
 	releaseNotes *common.ReleaseNotes,

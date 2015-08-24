@@ -23,13 +23,25 @@ import (
 
 const Id = "github"
 
+const LocalConfigTemplate = "# no additional config required"
+
 var errPostReviewRequest = errors.New("failed to post a review request")
 
-type codeReviewTool struct{}
+type moduleFactory struct{}
 
-func Factory() (common.CodeReviewTool, error) {
+func NewFactory() common.CodeReviewToolFactory {
+	return &moduleFactory{}
+}
+
+func (factory *moduleFactory) LocalConfigTemplate() string {
+	return LocalConfigTemplate
+}
+
+func (factory *moduleFactory) NewCodeReviewTool() (common.CodeReviewTool, error) {
 	return &codeReviewTool{}, nil
 }
+
+type codeReviewTool struct{}
 
 func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action, error) {
 	// Get necessary config.

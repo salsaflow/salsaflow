@@ -17,17 +17,27 @@ import (
 
 const ServiceName = "JIRA"
 
-type issueTracker struct {
-	config       Config
-	versionCache map[string]*jira.Version
+type moduleFactory struct{}
+
+func NewFactory() common.IssueTrackerFactory {
+	return &moduleFactory{}
 }
 
-func Factory() (common.IssueTracker, error) {
+func (factory *moduleFactory) LocalConfigTemplate() string {
+	return LocalConfigTemplate
+}
+
+func (factory *moduleFactory) NewIssueTracker() (common.IssueTracker, error) {
 	config, err := LoadConfig()
 	if err != nil {
 		return nil, err
 	}
 	return &issueTracker{config, nil}, nil
+}
+
+type issueTracker struct {
+	config       Config
+	versionCache map[string]*jira.Version
 }
 
 func (tracker *issueTracker) ServiceName() string {

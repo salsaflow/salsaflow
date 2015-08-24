@@ -15,11 +15,9 @@ import (
 
 // IssueTracker instantiation --------------------------------------------------
 
-type IssueTrackerFactory func() (common.IssueTracker, error)
-
-var issueTrackerFactories = map[string]IssueTrackerFactory{
-	jira.Id:           jira.Factory,
-	pivotaltracker.Id: pivotaltracker.Factory,
+var issueTrackerFactories = map[string]common.IssueTrackerFactory{
+	jira.Id:           jira.NewFactory(),
+	pivotaltracker.Id: pivotaltracker.NewFactory(),
 }
 
 func AvailableIssueTrackerKeys() []string {
@@ -30,16 +28,9 @@ func AvailableIssueTrackerKeys() []string {
 	return keys
 }
 
-func GetIssueTracker() (common.IssueTracker, error) {
-	// Load configuration.
-	config, err := common.LoadConfig()
-	if err != nil && config == nil {
-		return nil, err
-	}
-
+func GetIssueTrackerFactory(id string) (common.IssueTrackerFactory, error) {
 	// Choose the issue tracker based on the configuration.
 	var task = "Instantiate the selected issue tracker plugin"
-	id := config.IssueTrackerId()
 	factory, ok := issueTrackerFactories[id]
 	if !ok {
 		// Collect the available tracker ids.
@@ -53,11 +44,22 @@ func GetIssueTracker() (common.IssueTracker, error) {
 			task, fmt.Errorf("unknown issue tracker: '%v'", id), hint)
 	}
 
-	// Try to instantiate the issue tracker.
-	tracker, err := factory()
-	if err != nil {
-		return nil, errs.NewError(task, err)
+	return factory, nil
+}
+
+func GetIssueTracker() (common.IssueTracker, error) {
+	// Load configuration.
+	config, err := common.LoadConfig()
+	if err != nil && config == nil {
+		return nil, err
 	}
 
-	return tracker, nil
+	// Get the factory.
+	factory, err := GetIssueTrackerFactory(config.IssueTrackerId())
+	if err != nil {
+		return nil, err
+	}
+
+	// Return a new module instance.
+	return factory.NewIssueTracker()
 }

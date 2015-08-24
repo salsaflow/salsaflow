@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	// Internal
@@ -16,6 +17,7 @@ import (
 	"github.com/salsaflow/salsaflow/flag"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules"
+	"github.com/salsaflow/salsaflow/modules/common"
 
 	// Other
 	"gopkg.in/tchap/gocli.v2"
@@ -119,16 +121,17 @@ func run(cmd *gocli.Command, args []string) {
 	}
 
 	// Make sure the required flags are set.
+	task := "Make sure all required flags are specified"
 	issueTrackerKey := flagIssueTracker.Value()
 	if issueTrackerKey == "" {
 		cmd.Usage()
-		errs.Fatal(errors.New("flag 'issue_tracker' is not set"))
+		errs.Fatal(errs.NewError(task, errors.New("flag 'issue_tracker' is not set")))
 	}
 
 	codeReviewToolKey := flagCodeReviewTool.Value()
 	if codeReviewToolKey == "" {
 		cmd.Usage()
-		errs.Fatal(errors.New("flag 'code_review_tool' is not set"))
+		errs.Fatal(errs.NewError(task, errors.New("flag 'code_review_tool' is not set")))
 	}
 
 	if err := runMain(); err != nil {
@@ -149,6 +152,26 @@ func runMain() error {
 			return errs.NewError(task, err)
 		}
 		log.Warn("Global configuration file not found")
+	}
+
+	// Instantiate the modules.
+	trackerFactory, err := modules.GetIssueTrackerFactory(flagIssueTracker.Value())
+	if err != nil {
+		return err
+	}
+
+	reviewFactory, err := modules.GetCodeReviewToolFactory(flagCodeReviewTool.Value())
+	if err != nil {
+		return err
+	}
+
+	var notesFactory common.ReleaseNotesManagerFactory
+	if v := flagReleaseNotesManager.Value(); v != "" {
+		var err error
+		notesFactory, err = modules.GetReleaseNotesManagerFactory(v)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Fetch or update the skeleton is necessary.
@@ -180,13 +203,19 @@ func runMain() error {
 	}
 	defer file.Close()
 
-	err = WriteLocalConfigTemplate(file, &LocalContext{
-		EnabledTimestamp:       Time(time.Now()),
-		IssueTrackerKey:        flagIssueTracker.Value(),
-		CodeReviewToolKey:      flagCodeReviewTool.Value(),
-		ReleaseNotesManagerKey: flagReleaseNotesManager.Value(),
-	})
-	if err != nil {
+	ctx := &LocalContext{
+		EnabledTimestamp:             Time(time.Now()),
+		IssueTrackerKey:              flagIssueTracker.Value(),
+		IssueTrackerConfigTemplate:   strings.TrimSpace(trackerFactory.LocalConfigTemplate()),
+		CodeReviewToolKey:            flagCodeReviewTool.Value(),
+		CodeReviewToolConfigTemplate: strings.TrimSpace(reviewFactory.LocalConfigTemplate()),
+	}
+	if notesFactory != nil {
+		ctx.ReleaseNotesManagerKey = flagReleaseNotesManager.Value()
+		ctx.ReleaseNotesManagerConfigTemplate = strings.TrimSpace(
+			notesFactory.LocalConfigTemplate())
+	}
+	if err := WriteLocalConfigTemplate(file, ctx); err != nil {
 		return err
 	}
 

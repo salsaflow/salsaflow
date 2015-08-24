@@ -6,6 +6,18 @@ import (
 	"github.com/salsaflow/salsaflow/version"
 )
 
+// CodeReviewFactory interface -------------------------------------------------
+
+type CodeReviewToolFactory interface {
+	// LocalConfigTemplate returns the string that is inserted into the local config
+	// file during `repo bootstrap`. It is basically the local config section skeleton
+	// that the user has to fill in manually.
+	LocalConfigTemplate() string
+
+	// NewCodeReviewTool returns a new instance of the given code review tool module.
+	NewCodeReviewTool() (CodeReviewTool, error)
+}
+
 // CodeReviewTool interface ----------------------------------------------------
 
 type ReviewContext struct {

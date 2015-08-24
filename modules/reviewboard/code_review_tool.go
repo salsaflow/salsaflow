@@ -20,8 +20,6 @@ import (
 	"github.com/salsaflow/salsaflow/version"
 )
 
-const Id = "review_board"
-
 func init() {
 	// Load common configuration.
 	config, err := common.LoadConfig()
@@ -36,11 +34,21 @@ func init() {
 	}
 }
 
-type codeReviewTool struct{}
+type moduleFactory struct{}
 
-func Factory() (common.CodeReviewTool, error) {
+func NewFactory() common.CodeReviewToolFactory {
+	return &moduleFactory{}
+}
+
+func (factory *moduleFactory) LocalConfigTemplate() string {
+	return LocalConfigTemplate
+}
+
+func (factory *moduleFactory) NewCodeReviewTool() (common.CodeReviewTool, error) {
 	return &codeReviewTool{}, nil
 }
+
+type codeReviewTool struct{}
 
 func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action, error) {
 	return action.Noop, nil

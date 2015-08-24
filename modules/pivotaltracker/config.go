@@ -10,9 +10,28 @@ import (
 	"github.com/salsaflow/salsaflow/git"
 )
 
-const (
-	Id = "pivotal_tracker"
+const Id = "pivotal_tracker"
 
+const LocalConfigTemplate = `
+#pivotal_tracker:
+#  project_id: 123456
+#
+#  THE FOLLOWING SECTION IS OPTIONAL.
+#  The values visible there are the default choices.
+#  In case the defaults are fine, just delete the section,
+#  otherwise uncomment what you need to change.
+#
+#  labels:
+#    point_me: "point me"
+#    no_review: "no review"
+#    reviewed: "reviewed"
+#    verified: "qa+"
+#    skip_check_labels:
+#      - "wontfix"
+#      - "dupe"
+`
+
+const (
 	DefaultPointMeLabel     = "point me"
 	DefaultImplementedLabel = "implemented"
 	DefaultNoReviewLabel    = "no review"
