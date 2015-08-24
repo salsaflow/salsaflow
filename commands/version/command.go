@@ -17,11 +17,13 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: "version",
-	Short:     "various version-related actions",
+	Short:     "print the current project version",
 	Long: `
-  Print SalsaFlow version and exit. No more, no less.
+  Print the project version string as stored in the current branch.
 
-  There are also some cool subcommands available. Check them out.
+  To check the version of SalsaFlow itself, use -version.
+
+  There are also some subcommands available. Check them out.
 	`,
 	Action: func(cmd *gocli.Command, args []string) {
 		if len(args) != 0 {
