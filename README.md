@@ -1,8 +1,8 @@
 # SalsaFlow #
 
-|||||
-| ---------- |:----------:| ---------- |:----------:|
-| Buil status | [![Circle CI](https://circleci.com/gh/salsaflow/salsaflow/tree/develop.svg?style=svg)](https://circleci.com/gh/salsaflow/salsaflow/tree/develop) | GoDoc | [![GoDoc](https://godoc.org/github.com/salsaflow/salsaflow?status.png)](http://godoc.org/github.com/salsaflow/salsaflow) |
+|||||||
+| ---------- |:----------:| ---------- |:----------:| ---------- |:----------:|
+| Buil status | [![Circle CI](https://circleci.com/gh/salsaflow/salsaflow/tree/develop.svg?style=svg)](https://circleci.com/gh/salsaflow/salsaflow/tree/develop) | GoDoc | [![GoDoc](https://godoc.org/github.com/salsaflow/salsaflow?status.png)](http://godoc.org/github.com/salsaflow/salsaflow) | Gitter IM | [![Join the chat at https://gitter.im/salsaflow/salsaflow](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/salsaflow/salsaflow) |
 
 ## Overview ##
 
