@@ -427,7 +427,7 @@ and read the DESCRIPTION section.
 		return nil, errs.NewError(task, err)
 	}
 
-	stories, err := tracker.StoriesInDevelopment()
+	stories, err := tracker.ReviewableStories()
 	if err != nil {
 		return nil, errs.NewError(storiesTask, err)
 	}

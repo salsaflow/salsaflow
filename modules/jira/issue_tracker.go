@@ -58,7 +58,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		formatInRange("status", startableStateIds...))
 }
 
-func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
+func (tracker *issueTracker) ReviewableStories() (stories []common.Story, err error) {
 	return tracker.searchStories("(%v) AND (%v)",
 		formatInRange("type", codingIssueTypeIds...),
 		formatInRange("status", inDevelopmentStateIds...))

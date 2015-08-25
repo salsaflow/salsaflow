@@ -78,7 +78,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 	return toCommonStories(ptStories, tracker), nil
 }
 
-func (tracker *issueTracker) StoriesInDevelopment() (stories []common.Story, err error) {
+func (tracker *issueTracker) ReviewableStories() (stories []common.Story, err error) {
 	ptStories, err := tracker.searchStories(
 		`(state:%v OR state:%v) AND -label:"%v" AND -label:"%v"`,
 		pivotal.StoryStateStarted, pivotal.StoryStateFinished,

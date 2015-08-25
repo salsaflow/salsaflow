@@ -27,8 +27,10 @@ type IssueTracker interface {
 	// StartableStories returns the list of stories that can be started.
 	StartableStories() ([]Story, error)
 
-	// StoriesInDevelopment returns the list of stories that are being developed.
-	StoriesInDevelopment() ([]Story, error)
+	// ReviewableStories returns the list of stories that can be assigned
+	// a commit to be reviewed, i.e. they are being actively developed and
+	// the review phase is not over yet.
+	ReviewableStories() ([]Story, error)
 
 	// ReviewedStories returns the list of stories that have been reviewed already.
 	ReviewedStories() ([]Story, error)
