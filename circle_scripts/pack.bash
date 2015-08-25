@@ -3,11 +3,11 @@
 set -e
 set -x
 
-if  [ -z "$CIRCLECI" ]; then
-	echo "This script can only be executed on CircleCI."
-	exit 1
-fi
+# Source common stuff
+scripts="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "$scripts/common"
 
+# Pack
 SRC="$HOME/$CIRCLE_PROJECT_REPONAME"
 DST="$HOME/build/dist"
 

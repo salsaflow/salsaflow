@@ -3,11 +3,9 @@
 set -e
 set -x
 
-# Make sure we are running on CircleCI.
-if  [ -z "$CIRCLECI" ]; then
-	echo "This script can only be executed on CircleCI."
-	exit 1
-fi
+# Source common stuff.
+scripts="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "$scripts/common"
 
 PREFIX="$HOME/cache"
 

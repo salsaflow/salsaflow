@@ -3,11 +3,10 @@
 set -e
 set -x
 
-if  [ -z "$CIRCLECI" ]; then
-	echo "This script can only be executed on CircleCI."
-	exit 1
-fi
+# Source common stuff
+scripts="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "$scripts/common"
 
+# Run tests
 export GOPATH="$HOME/workspace:$(godep path):$GOPATH"
-
 make test
