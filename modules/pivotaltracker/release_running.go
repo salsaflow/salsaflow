@@ -106,8 +106,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 		return nil, errs.NewError(stageTask, err)
 	}
 
-	// Pick only the stories that are in the right state,
-	// i.e. state:finished label:reviewed/no review label:qa+/no qa.
+	// Pick only the stories that are in the right state.
 	ss := make([]*pivotal.Story, 0, len(stories))
 	for _, s := range stories {
 		if release.tracker.canStoryBeStaged(s) {
