@@ -438,17 +438,28 @@ and read the DESCRIPTION section.
 	}
 
 	// Show only the stories owned by the current user.
-	var myStories []common.Story
-StoryLoop:
-	for _, story := range stories {
-		for _, assignee := range story.Assignees() {
-			if assignee.Id() == me.Id() {
-				myStories = append(myStories, story)
-				continue StoryLoop
+	// Note: Go sucks here, badly.
+	filterStories := func(stories []common.Story, filter func(common.Story) bool) []common.Story {
+		ss := make([]common.Story, 0, len(stories))
+		for _, story := range stories {
+			if filter(story) {
+				ss = append(ss, story)
 			}
 		}
+		return ss
 	}
-	stories = myStories
+
+	mine := func(story common.Story) bool {
+		for _, assignee := range story.Assignees() {
+			if assignee.Id() == me.Id() {
+				return true
+			}
+		}
+		return false
+	}
+
+	stories = filterStories(stories, mine)
+	reviewedStories = filterStories(reviewedStories, mine)
 
 	// Tell the user what is happening.
 	log.Run("Prepare a temporary branch to rewrite commit messages")
