@@ -71,9 +71,6 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 		}
 	}
 
-	// Filter by include label.
-	ptStories = storiesMatchingByLabel(ss, tracker.config.IncludeStoryLabelFilter())
-
 	// Return what is left.
 	return toCommonStories(ptStories, tracker), nil
 }
@@ -87,7 +84,6 @@ func (tracker *issueTracker) ReviewableStories() (stories []common.Story, err er
 		return nil, err
 	}
 
-	ptStories = storiesMatchingByLabel(ptStories, tracker.config.IncludeStoryLabelFilter())
 	return toCommonStories(ptStories, tracker), nil
 }
 
@@ -98,7 +94,6 @@ func (tracker *issueTracker) ReviewedStories() (stories []common.Story, err erro
 		return nil, err
 	}
 
-	ptStories = storiesMatchingByLabel(ptStories, tracker.config.IncludeStoryLabelFilter())
 	return toCommonStories(ptStories, tracker), nil
 }
 
@@ -178,6 +173,9 @@ func (tracker *issueTracker) searchStories(
 
 	// Send the query to PT.
 	stories, _, err := client.Stories.List(projectId, query)
+
+	// Filter stories by the include label.
+	stories = storiesMatchingByLabel(stories, tracker.config.IncludeStoryLabelFilter())
 	return stories, err
 }
 
