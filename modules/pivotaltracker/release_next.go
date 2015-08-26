@@ -90,6 +90,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 		}
 		if len(additionalStories) != len(storyIds) {
 			log.Warn("Some stories were dropped since they were not found in PT")
+			log.NewLine("or they were filtered out by a story include label.")
 		}
 
 		// Drop stories already assigned to another release.
