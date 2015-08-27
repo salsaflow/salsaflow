@@ -567,11 +567,17 @@ func createIssue(
 	log.Run(task)
 	client := ghutil.NewClient(config.Token())
 	labels := []string{config.ReviewLabel()}
+
+	var assigneePtr *string
+	if assignee != "" {
+		assigneePtr = &assignee
+	}
+
 	issue, _, err = client.Issues.Create(owner, repo, &github.IssueRequest{
 		Title:     github.String(issueTitle),
 		Body:      github.String(issueBody),
 		Labels:    &labels,
-		Assignee:  github.String(assignee),
+		Assignee:  assigneePtr,
 		Milestone: milestone.Number,
 	})
 	if err != nil {
