@@ -60,7 +60,22 @@ func (release *runningRelease) EnsureStageable() error {
 	io.WriteString(tw, "Story URL\tError\n")
 	io.WriteString(tw, "=========\t=====\n")
 
+	skipLabels := release.tracker.config.SkipCheckLabels()
+	shouldBeSkipped := func(story *pivotal.Story) bool {
+		for _, skipLabel := range skipLabels {
+			if labeled(story, skipLabel) {
+				return true
+			}
+		}
+		return false
+	}
+
 	for _, story := range stories {
+		// Skip the story in case it is labeled with a skip label.
+		if shouldBeSkipped(story) {
+			continue
+		}
+
 		// Rejected stories are no good.
 		if story.State == pivotal.StoryStateRejected {
 			fmt.Fprintf(tw, "%v\tstory state: %v\n", story.URL, story.State)
