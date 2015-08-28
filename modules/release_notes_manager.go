@@ -62,6 +62,9 @@ func GetReleaseNotesManager() (common.ReleaseNotesManager, error) {
 	if err != nil {
 		return nil, err
 	}
+	if factory == nil {
+		return nil, nil
+	}
 
 	// Return a new module instance.
 	return factory.NewReleaseNotesManager()
