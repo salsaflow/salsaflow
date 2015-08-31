@@ -292,10 +292,16 @@ func createAssignedReviewRequest(
 	}
 
 	// Create a new review issue.
+	var implemented bool
+	implementedOpt, ok := opts["implemented"]
+	if ok {
+		implemented = implementedOpt.(bool)
+	}
+
 	issueResource, err := createIssue(
 		task, config, owner, repo,
 		issue.FormatTitle(), issue.FormatBody(),
-		optValueString(opts["reviewer"]), milestone)
+		optValueString(opts["reviewer"]), milestone, implemented)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
@@ -390,7 +396,7 @@ func createUnassignedReviewRequest(
 	issueResource, err := createIssue(
 		task, config, owner, repo,
 		issue.FormatTitle(), issue.FormatBody(),
-		optValueString(opts["reviewer"]), milestone)
+		optValueString(opts["reviewer"]), milestone, true)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
@@ -461,14 +467,43 @@ func extendReviewRequest(
 		return nil
 	}
 
+	// Add the implemented label if necessary.
+	var (
+		implemented      bool
+		implementedLabel = config.StoryImplementedLabel()
+		labelsPtr        *[]string
+	)
+	implementedOpt, ok := opts["implemented"]
+	if ok {
+		implemented = implementedOpt.(bool)
+	}
+	if implemented {
+		labels := make([]string, 0, len(issue.Labels)+1)
+		labelsPtr = &labels
+
+		for _, label := range issue.Labels {
+			if *label.Name == implementedLabel {
+				// The label is already there, for some reason.
+				// Set the pointer to nil so that we don't update labels.
+				labelsPtr = nil
+				break
+			}
+			labels = append(labels, *label.Name)
+		}
+		if labelsPtr != nil {
+			labels = append(labels, implementedLabel)
+		}
+	}
+
 	// Edit the issue.
 	task = fmt.Sprintf("Update GitHub issue #%v", issueNum)
 	log.Run(task)
 
 	client := ghutil.NewClient(config.Token())
 	newIssue, _, err := client.Issues.Edit(owner, repo, issueNum, &github.IssueRequest{
-		Body:  github.String(reviewIssue.FormatBody()),
-		State: github.String("open"),
+		Body:   github.String(reviewIssue.FormatBody()),
+		State:  github.String("open"),
+		Labels: labelsPtr,
 	})
 	if err != nil {
 		return errs.NewError(task, err)
@@ -562,11 +597,18 @@ func createIssue(
 	issueBody string,
 	assignee string,
 	milestone *github.Milestone,
+	implemented bool,
 ) (issue *github.Issue, err error) {
 
 	log.Run(task)
 	client := ghutil.NewClient(config.Token())
-	labels := []string{config.ReviewLabel()}
+
+	var labels []string
+	if implemented {
+		labels = []string{config.ReviewLabel(), config.StoryImplementedLabel()}
+	} else {
+		labels = []string{config.ReviewLabel()}
+	}
 
 	var assigneePtr *string
 	if assignee != "" {
