@@ -174,8 +174,13 @@ func (tracker *issueTracker) searchStories(
 	// Send the query to PT.
 	stories, _, err := client.Stories.List(projectId, query)
 
-	// Filter stories by the include label.
-	stories = storiesMatchingByLabel(stories, tracker.config.IncludeStoryLabelFilter())
+	// Filter stories by the component label when necessary.
+	if label := tracker.config.ComponentLabel(); label != "" {
+		stories = filterStories(stories, func(story *pivotal.Story) bool {
+			return labeled(story, label)
+		})
+	}
+
 	return stories, err
 }
 

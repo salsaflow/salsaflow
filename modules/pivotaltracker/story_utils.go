@@ -1,9 +1,6 @@
 package pivotaltracker
 
 import (
-	// Stdlib
-	"regexp"
-
 	// Internal
 	"github.com/salsaflow/salsaflow/modules/common"
 
@@ -19,26 +16,6 @@ func toCommonStories(stories []*pivotal.Story, tracker *issueTracker) []common.S
 	return commonStories
 }
 
-// storiesMatchingByLabel returns the stories for which at least one of the labels matches regexp.
-func storiesMatchingByLabel(stories []*pivotal.Story, filter *regexp.Regexp) []*pivotal.Story {
-	if filter == nil {
-		return stories
-	}
-
-	var ss []*pivotal.Story
-StoryLoop:
-	for _, story := range stories {
-		for _, label := range story.Labels {
-			if filter.MatchString(label.Name) {
-				ss = append(ss, story)
-				continue StoryLoop
-			}
-		}
-	}
-
-	return ss
-}
-
 func labeled(story *pivotal.Story, label string) bool {
 	for _, lab := range story.Labels {
 		if lab.Name == label {
@@ -46,6 +23,16 @@ func labeled(story *pivotal.Story, label string) bool {
 		}
 	}
 	return false
+}
+
+func filterStories(stories []*pivotal.Story, filter func(*pivotal.Story) bool) []*pivotal.Story {
+	ss := make([]*pivotal.Story, 0, len(stories))
+	for _, story := range stories {
+		if filter(story) {
+			ss = append(ss, story)
+		}
+	}
+	return ss
 }
 
 func stateAtLeast(story *pivotal.Story, state string) bool {

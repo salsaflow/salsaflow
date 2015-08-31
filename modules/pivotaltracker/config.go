@@ -1,13 +1,9 @@
 package pivotaltracker
 
 import (
-	// Stdlib
-	"regexp"
-
 	// Internal
 	"github.com/salsaflow/salsaflow/config"
 	"github.com/salsaflow/salsaflow/errs"
-	"github.com/salsaflow/salsaflow/git"
 )
 
 const Id = "pivotal_tracker"
@@ -16,12 +12,18 @@ const LocalConfigTemplate = `
 #pivotal_tracker:
 #  project_id: 123456
 #
-#  THE FOLLOWING SECTION IS OPTIONAL.
-#  The values visible there are the default choices.
-#  In case the defaults are fine, just delete the section,
-#  otherwise uncomment what you need to change.
+#  All config that follows is OPTIONAL.
 #
-#  labels:
+#  # You can set the following key to filter the stories
+#  # SalsaFlow will be operating with when inside of this repository.
+#  # This is handy in case you are using a single PT projects
+#  # with multiple repositories.
+#  component_label: "server"
+#
+#  # The values visible there are the default choices.
+#  # In case the defaults are fine, just delete the section,
+#  # otherwise uncomment what you need to change.
+#  workflow_labels:
 #    point_me: "point_me"
 #    reviewed: "reviewed"
 #    skip_review: "no review"
@@ -46,15 +48,16 @@ var DefaultSkipCheckLabels = []string{"dupe", "wontfix"}
 
 type LocalConfig struct {
 	PT struct {
-		ProjectId int `yaml:"project_id"`
-		Labels    struct {
+		ProjectId      int    `yaml:"project_id"`
+		ComponentLabel string `yaml:"component_label"`
+		Labels         struct {
 			PointMeLabel     string   `yaml:"point_me"`
 			ReviewedLabel    string   `yaml:"reviewed"`
 			SkipReviewLabel  string   `yaml:"skip_review"`
 			TestedLabel      string   `yaml:"tested"`
 			SkipTestingLabel string   `yaml:"skip_testing"`
 			SkipCheckLabels  []string `yaml:"skip_check_labels"`
-		} `yaml:"labels"`
+		} `yaml:"workflow_labels"`
 	} `yaml:"pivotal_tracker"`
 }
 
@@ -112,6 +115,7 @@ func (global *GlobalConfig) validate() error {
 
 type Config interface {
 	ProjectId() int
+	ComponentLabel() string
 	PointMeLabel() string
 	ReviewedLabel() string
 	SkipReviewLabel() string
@@ -119,7 +123,6 @@ type Config interface {
 	SkipTestingLabel() string
 	SkipCheckLabels() []string
 	UserToken() string
-	IncludeStoryLabelFilter() *regexp.Regexp
 }
 
 var configCache Config
@@ -167,34 +170,21 @@ func LoadConfig() (Config, error) {
 		return nil, err
 	}
 
-	// Load git config.
-	storyFilter, err := git.GetConfigString("salsaflow.pivotaltracker.include-stories")
-	if err != nil {
-		return nil, err
-	}
-
-	var storyFilterRe *regexp.Regexp
-	if storyFilter != "" {
-		var err error
-		storyFilterRe, err = regexp.Compile(storyFilter)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	configCache = &configProxy{&local, &global, storyFilterRe}
+	configCache = &configProxy{&local, &global}
 	return configCache, nil
 }
 
 type configProxy struct {
 	local  *LocalConfig
 	global *GlobalConfig
-
-	storyFilter *regexp.Regexp
 }
 
 func (proxy *configProxy) ProjectId() int {
 	return proxy.local.PT.ProjectId
+}
+
+func (proxy *configProxy) ComponentLabel() string {
+	return proxy.local.PT.ComponentLabel
 }
 
 func (proxy *configProxy) PointMeLabel() string {
@@ -223,8 +213,4 @@ func (proxy *configProxy) SkipCheckLabels() []string {
 
 func (proxy *configProxy) UserToken() string {
 	return proxy.global.PT.UserToken
-}
-
-func (proxy *configProxy) IncludeStoryLabelFilter() *regexp.Regexp {
-	return proxy.storyFilter
 }
