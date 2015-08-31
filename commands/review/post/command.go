@@ -240,7 +240,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	return parentFollowupDialog(currentBranch, remoteName, trunkBranch)
 }
 
-func postReviewRequests(commits []*git.Commit, canAmend bool) (action.Action, error) {
+func postReviewRequests(commits []*git.Commit, canAmend bool) (act action.Action, err error) {
 	// Make sure there are actually some commits to be posted.
 	task := "Make sure there are actually some commits to be posted"
 	if len(commits) == 0 {
@@ -344,18 +344,20 @@ You are about to post some of the following commits for code review:
 		return nil, errs.NewError(task, err)
 	}
 
-	// Post the review requests.
-	task = "Post the review requests"
-	if err := sendReviewRequests(ctxs); err != nil {
-		return nil, errs.NewError(task, err)
-	}
-
 	// Mark the stories as implemented, potentially.
 	task = "Mark the stories as implemented, optionally"
-	act, err := implementedDialog(ctxs)
+	implemented, act, err := implementedDialog(ctxs)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
+	defer action.RollbackTaskOnError(&err, task, act)
+
+	// Post the review requests.
+	task = "Post the review requests"
+	if err := sendReviewRequests(ctxs, implemented); err != nil {
+		return nil, errs.NewError(task, err)
+	}
+
 	return act, nil
 }
 
@@ -686,7 +688,7 @@ func storyTags(tracker common.IssueTracker, commits []*git.Commit) (tags []strin
 	return storyTagList
 }
 
-func sendReviewRequests(ctxs []*common.ReviewContext) error {
+func sendReviewRequests(ctxs []*common.ReviewContext, implemented bool) error {
 	// Instantiate the code review module.
 	tool, err := modules.GetCodeReviewTool()
 	if err != nil {
@@ -706,6 +708,9 @@ func sendReviewRequests(ctxs []*common.ReviewContext) error {
 	}
 	if flagOpen {
 		postOpts["open"] = true
+	}
+	if implemented {
+		postOpts["implemented"] = true
 	}
 
 	// Only post a single commit in case -parent is not being used.
@@ -810,7 +815,7 @@ Now that the trunk branch has been modified, you might want to push it, right?
 	return nil
 }
 
-func implementedDialog(ctxs []*common.ReviewContext) (action.Action, error) {
+func implementedDialog(ctxs []*common.ReviewContext) (implemented bool, act action.Action, err error) {
 	// Collect the affected stories.
 	var (
 		stories  = make([]common.Story, 0, len(ctxs))
@@ -836,22 +841,22 @@ func implementedDialog(ctxs []*common.ReviewContext) (action.Action, error) {
 	}
 	// Do nothing in case there are no stories left.
 	if len(stories) == 0 {
-		return nil, nil
+		return false, nil, nil
 	}
 
 	// Prompt the user for confirmation.
-	fmt.Println("\nIt is possible to mark the stories as implemented now.")
+	fmt.Println("\nIt is possible to mark the affected stories as implemented.")
 	fmt.Println("The following stories were associated with one or more commits:\n")
 	prompt.ListStories(stories, os.Stdout)
 	fmt.Println()
 	confirmed, err := prompt.Confirm(
 		"Do you wish to mark these stories as implemented?", false)
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
 	fmt.Println()
 	if !confirmed {
-		return nil, nil
+		return false, nil, nil
 	}
 
 	// Always update as many stories as possible.
@@ -875,10 +880,10 @@ func implementedDialog(ctxs []*common.ReviewContext) (action.Action, error) {
 		if err := chain.Rollback(); err != nil {
 			errs.Log(err)
 		}
-		return nil, ex
+		return false, nil, ex
 	}
 
-	return chain, nil
+	return true, chain, nil
 }
 
 // merge merges commit into branch.
