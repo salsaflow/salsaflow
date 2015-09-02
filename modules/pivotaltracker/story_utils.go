@@ -5,7 +5,7 @@ import (
 	"github.com/salsaflow/salsaflow/modules/common"
 
 	// Other
-	"github.com/salsita/go-pivotaltracker/v5/pivotal"
+	"gopkg.in/salsita/go-pivotaltracker.v1/v5/pivotal"
 )
 
 func toCommonStories(stories []*pivotal.Story, tracker *issueTracker) []common.Story {

@@ -4,7 +4,6 @@ import (
 	// Stdlib
 	"bytes"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 
@@ -13,7 +12,7 @@ import (
 	"github.com/salsaflow/salsaflow/version"
 
 	// Other
-	"github.com/salsita/go-pivotaltracker/v5/pivotal"
+	"gopkg.in/salsita/go-pivotaltracker.v1/v5/pivotal"
 	"github.com/toqueteos/webbrowser"
 )
 
@@ -172,22 +171,8 @@ func (tracker *issueTracker) searchStories(
 	query = fmt.Sprintf("(type:%v OR type:%v) AND (%v)",
 		pivotal.StoryTypeFeature, pivotal.StoryTypeBug, query)
 
-	// Get the cursor and collect all stories.
-	cursor, err := client.Stories.Iterate(projectId, query)
-	if err != nil {
-		return nil, err
-	}
-	stories := make([]*pivotal.Story, 0, 10)
-	for {
-		story, err := cursor.Next()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
-		stories = append(stories, story)
-	}
+	// Send the query to PT.
+	stories, err := client.Stories.List(projectId, query)
 
 	// Filter stories by the component label when necessary.
 	if label := tracker.config.ComponentLabel(); label != "" {
