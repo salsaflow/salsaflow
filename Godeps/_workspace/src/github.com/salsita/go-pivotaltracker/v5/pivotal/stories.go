@@ -146,6 +146,9 @@ type StoryCursor struct {
 	buff []*Story
 }
 
+// Next returns the next story.
+//
+// In case there are no more stories, io.EOF is returned as an error.
 func (c *StoryCursor) Next() (s *Story, err error) {
 	if len(c.buff) == 0 {
 		_, err = c.next(&c.buff)
@@ -162,6 +165,8 @@ func (c *StoryCursor) Next() (s *Story, err error) {
 	return s, err
 }
 
+// Iterate returns a cursor that can be used to iterate over the stories specified
+// by the filter. More stories are fetched on demand as needed.
 func (service *StoryService) Iterate(projectId int, filter string) (c *StoryCursor, err error) {
 	reqfn := func() (req *http.Request) {
 		u := fmt.Sprintf("projects/%v/stories", projectId)

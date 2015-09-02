@@ -1,6 +1,7 @@
 /*
 
    Copyright (C) 2015 Scott Devoid
+   Copyright (C) 2015 Salsita Software
 
 */
 package pivotal
@@ -22,6 +23,7 @@ type cursor struct {
 	requestFn requestFn
 	limit     int
 	offset    int
+	end       bool
 }
 
 // newCursor creates a new cursor to interate over an endpoint that
@@ -36,6 +38,11 @@ func newCursor(client *Client, fn requestFn, limit int) (c *cursor, err error) {
 // endpoint, it returns io.EOF as the error.
 func (c *cursor) next(v interface{}) (resp *http.Response, err error) {
 
+	// The cursor has reached the end, return io.EOF
+	if c.end {
+		return nil, io.EOF
+	}
+
 	req := c.requestFn()
 
 	// Set the URL limit=X,offset=Y
@@ -48,7 +55,7 @@ func (c *cursor) next(v interface{}) (resp *http.Response, err error) {
 	req.URL.RawQuery = values.Encode()
 
 	// Do the request, decode JSON to v
-	resp, err = c.client.Do(req, &v)
+	resp, err = c.client.Do(req, v)
 	if err != nil {
 		return nil, err
 	}
@@ -82,9 +89,10 @@ func (c *cursor) next(v interface{}) (resp *http.Response, err error) {
 		c.offset = offset + limit
 	}
 
-	// Return EOF if we have reached the end.
+	// Return EOF on the next call in case we have reached the end.
 	if c.offset >= total {
-		err = io.EOF
+		c.end = true
 	}
-	return resp, err
+
+	return resp, nil
 }
