@@ -12,8 +12,8 @@ import (
 	"github.com/salsaflow/salsaflow/version"
 
 	// Other
-	"gopkg.in/salsita/go-pivotaltracker.v1/v5/pivotal"
 	"github.com/toqueteos/webbrowser"
+	"gopkg.in/salsita/go-pivotaltracker.v1/v5/pivotal"
 )
 
 const ServiceName = "Pivotal Tracker"

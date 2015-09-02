@@ -65,7 +65,11 @@ func (c *cursor) next(v interface{}) (resp *http.Response, err error) {
 		if err != nil {
 			return 0
 		}
-		i, cerr := strconv.Atoi(resp.Header.Get(k))
+		v := resp.Header.Get(k)
+		if v == "" {
+			return 0
+		}
+		i, cerr := strconv.Atoi(v)
 		if cerr != nil {
 			err = cerr
 		}
