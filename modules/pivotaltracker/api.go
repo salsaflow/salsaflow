@@ -11,7 +11,7 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 
 	// Other
-	"github.com/salsita/go-pivotaltracker/v5/pivotal"
+	"gopkg.in/salsita/go-pivotaltracker.v1/v5/pivotal"
 )
 
 var (
