@@ -121,24 +121,25 @@ func newStoryService(client *Client) *StoryService {
 	return &StoryService{client}
 }
 
-func (service *StoryService) List(projectId int, filter string) ([]*Story, *http.Response, error) {
-	u := fmt.Sprintf("projects/%v/stories", projectId)
-	if filter != "" {
-		u += "?filter=" + url.QueryEscape(filter)
-	}
-
-	req, err := service.client.NewRequest("GET", u, nil)
+// List returns all stories matching the filter in case the filter is specified.
+// It uses Iterate() to collect all stories and returns them as a slice.
+func (service *StoryService) List(projectId int, filter string) ([]*Story, error) {
+	cursor, err := service.Iterate(projectId, filter)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	var stories []*Story
-	resp, err := service.client.Do(req, &stories)
-	if err != nil {
-		return nil, resp, err
+	stories := make([]*Story, 0, 10)
+	for {
+		story, err := cursor.Next()
+		if err != nil {
+			if err == io.EOF {
+				return stories, nil
+			}
+			return nil, err
+		}
+		stories = append(stories, story)
 	}
-
-	return stories, resp, err
 }
 
 type StoryCursor struct {

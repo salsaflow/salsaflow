@@ -50,10 +50,6 @@
 			"Rev": "96f003574571a8b744e2f2a6df6fe52dd1d09c4c"
 		},
 		{
-			"ImportPath": "github.com/salsita/go-pivotaltracker/v5/pivotal",
-			"Rev": "0e662ae6d6f2f3b176b06fcf252b77327fb47327"
-		},
-		{
 			"ImportPath": "github.com/salsita/go-sprintly/sprintly",
 			"Rev": "6cd9d7493c8234dfae4c09f3572a958f188022b6"
 		},
@@ -85,6 +81,10 @@
 		{
 			"ImportPath": "golang.org/x/text/unicode/norm",
 			"Rev": "048335754d9992416d49a15d2ec1016fc3c95a13"
+		},
+		{
+			"ImportPath": "gopkg.in/salsita/go-pivotaltracker.v1/v5/pivotal",
+			"Rev": "053fb125d3076fedb7ad86d8a8ebeacfd68af7d8"
 		},
 		{
 			"ImportPath": "gopkg.in/tchap/gocli.v2",
