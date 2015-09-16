@@ -2,146 +2,94 @@ package config
 
 import (
 	// Stdlib
-	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
-	"os/user"
 	"path/filepath"
 
 	// Internal
-	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
-	"github.com/salsaflow/salsaflow/git/gitutil"
-
-	// Other
-	"gopkg.in/yaml.v2"
 )
 
-const (
-	// LocalConfigDirname is the directory relative to the repository root
-	// that is being used to store all SalsaFlow-related files.
-	LocalConfigDirname = ".salsaflow"
+func Marshal(v interface{}) ([]byte, error) {
+	return json.MarshalIndent(v, "", "  ")
+}
 
-	// LocalConfigFilename is the filename of the configuration file
-	// that represents local project-specific SalsaFlow configuration.
-	//
-	// This file is expected to be placed in the repository root.
-	LocalConfigFilename = "config.yml"
+func Unmarshal(in []byte, v interface{}) error {
+	return json.Unmarshal(in, v)
+}
 
-	// GlobalConfigFilename is the filename of the configuration file
-	// that represents global user-specific SalsaFlow configuration.
-	//
-	// This file is expected to be placed in the user's home directory.
-	GlobalConfigFilename = ".salsaflow.yml"
-)
+// WriteLocalConfig writes the given configuration struct
+// into the local configuration file.
+//
+// In case the target path does not exist, it is created,
+// including the parent directories.
+//
+// In case the file exists, it is truncated.
+func writeConfig(absolutePath string, content interface{}, perm os.FileMode) error {
+	task := "Write a configuration file"
 
-// Local config ----------------------------------------------------------------
-
-var localContentCache []byte
-
-func UnmarshalLocalConfig(v interface{}) error {
-	// Read the local config file into the cache in case it's not there yet.
-	if localContentCache == nil {
-		localContent, err := readLocalConfig()
-		if err != nil {
-			return err
+	// Check the configuration directory and make sure it exists.
+	configDir := filepath.Dir(absolutePath)
+	info, err := os.Stat(configDir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return errs.NewError(task, err)
 		}
-		localContentCache = localContent.Bytes()
+
+		// The directory doesn't exist.
+		if err := os.MkdirAll(configDir, 0750); err != nil {
+			return errs.NewError(task, err)
+		}
+	}
+	if !info.IsDir() {
+		return errs.NewError(task, errors.New("not a directory: "+configDir))
 	}
 
-	// Unmarshall the local config file.
-	task := "Unmarshal the local config file"
-	if err := yaml.Unmarshal(localContentCache, v); err != nil {
-		return errs.NewErrorWithHint(
-			task, err, "Make sure the configuration file is valid YAML\n")
+	// Marshal the content.
+	raw, err := Marshal(content)
+	if err != nil {
+		return errs.NewError(task, err)
+	}
+
+	// Write the raw content into the file.
+	if err := ioutil.WriteFile(absolutePath, raw, perm); err != nil {
+		return errs.NewError(task, err)
 	}
 	return nil
 }
 
-func LocalConfigDirectoryAbsolutePath() (string, error) {
-	root, err := gitutil.RepositoryRootAbsolutePath()
+func readAndUnmarshalConfig(absolutePath string, v interface{}) error {
+	// Read the file.
+	task := "Read given configuration file"
+	content, err := ioutil.ReadFile(absolutePath)
 	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, LocalConfigDirname), nil
-}
+		hint := fmt.Sprintf(`
+Failed to read the configuration file local at
 
-func readLocalConfig() (content *bytes.Buffer, err error) {
-	// Get the config file absolute path.
-	path, err := LocalConfigDirectoryAbsolutePath()
-	if err != nil {
-		return nil, err
-	}
-	path = filepath.Join(path, LocalConfigFilename)
+  %v
 
-	// Read the content and return it.
-	task := "Read the local config file"
-	contentBytes, err := ioutil.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			hint := `
-The local configuration file was not found.
-Check 'repo bootstrap' to see how to generate it.
-
-`
-			return nil, errs.NewErrorWithHint(task, err, hint)
-		}
-		return nil, errs.NewError(task, err)
-	}
-	return bytes.NewBuffer(contentBytes), nil
-}
-
-// Global config ---------------------------------------------------------------
-
-var globalContentCache []byte
-
-func UnmarshalGlobalConfig(v interface{}) error {
-	// Read the global config file into the cache in case it's not there yet.
-	if globalContentCache == nil {
-		globalContent, err := readGlobalConfig()
-		if err != nil {
-			return err
-		}
-		globalContentCache = globalContent.Bytes()
+`, absolutePath)
+		return errs.NewErrorWithHint(task, err, hint)
 	}
 
-	// Unmarshal the global config file.
-	task := "Unmarshal the global configuration file"
-	if err := yaml.Unmarshal(globalContentCache, v); err != nil {
-		return errs.NewErrorWithHint(
-			task, err, "Make sure the configuration file is valid YAML\n")
+	// Unmarshall the content.
+	task = "Unmarshal given configuration file"
+	if err := Unmarshal(content, v); err != nil {
+		hint := fmt.Sprintf(`
+Failed to parse the configuration file located at
+
+  %v
+
+Make sure the configuration file is valid JSON
+that follows the right configuration schema.
+
+`, absolutePath)
+
+		return errs.NewErrorWithHint(task, err, hint)
 	}
+
 	return nil
-}
-
-func GlobalConfigFileAbsolutePath() (string, error) {
-	task := "Get the global configuration file absolute path"
-
-	// Check the command line flag for custom path first.
-	if path := appflags.FlagConfig; path != "" {
-		return path, nil
-	}
-
-	// Otherwise use the default file in the user's home directory.
-	me, err := user.Current()
-	if err != nil {
-		return "", errs.NewError(task, err)
-	}
-	return filepath.Join(me.HomeDir, GlobalConfigFilename), nil
-}
-
-func readGlobalConfig() (content *bytes.Buffer, err error) {
-	// Get the global config file path.
-	path, err := GlobalConfigFileAbsolutePath()
-	if err != nil {
-		return nil, err
-	}
-
-	// Read the global config file.
-	task := "Read the global config file"
-	contentBytes, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, errs.NewError(task, err)
-	}
-	return bytes.NewBuffer(contentBytes), nil
 }
