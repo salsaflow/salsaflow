@@ -80,9 +80,9 @@ func coreBranchSet() (map[string]struct{}, error) {
 
 	// Return the core branches set.
 	return map[string]struct{}{
-		config.TrunkBranchName():   struct{}{},
-		config.ReleaseBranchName(): struct{}{},
-		config.StagingBranchName(): struct{}{},
-		config.StableBranchName():  struct{}{},
+		config.TrunkBranchName:   struct{}{},
+		config.ReleaseBranchName: struct{}{},
+		config.StagingBranchName: struct{}{},
+		config.StableBranchName:  struct{}{},
 	}, nil
 }

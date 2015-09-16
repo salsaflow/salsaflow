@@ -91,9 +91,9 @@ You need Git version 1.9.0 or newer.
 		return err
 	}
 	var (
-		remoteName   = gitConfig.RemoteName()
-		trunkBranch  = gitConfig.TrunkBranchName()
-		stableBranch = gitConfig.StableBranchName()
+		remoteName   = gitConfig.RemoteName
+		trunkBranch  = gitConfig.TrunkBranchName
+		stableBranch = gitConfig.StableBranchName
 	)
 
 	// Make sure that the stable branch exists.

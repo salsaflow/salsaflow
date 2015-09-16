@@ -74,9 +74,9 @@ func runMain() (err error) {
 		return err
 	}
 	var (
-		remote        = gitConfig.RemoteName()
-		trunkBranch   = gitConfig.TrunkBranchName()
-		releaseBranch = gitConfig.ReleaseBranchName()
+		remote        = gitConfig.RemoteName
+		trunkBranch   = gitConfig.TrunkBranchName
+		releaseBranch = gitConfig.ReleaseBranchName
 	)
 
 	// Fetch the remote repository.

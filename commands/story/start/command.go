@@ -195,8 +195,8 @@ func createBranch() (action.Action, error) {
 	}
 
 	var (
-		remoteName  = gitConfig.RemoteName()
-		trunkBranch = gitConfig.TrunkBranchName()
+		remoteName  = gitConfig.RemoteName
+		trunkBranch = gitConfig.TrunkBranchName
 	)
 	if err := git.UpdateRemotes(remoteName); err != nil {
 		return nil, errs.NewError(task, err)

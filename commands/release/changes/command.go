@@ -83,8 +83,8 @@ func runMain() (err error) {
 	}
 
 	var (
-		remoteName    = gitConfig.RemoteName()
-		releaseBranch = gitConfig.ReleaseBranchName()
+		remoteName    = gitConfig.RemoteName
+		releaseBranch = gitConfig.ReleaseBranchName
 	)
 
 	// Make sure that the local release branch exists.

@@ -65,11 +65,11 @@ func run(remoteName, pushURL string) error {
 	enabledTimestamp := repoConfig.SalsaFlowEnabledTimestamp()
 
 	// Only check the project remote.
-	if remoteName != gitConfig.RemoteName() {
+	if remoteName != gitConfig.RemoteName {
 		log.Log(
 			fmt.Sprintf(
 				"Not pushing to the main project remote (%v), check skipped",
-				gitConfig.RemoteName()))
+				gitConfig.RemoteName))
 		return nil
 	}
 
@@ -77,10 +77,10 @@ func run(remoteName, pushURL string) error {
 	// The format is <local ref> <local sha1> <remote ref> <remote sha1>,
 	// so we parse the input and collect all the local hexshas.
 	var coreRefs = []string{
-		"refs/heads/" + gitConfig.TrunkBranchName(),
-		"refs/heads/" + gitConfig.ReleaseBranchName(),
-		"refs/heads/" + gitConfig.StagingBranchName(),
-		"refs/heads/" + gitConfig.StableBranchName(),
+		"refs/heads/" + gitConfig.TrunkBranchName,
+		"refs/heads/" + gitConfig.ReleaseBranchName,
+		"refs/heads/" + gitConfig.StagingBranchName,
+		"refs/heads/" + gitConfig.StableBranchName,
 	}
 
 	parseTask := "Parse the hook input"
@@ -136,7 +136,7 @@ perhaps by executing 'git pull'.
 		if remoteSha == git.ZeroHash {
 			// In case we are pushing a new branch, check commits up to trunk.
 			// There is probably no better guess that we can do in general.
-			revRange = &revisionRange{gitConfig.TrunkBranchName(), localRef}
+			revRange = &revisionRange{gitConfig.TrunkBranchName, localRef}
 		} else {
 			// Otherwise check the commits that are new compared to the remote ref.
 			revRange = &revisionRange{remoteSha, localRef}

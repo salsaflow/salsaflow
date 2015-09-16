@@ -77,9 +77,9 @@ func runMain() (err error) {
 	}
 
 	var (
-		remoteName    = gitConfig.RemoteName()
-		stagingBranch = gitConfig.StagingBranchName()
-		stableBranch  = gitConfig.StableBranchName()
+		remoteName    = gitConfig.RemoteName
+		stagingBranch = gitConfig.StagingBranchName
+		stableBranch  = gitConfig.StableBranchName
 	)
 
 	// Fetch the repository.
@@ -182,7 +182,9 @@ func runMain() (err error) {
 	log.Run(task)
 	rnm, err := modules.GetReleaseNotesManager()
 	if err != nil {
-		return errs.NewError(task, err)
+		if _, ok := err.(*modules.ErrModuleNotSet); !ok {
+			return errs.NewError(task, err)
+		}
 	}
 	var nts *common.ReleaseNotes
 	// rnm will be nil in case the module is disabled.

@@ -160,8 +160,8 @@ func postBranch(parentBranch string) error {
 		return err
 	}
 	var (
-		remoteName  = gitConfig.RemoteName()
-		trunkBranch = gitConfig.TrunkBranchName()
+		remoteName  = gitConfig.RemoteName
+		trunkBranch = gitConfig.TrunkBranchName
 	)
 
 	// Get the current branch name.
@@ -293,7 +293,7 @@ You are about to post some of the following commits for code review:
 			return nil, err
 		}
 
-		remoteName := gitConfig.RemoteName()
+		remoteName := gitConfig.RemoteName
 		upToDate, err := git.IsBranchSynchronized(currentBranch, remoteName)
 		if err != nil {
 			return nil, err

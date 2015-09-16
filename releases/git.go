@@ -23,10 +23,10 @@ func ListNewTrunkCommits() ([]*git.Commit, error) {
 		return nil, err
 	}
 	var (
-		remoteName    = config.RemoteName()
-		trunkBranch   = config.TrunkBranchName()
-		releaseBranch = config.ReleaseBranchName()
-		stagingBranch = config.StagingBranchName()
+		remoteName    = config.RemoteName
+		trunkBranch   = config.TrunkBranchName
+		releaseBranch = config.ReleaseBranchName
+		stagingBranch = config.StagingBranchName
 	)
 
 	// By default, use the staging branch as the --not part.

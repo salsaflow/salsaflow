@@ -14,7 +14,7 @@ func StoryChangesToCherryPick(
 	if err != nil {
 		return nil, err
 	}
-	releaseBranch := gitConfig.ReleaseBranchName()
+	releaseBranch := gitConfig.ReleaseBranchName
 
 	reachableCommits, err := git.ShowCommitRange(releaseBranch)
 	if err != nil {
