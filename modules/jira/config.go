@@ -5,166 +5,259 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+	"sort"
 	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/config"
+	"github.com/salsaflow/salsaflow/config/loader"
 	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/prompt"
+
+	// Vendor
+	"github.com/bgentry/speakeasy"
+	"github.com/fatih/color"
+	"github.com/salsita/go-jira/v2/jira"
 )
 
-const Id = "jira"
+// Configuration ===============================================================
 
-const LocalConfigTemplate = `
-#jira:
-#  server_url: "https://example.com/jira"
-#  project_key: "EX"
-`
-
-// Local configuration -------------------------------------------------------
-
-type LocalConfig struct {
-	JIRA struct {
-		ServerURL  string `yaml:"server_url"`
-		ProjectKey string `yaml:"project_key"`
-	} `yaml:"jira"`
+type moduleConfig struct {
+	ServerURL  *url.URL
+	Username   string
+	Password   string
+	ProjectKey string
 }
 
-func (local *LocalConfig) validate() error {
-	var (
-		task = "Validate the local JIRA configuration"
-		jr   = &local.JIRA
-	)
-	switch {
-	case jr.ServerURL == "":
-		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".server_url"})
-	case jr.ProjectKey == "":
-		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".project_key"})
+func loadConfig() (*moduleConfig, error) {
+	spec := newConfigSpec()
+	if err := loader.LoadConfig(spec); err != nil {
+		return nil, err
 	}
 
-	if _, err := url.Parse(jr.ServerURL); err != nil {
-		return errs.NewError(task, &config.ErrKeyInvalid{Id + ".server_url", jr.ServerURL})
+	// Parse the server URL string.
+	serverURL, _ := url.Parse(spec.local.ServerURL)
+
+	// Get the credentials.
+	creds := credentialsForServerURL(spec.global.Credentials, serverURL)
+	if creds == nil {
+		return nil, fmt.Errorf("credentials missing for JIRA server URL: %v", serverURL)
 	}
 
-	return nil
+	return &moduleConfig{
+		ServerURL:  serverURL,
+		Username:   creds.Username,
+		Password:   creds.Password,
+		ProjectKey: spec.local.ProjectKey,
+	}, nil
+}
+
+// Configuration spec ----------------------------------------------------------
+
+type configSpec struct {
+	global *GlobalConfig
+	local  *LocalConfig
+}
+
+func newConfigSpec() *configSpec {
+	return &configSpec{}
+}
+
+// ConfigKey is a part of loader.ModuleConfigSpec interface.
+func (spec *configSpec) ConfigKey() string {
+	return ModuleId
+}
+
+// ModuleKind is a part of loader.ModuleConfigSpec interface.
+func (spec *configSpec) ModuleKind() loader.ModuleKind {
+	return ModuleKind
+}
+
+// GlobalConfig is a part of loader.ModuleConfigSpec interface.
+func (spec *configSpec) GlobalConfig() loader.ConfigContainer {
+	spec.global = &GlobalConfig{spec: spec}
+	return spec.global
+}
+
+// LocalConfig is a part of loader.ModuleConfigSpec interface.
+func (spec *configSpec) LocalConfig() loader.ConfigContainer {
+	if spec.local == nil {
+		spec.local = &LocalConfig{spec: spec}
+	}
+	return spec.local
 }
 
 // Global configuration --------------------------------------------------------
 
-type Credentials struct {
-	index int
+type GlobalConfig struct {
+	spec *configSpec
 
-	ServerPrefix string `yaml:"server_prefix"`
-	Username     string `yaml:"username"`
-	Password     string `yaml:"password"`
+	validateCalled bool
+	validateResult error
+
+	currentServerURL *url.URL
+	currentCreds     *Credentials
+
+	Credentials []*Credentials `json:"credentials"`
 }
 
-func (cred *Credentials) validate() error {
-	task := "Validate selected JIRA credentials"
-	switch {
-	case cred.ServerPrefix == "":
-		key := fmt.Sprintf("%v.credentials[%v].server_prefix", Id, cred.index)
-		return errs.NewError(task, &config.ErrKeyNotSet{key})
-	case cred.Username == "":
-		key := fmt.Sprintf("%v.credentials[%v].username", Id, cred.index)
-		return errs.NewError(task, &config.ErrKeyNotSet{key})
-	case cred.Password == "":
-		key := fmt.Sprintf("%v.credentials[%v].password", Id, cred.index)
-		return errs.NewError(task, &config.ErrKeyNotSet{key})
+type Credentials struct {
+	ServerPrefix string `json:"server_prefix"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+}
+
+func (global *GlobalConfig) PromptUserForConfig() error {
+	// Make sure Validate is called.
+	// We need this for its side-effects for potentially
+	// filling the existing server URL.
+	global.Validate("")
+
+	var (
+		serverURL = global.currentServerURL
+		creds     = global.currentCreds
+	)
+
+	// A few helper functions.
+	invalid := func() {
+		fmt.Println()
+		color.Yellow("You inserted a value that is not valid, please try again!")
+		fmt.Println()
+
+		serverURL = nil
+		creds = nil
 	}
+
+	checkPromptError := func(err error) error {
+		if err == prompt.ErrCanceled {
+			prompt.PanicCancel()
+		}
+		return err
+	}
+
+	// Prompt for necessary information.
+	for {
+		// Prompt for the server URL if necessary.
+		if serverURL == nil {
+			answer, err := prompt.Prompt("Insert the address of the chosen JIRA server: ")
+			if err != nil {
+				return checkPromptError(err)
+			}
+			serverURL, err = url.Parse(answer)
+			if err != nil {
+				invalid()
+				continue
+			}
+			fmt.Println()
+		}
+
+		// Try to find matching credentials.
+		fmt.Println("Checking available JIRA credentials ...")
+		if creds == nil {
+			creds = credentialsForServerURL(global.Credentials, serverURL)
+			if creds != nil {
+				fmt.Printf("Matching JIRA credentials found (username = %v)\n", creds.Username)
+				break
+			}
+		}
+
+		// In case there are no matching credentials, prompt for it.
+		var err error
+		fmt.Println("No matching JIRA credential found.")
+		fmt.Println("Please insert the credentials for the given JIRA server.")
+		fmt.Println()
+		username, err := prompt.Prompt("==> Username: ")
+		if err != nil {
+			return checkPromptError(err)
+		}
+		password, err := speakeasy.Ask("==> Password: ")
+		if err != nil {
+			return err
+		}
+		if password == "" {
+			prompt.PanicCancel()
+		}
+
+		// Connect to the JIRA server to verify the credentials.
+		fmt.Println()
+		task := "Connect to given JIRA server to validate the information"
+		log.Run(task)
+
+		client := newClient(&moduleConfig{
+			ServerURL: serverURL,
+			Username:  username,
+			Password:  password,
+		})
+		if _, _, err = client.Myself.Get(); err != nil {
+			log.Fail(task)
+			invalid()
+			continue
+		}
+
+		// Set the new credentials.
+		creds = &Credentials{
+			ServerPrefix: path.Join(serverURL.Host, serverURL.Path),
+			Username:     username,
+			Password:     password,
+		}
+
+		global.Credentials = append(global.Credentials, creds)
+		break
+	}
+
+	// Store the received information in the cache and return.
+	// This fields are used by the local config prompt later.
+	global.currentServerURL = serverURL
+	global.currentCreds = creds
 	return nil
 }
 
-type GlobalConfig struct {
-	JIRA struct {
-		Credentials []*Credentials `yaml:"credentials"`
-	} `yaml:"jira"`
-}
-
-// Proxy struct ----------------------------------------------------------------
-
-type Config interface {
-	ServerURL() *url.URL
-	Username() string
-	Password() string
-	ProjectKey() string
-}
-
-var configCache Config
-
-func LoadConfig() (Config, error) {
-	// Try the cache first.
-	if configCache != nil {
-		return configCache, nil
+func (global *GlobalConfig) Validate(sectionPath string) (err error) {
+	// Make sure Validate() is called only once.
+	if global.validateCalled {
+		return global.validateResult
 	}
+	defer func() {
+		global.validateCalled = true
+		global.validateResult = err
+	}()
 
-	var proxy configProxy
-
-	// Load local config.
-	var local LocalConfig
-	if err := config.UnmarshalLocalConfig(&local); err != nil {
-		return nil, err
-	}
-	if err := local.validate(); err != nil {
-		return nil, err
-	}
-
-	// Process the project key.
-	proxy.projectKey = local.JIRA.ProjectKey
-
-	// Process the server URL.
-	server := local.JIRA.ServerURL
-	if !strings.HasSuffix(server, "/") {
-		server += "/"
-	}
-	serverURL, err := url.Parse(server)
+	// We need to manually read the local config, then find and unmarshal local config
+	// so that we can use the server URL potentially stored there to search for matching
+	// credentials. In case such credentials are found, global config is considered valid.
+	local, err := config.ReadLocalConfig()
 	if err != nil {
-		// Already checked during validation,
-		// so let's just explode on error.
-		panic(err)
-	}
-	proxy.serverURL = serverURL
-
-	// Load global config.
-	var global GlobalConfig
-	if err := config.UnmarshalGlobalConfig(&global); err != nil {
-		return nil, err
+		return err
 	}
 
-	// Process the credentials.
-	creds := credentialsForServerURL(global.JIRA.Credentials, serverURL)
+	record, err := local.ConfigRecord(ModuleId)
+	if err != nil {
+		return err
+	}
+
+	c := LocalConfig{spec: global.spec}
+	if err := config.Unmarshal(record.RawConfig, &c); err != nil {
+		return err
+	}
+
+	serverURL, err := url.Parse(c.ServerURL)
+	if err != nil {
+		return err
+	}
+
+	creds := credentialsForServerURL(global.Credentials, serverURL)
 	if creds == nil {
-		return nil, fmt.Errorf("no JIRA credentials found for server URL '%v'", serverURL)
+		return fmt.Errorf("not JIRA credentials for given server URL: %v", serverURL)
 	}
-	if err := creds.validate(); err != nil {
-		return nil, err
-	}
-	proxy.creds = creds
 
-	// Save the new instance into the cache and return.
-	configCache = &proxy
-	return configCache, nil
-}
-
-type configProxy struct {
-	serverURL  *url.URL
-	creds      *Credentials
-	projectKey string
-}
-
-func (proxy *configProxy) ServerURL() *url.URL {
-	return proxy.serverURL
-}
-
-func (proxy *configProxy) Username() string {
-	return proxy.creds.Username
-}
-
-func (proxy *configProxy) Password() string {
-	return proxy.creds.Password
-}
-
-func (proxy *configProxy) ProjectKey() string {
-	return proxy.projectKey
+	// Store the data for later use.
+	// We even store the local configuration file here.
+	// That is why LocalConfig.Unmarshal returns null. It is already cached at that time.
+	global.currentServerURL = serverURL
+	global.currentCreds = creds
+	global.spec.local = &c
+	return nil
 }
 
 // credentialsForServerURL finds the credentials matching the given server URL the best,
@@ -174,9 +267,7 @@ func credentialsForServerURL(credList []*Credentials, serverURL *url.URL) *Crede
 		longestMatch *Credentials
 		prefix       = path.Join(serverURL.Host, serverURL.Path)
 	)
-	for i, cred := range credList {
-		cred.index = i
-
+	for _, cred := range credList {
 		// Drop the scheme.
 		credServerURL, err := url.Parse(cred.ServerPrefix)
 		if err != nil {
@@ -194,4 +285,88 @@ func credentialsForServerURL(credList []*Credentials, serverURL *url.URL) *Crede
 		}
 	}
 	return longestMatch
+}
+
+// Local configuration -------------------------------------------------------
+
+type LocalConfig struct {
+	spec *configSpec
+
+	ServerURL  string `json:"server_url"`
+	ProjectKey string `json:"project_key"`
+}
+
+func (local *LocalConfig) PromptUserForConfig() error {
+	// Prompt the user for the project key.
+	client := newClient(&moduleConfig{
+		ServerURL: local.spec.global.currentServerURL,
+		Username:  local.spec.global.currentCreds.Username,
+		Password:  local.spec.global.currentCreds.Password,
+	})
+
+	task := "Fetch available JIRA projects"
+	log.Run(task)
+
+	projects, _, err := client.Projects.List()
+	if err != nil {
+		return errs.NewError(task, err)
+	}
+	sort.Sort(jiraProjects(projects))
+
+	fmt.Println()
+	fmt.Println("Available JIRA projects:")
+	fmt.Println()
+	for i, project := range projects {
+		fmt.Printf("  [%v] %v (%v)\n", i+1, project.Name, project.Key)
+	}
+	fmt.Println()
+	fmt.Println("Choose the project to associate this repository with.")
+	index, err := prompt.PromptIndex("Project number: ", 1, len(projects))
+	if err != nil {
+		if err == prompt.ErrCanceled {
+			prompt.PanicCancel()
+		}
+		return err
+	}
+	projectKey := projects[index-1].Key
+
+	// Store the results.
+	local.ServerURL = local.spec.global.currentServerURL.String()
+	local.ProjectKey = projectKey
+	return nil
+}
+
+func (local *LocalConfig) Unmarshal(unmarshal func(interface{}) error) error {
+	// The config is already cached (check Global.Validate)
+	return nil
+}
+
+func (local *LocalConfig) Validate(sectionPath string) error {
+	// Make sure all fields are filled.
+	if err := config.EnsureValueFilled(local, sectionPath); err != nil {
+		return err
+	}
+
+	// Make sure the server URL string is a valid URL.
+	_, err := url.Parse(local.ServerURL)
+	if err != nil {
+		return &config.ErrKeyInvalid{sectionPath + ".server_url", local.ServerURL}
+	}
+
+	return nil
+}
+
+// Implement sort.Interface to sort projects alphabetically by key.
+type jiraProjects []*jira.Project
+
+func (ps jiraProjects) Len() int {
+	return len(ps)
+}
+
+func (ps jiraProjects) Less(i, j int) bool {
+	return ps[i].Key < ps[j].Key
+}
+
+func (ps jiraProjects) Swap(i, j int) {
+	ps[i], ps[j] = ps[j], ps[i]
 }

@@ -31,13 +31,13 @@ func (rt *BasicAuthRoundTripper) RoundTrip(req *http.Request) (*http.Response, e
 	return rt.next.RoundTrip(req)
 }
 
-func newClient(config Config) *jira.Client {
+func newClient(config *moduleConfig) *jira.Client {
 	relativeURL, _ := url.Parse("rest/api/2/")
-	serverURL := config.ServerURL().ResolveReference(relativeURL)
+	serverURL := config.ServerURL.ResolveReference(relativeURL)
 	return jira.NewClient(serverURL, &http.Client{
 		Transport: &BasicAuthRoundTripper{
-			username: config.Username(),
-			password: config.Password(),
+			username: config.Username,
+			password: config.Password,
 			next:     http.DefaultTransport},
 	})
 }

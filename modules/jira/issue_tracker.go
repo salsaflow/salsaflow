@@ -17,26 +17,17 @@ import (
 
 const ServiceName = "JIRA"
 
-type moduleFactory struct{}
-
-func NewFactory() common.IssueTrackerFactory {
-	return &moduleFactory{}
-}
-
-func (factory *moduleFactory) LocalConfigTemplate() string {
-	return LocalConfigTemplate
-}
-
-func (factory *moduleFactory) NewIssueTracker() (common.IssueTracker, error) {
-	config, err := LoadConfig()
+func newIssueTracker() (common.IssueTracker, error) {
+	config, err := loadConfig()
 	if err != nil {
 		return nil, err
 	}
+
 	return &issueTracker{config, nil}, nil
 }
 
 type issueTracker struct {
-	config       Config
+	config       *moduleConfig
 	versionCache map[string]*jira.Version
 }
 
@@ -106,11 +97,11 @@ func (tracker *issueTracker) RunningRelease(
 
 func (tracker *issueTracker) OpenStory(storyId string) error {
 	relativeURL, _ := url.Parse("browse/" + storyId)
-	return webbrowser.Open(tracker.config.ServerURL().ResolveReference(relativeURL).String())
+	return webbrowser.Open(tracker.config.ServerURL.ResolveReference(relativeURL).String())
 }
 
 func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId string, err error) {
-	prefix := fmt.Sprintf("%v-", tracker.config.ProjectKey())
+	prefix := fmt.Sprintf("%v-", tracker.config.ProjectKey)
 	if !strings.HasPrefix(tag, prefix) {
 		return "", fmt.Errorf("not a valid issue key: %v", tag)
 	}
@@ -124,7 +115,7 @@ func (tracker *issueTracker) issueByIdOrKey(issueIdOrKey string) (*jira.Issue, e
 
 func (tracker *issueTracker) searchIssues(queryFormat string, v ...interface{}) ([]*jira.Issue, error) {
 	query := fmt.Sprintf(queryFormat, v...)
-	jql := fmt.Sprintf("project = \"%v\" AND (%v)", tracker.config.ProjectKey(), query)
+	jql := fmt.Sprintf("project = \"%v\" AND (%v)", tracker.config.ProjectKey, query)
 
 	issues, _, err := newClient(tracker.config).Issues.Search(&jira.SearchOptions{
 		JQL:        jql,
