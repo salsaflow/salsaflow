@@ -18,27 +18,20 @@ import (
 	"github.com/toqueteos/webbrowser"
 )
 
-const Id = "github"
+func newReleaseNotesManager() (common.ReleaseNotesManager, error) {
+	config, err := loadConfig()
+	if err != nil {
+		return nil, err
+	}
 
-const LocalConfigTemplate = "# no additional config required"
-
-type moduleFactory struct{}
-
-func NewFactory() common.ReleaseNotesManagerFactory {
-	return &moduleFactory{}
+	return &releaseNotesManager{config}, nil
 }
 
-func (factory *moduleFactory) LocalConfigTemplate() string {
-	return LocalConfigTemplate
+type releaseNotesManager struct {
+	config *moduleConfig
 }
 
-func (factory *moduleFactory) NewReleaseNotesManager() (common.ReleaseNotesManager, error) {
-	return &releaseNotesManager{}, nil
-}
-
-type releaseNotesManager struct{}
-
-func (rnm *releaseNotesManager) PostReleaseNotes(
+func (module *releaseNotesManager) PostReleaseNotes(
 	releaseNotes *common.ReleaseNotes,
 ) (action.Action, error) {
 
@@ -49,11 +42,7 @@ func (rnm *releaseNotesManager) PostReleaseNotes(
 	}
 
 	// Instantiate the API client.
-	config, err := github.LoadConfig()
-	if err != nil {
-		return nil, err
-	}
-	client := github.NewClient(config.ApiToken())
+	client := github.NewClient(module.config.Token)
 
 	// Format the release notes.
 	task := "Format the release notes"
