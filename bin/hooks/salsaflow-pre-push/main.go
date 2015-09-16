@@ -62,7 +62,7 @@ func run(remoteName, pushURL string) error {
 	if err != nil {
 		return err
 	}
-	enabledTimestamp := repoConfig.SalsaFlowEnabledTimestamp()
+	enabledTimestamp := repoConfig.SalsaFlowEnabledTimestamp
 
 	// Only check the project remote.
 	if remoteName != gitConfig.RemoteName {

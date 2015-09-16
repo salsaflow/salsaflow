@@ -18,34 +18,23 @@ import (
 	"github.com/shiena/ansicolor"
 )
 
-type Config interface {
-	SalsaFlowEnabledTimestamp() time.Time
+type Config struct {
+	SalsaFlowEnabledTimestamp time.Time
 }
 
-type LocalConfig struct {
-	EnabledTimestamp time.Time `yaml:"salsaflow_enabled_timestamp"`
-}
-
-func (config *LocalConfig) SalsaFlowEnabledTimestamp() time.Time {
-	return config.EnabledTimestamp
-}
-
-var cache *LocalConfig
-
-func LoadConfig() (Config, error) {
-	if cache == nil {
-		var lc LocalConfig
-		if err := config.UnmarshalLocalConfig(&lc); err != nil {
-			return nil, err
-		}
-		if lc.EnabledTimestamp.IsZero() {
-			// The enabled timestamp must be set no matter what.
-			printSalsaFlowEnabledTimestampWarning()
-			return nil, errors.New("SalsaFlow enabled timestamp not set")
-		}
-		cache = &lc
+func LoadConfig() (*Config, error) {
+	local, err := config.ReadLocalConfig()
+	if err != nil {
+		return nil, err
 	}
-	return cache, nil
+	config := &Config{}
+	if ts := local.EnabledTimestamp; ts != nil {
+		config.SalsaFlowEnabledTimestamp = *ts
+	} else {
+		printSalsaFlowEnabledTimestampWarning()
+		return nil, errors.New("SalsaFlow enabled timestamp not set")
+	}
+	return config, nil
 }
 
 func printSalsaFlowEnabledTimestampWarning() (n int64, err error) {

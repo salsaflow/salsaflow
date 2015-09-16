@@ -67,7 +67,7 @@ func ListNewTrunkCommits() ([]*git.Commit, error) {
 		return nil, err
 	}
 
-	enabledTimestamp := repoConfig.SalsaFlowEnabledTimestamp()
+	enabledTimestamp := repoConfig.SalsaFlowEnabledTimestamp
 	commits = git.FilterCommits(commits, func(commit *git.Commit) bool {
 		return commit.AuthorDate.After(enabledTimestamp)
 	})
