@@ -21,35 +21,23 @@ import (
 	"github.com/toqueteos/webbrowser"
 )
 
-const Id = "github"
-
-const LocalConfigTemplate = "# no additional config required"
-
 var errPostReviewRequest = errors.New("failed to post a review request")
 
-type moduleFactory struct{}
-
-func NewFactory() common.CodeReviewToolFactory {
-	return &moduleFactory{}
-}
-
-func (factory *moduleFactory) LocalConfigTemplate() string {
-	return LocalConfigTemplate
-}
-
-func (factory *moduleFactory) NewCodeReviewTool() (common.CodeReviewTool, error) {
-	return &codeReviewTool{}, nil
-}
-
-type codeReviewTool struct{}
-
-func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action, error) {
-	// Get necessary config.
-	config, err := LoadConfig()
+func newCodeReviewTool() (common.CodeReviewTool, error) {
+	config, err := loadConfig()
 	if err != nil {
 		return nil, err
 	}
 
+	return &codeReviewTool{config}, nil
+}
+
+type codeReviewTool struct {
+	config *moduleConfig
+}
+
+func (module *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action, error) {
+	// Get necessary config.
 	owner, repo, err := ghutil.ParseUpstreamURL()
 	if err != nil {
 		return nil, err
@@ -59,7 +47,7 @@ func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action
 	// People can create milestones manually, so this makes the thing more robust.
 	task := fmt.Sprintf("Check whether GitHub review milestone exists for release %v", v.BaseString())
 	log.Run(task)
-	milestone, err := milestoneForVersion(config, owner, repo, v)
+	milestone, err := milestoneForVersion(module.config, owner, repo, v)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
@@ -70,17 +58,13 @@ func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action
 	}
 
 	// Create the review milestone.
-	_, act, err := createMilestone(config, owner, repo, v)
+	_, act, err := createMilestone(module.config, owner, repo, v)
 	return act, err
 }
 
-func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, error) {
+func (module *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, error) {
 	// Get a GitHub client.
-	config, err := LoadConfig()
-	if err != nil {
-		return nil, err
-	}
-	client := ghutil.NewClient(config.Token())
+	client := ghutil.NewClient(module.config.Token)
 
 	owner, repo, err := ghutil.ParseUpstreamURL()
 	if err != nil {
@@ -91,7 +75,7 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 	releaseString := v.BaseString()
 	task := fmt.Sprintf("Get GitHub review milestone for release %v", releaseString)
 	log.Run(task)
-	milestone, err := milestoneForVersion(config, owner, repo, v)
+	milestone, err := milestoneForVersion(module.config, owner, repo, v)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
@@ -135,16 +119,10 @@ func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, 
 	}), nil
 }
 
-func (tool *codeReviewTool) PostReviewRequests(
+func (module *codeReviewTool) PostReviewRequests(
 	ctxs []*common.ReviewContext,
 	opts map[string]interface{},
 ) (err error) {
-
-	// Load the GitHub config.
-	config, err := LoadConfig()
-	if err != nil {
-		return err
-	}
 
 	// Get the GitHub owner and repository from the upstream URL.
 	owner, repo, err := ghutil.ParseUpstreamURL()
@@ -185,7 +163,7 @@ func (tool *codeReviewTool) PostReviewRequests(
 		for _, ctx := range ctxs {
 			commits = append(commits, ctx.Commit)
 		}
-		if ex := postAssignedReviewRequest(config, owner, repo, story, commits, opts); ex != nil {
+		if ex := postAssignedReviewRequest(module.config, owner, repo, story, commits, opts); ex != nil {
 			errs.Log(ex)
 			err = errPostReviewRequest
 		}
@@ -193,7 +171,7 @@ func (tool *codeReviewTool) PostReviewRequests(
 
 	// Post the unassigned commits.
 	for _, commit := range unassignedCommits {
-		if ex := postUnassignedReviewRequest(config, owner, repo, commit, opts); ex != nil {
+		if ex := postUnassignedReviewRequest(module.config, owner, repo, commit, opts); ex != nil {
 			errs.Log(ex)
 			err = errPostReviewRequest
 		}
@@ -202,7 +180,7 @@ func (tool *codeReviewTool) PostReviewRequests(
 	return
 }
 
-func (tool *codeReviewTool) PostReviewFollowupMessage() string {
+func (module *codeReviewTool) PostReviewFollowupMessage() string {
 	return `
 GitHub review issues successfully created.
 
@@ -225,7 +203,7 @@ to create a new GitHub review issue that references ISSUE_NUMBER.
 // postAssignedReviewRequest can be used to post
 // the commits associated with the given story for review.
 func postAssignedReviewRequest(
-	config Config,
+	config *moduleConfig,
 	owner string,
 	repo string,
 	story common.Story,
@@ -237,7 +215,7 @@ func postAssignedReviewRequest(
 	task := fmt.Sprintf("Search for an existing review issue for story %v", story.ReadableId())
 	log.Run(task)
 
-	client := ghutil.NewClient(config.Token())
+	client := ghutil.NewClient(config.Token)
 	issue, err := ghissues.FindReviewIssueForStory(client, owner, repo, story.ReadableId())
 	if err != nil {
 		return errs.NewError(task, err)
@@ -262,7 +240,7 @@ func postAssignedReviewRequest(
 // createAssignedReviewRequest can be used to create a new review issue
 // for the given commits that is associated with the story passed in.
 func createAssignedReviewRequest(
-	config Config,
+	config *moduleConfig,
 	owner string,
 	repo string,
 	story common.Story,
@@ -319,7 +297,7 @@ func createAssignedReviewRequest(
 // postUnassignedReviewRequest can be used to post the given commit for review.
 // This function is to be used to post commits that are not associated with any story.
 func postUnassignedReviewRequest(
-	config Config,
+	config *moduleConfig,
 	owner string,
 	repo string,
 	commit *git.Commit,
@@ -347,7 +325,7 @@ func postUnassignedReviewRequest(
 	task := fmt.Sprintf("Search for an existing review issue for commit %v", commit.SHA)
 	log.Run(task)
 
-	client := ghutil.NewClient(config.Token())
+	client := ghutil.NewClient(config.Token)
 	issue, err := ghissues.FindReviewIssueForCommit(client, owner, repo, commit.SHA)
 	if err != nil {
 		return errs.NewError(task, err)
@@ -374,7 +352,7 @@ func postUnassignedReviewRequest(
 // createUnassignedReviewRequest created a new review issue
 // for the given commit that is not associated with any story.
 func createUnassignedReviewRequest(
-	config Config,
+	config *moduleConfig,
 	owner string,
 	repo string,
 	commit *git.Commit,
@@ -414,7 +392,7 @@ func createUnassignedReviewRequest(
 // extendUnassignedReviewRequest can be used to upload fixes for
 // the specified unassigned review issue.
 func extendUnassignedReviewRequest(
-	config Config,
+	config *moduleConfig,
 	owner string,
 	repo string,
 	issueNum int,
@@ -425,7 +403,7 @@ func extendUnassignedReviewRequest(
 	// Fetch the issue.
 	task := fmt.Sprintf("Fetch GitHub issue #%v", issueNum)
 	log.Run(task)
-	client := ghutil.NewClient(config.Token())
+	client := ghutil.NewClient(config.Token)
 	issue, _, err := client.Issues.Get(owner, repo, issueNum)
 	if err != nil {
 		return errs.NewError(task, err)
@@ -438,7 +416,7 @@ func extendUnassignedReviewRequest(
 // extendReviewRequest is a general function that can be used to extend
 // the given review issue with the given list of commits.
 func extendReviewRequest(
-	config Config,
+	config *moduleConfig,
 	owner string,
 	repo string,
 	issue *github.Issue,
@@ -470,7 +448,7 @@ func extendReviewRequest(
 	// Add the implemented label if necessary.
 	var (
 		implemented      bool
-		implementedLabel = config.StoryImplementedLabel()
+		implementedLabel = config.StoryImplementedLabel
 		labelsPtr        *[]string
 	)
 	implementedOpt, ok := opts["implemented"]
@@ -499,7 +477,7 @@ func extendReviewRequest(
 	task = fmt.Sprintf("Update GitHub issue #%v", issueNum)
 	log.Run(task)
 
-	client := ghutil.NewClient(config.Token())
+	client := ghutil.NewClient(config.Token)
 	newIssue, _, err := client.Issues.Edit(owner, repo, issueNum, &github.IssueRequest{
 		Body:   github.String(reviewIssue.FormatBody()),
 		State:  github.String("open"),
@@ -522,7 +500,7 @@ func extendReviewRequest(
 }
 
 func addReviewComment(
-	config Config,
+	config *moduleConfig,
 	owner string,
 	repo string,
 	issueNum int,
@@ -537,7 +515,7 @@ func addReviewComment(
 
 	// Call GitHub API.
 	task := fmt.Sprintf("Add review comment for issue #%v", issueNum)
-	client := ghutil.NewClient(config.Token())
+	client := ghutil.NewClient(config.Token)
 	_, _, err := client.Issues.CreateComment(owner, repo, issueNum, &github.IssueComment{
 		Body: github.String(buffer.String()),
 	})
@@ -548,7 +526,7 @@ func addReviewComment(
 }
 
 func linkCommitToReviewIssue(
-	config Config,
+	config *moduleConfig,
 	owner string,
 	repo string,
 	issueNum int,
@@ -556,7 +534,7 @@ func linkCommitToReviewIssue(
 ) error {
 
 	// Instantiate an API client.
-	client := ghutil.NewClient(config.Token())
+	client := ghutil.NewClient(config.Token)
 
 	// Loop over the commits and post a commit comment for each of them.
 	for _, commit := range commits {
@@ -590,7 +568,7 @@ func openIssue(issue *github.Issue) error {
 
 func createIssue(
 	task string,
-	config Config,
+	config *moduleConfig,
 	owner string,
 	repo string,
 	issueTitle string,
@@ -601,13 +579,13 @@ func createIssue(
 ) (issue *github.Issue, err error) {
 
 	log.Run(task)
-	client := ghutil.NewClient(config.Token())
+	client := ghutil.NewClient(config.Token)
 
 	var labels []string
 	if implemented {
-		labels = []string{config.ReviewLabel(), config.StoryImplementedLabel()}
+		labels = []string{config.ReviewLabel, config.StoryImplementedLabel}
 	} else {
-		labels = []string{config.ReviewLabel()}
+		labels = []string{config.ReviewLabel}
 	}
 
 	var assigneePtr *string
@@ -631,7 +609,7 @@ func createIssue(
 }
 
 func createMilestone(
-	config Config,
+	config *moduleConfig,
 	owner string,
 	repo string,
 	v *version.Version,
@@ -641,7 +619,7 @@ func createMilestone(
 	var (
 		title         = milestoneTitle(v)
 		milestoneTask = fmt.Sprintf("Create GitHub review milestone '%v'", title)
-		client        = ghutil.NewClient(config.Token())
+		client        = ghutil.NewClient(config.Token)
 	)
 	log.Run(milestoneTask)
 	milestone, _, err := client.Issues.CreateMilestone(owner, repo, &github.Milestone{
@@ -664,7 +642,7 @@ func createMilestone(
 }
 
 func milestoneForVersion(
-	config Config,
+	config *moduleConfig,
 	owner string,
 	repo string,
 	v *version.Version,
@@ -673,7 +651,7 @@ func milestoneForVersion(
 	// Fetch milestones for the given repository.
 	var (
 		task   = fmt.Sprintf("Fetch GitHub milestones for %v/%v", owner, repo)
-		client = ghutil.NewClient(config.Token())
+		client = ghutil.NewClient(config.Token)
 		title  = milestoneTitle(v)
 	)
 	milestones, _, err := client.Issues.ListMilestones(owner, repo, nil)
@@ -694,7 +672,7 @@ func milestoneForVersion(
 }
 
 func getOrCreateMilestoneForCommit(
-	config Config,
+	config *moduleConfig,
 	owner string,
 	repo string,
 	sha string,
