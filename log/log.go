@@ -57,7 +57,7 @@ func SetV(level Level) {
 }
 
 func V(level Level) Logger {
-	if atomic.LoadUint32((*uint32)(&v)) > uint32(level) {
+	if threshold := atomic.LoadUint32((*uint32)(&v)); threshold > uint32(level) {
 		return Logger(false)
 	}
 	return Logger(true)
