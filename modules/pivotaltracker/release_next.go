@@ -12,6 +12,7 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/prompt/storyprompt"
 	"github.com/salsaflow/salsaflow/releases"
 	"github.com/salsaflow/salsaflow/version"
 
@@ -130,7 +131,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// In case there are some unpointed stories, stop the release.
 	if len(pmStories) != 0 {
 		fmt.Println("\nThe following stories are still yet to be pointed:\n")
-		err := prompt.ListStories(toCommonStories(pmStories, release.tracker), os.Stdout)
+		err := storyprompt.ListStories(toCommonStories(pmStories, release.tracker), os.Stdout)
 		if err != nil {
 			return false, err
 		}
@@ -157,7 +158,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 			fmt.Println()
 			fmt.Println(item.header)
 			fmt.Println()
-			err := prompt.ListStories(toCommonStories(item.stories, release.tracker), os.Stdout)
+			err := storyprompt.ListStories(toCommonStories(item.stories, release.tracker), os.Stdout)
 			if err != nil {
 				return false, err
 			}

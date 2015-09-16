@@ -16,6 +16,7 @@ import (
 	"github.com/salsaflow/salsaflow/modules"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/prompt/storyprompt"
 
 	// Other
 	"github.com/extemporalgenome/slug"
@@ -125,7 +126,7 @@ StoryLoop:
 	stories = filteredStories
 
 	// Prompt the user to select a story.
-	story, err := prompt.PromptStory(
+	story, err := storyprompt.PromptStory(
 		"\nYou can start working on one of the following stories:", stories)
 	if err != nil {
 		switch err {
