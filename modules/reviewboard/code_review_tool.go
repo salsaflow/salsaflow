@@ -12,6 +12,7 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/config"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules/common"
@@ -22,43 +23,40 @@ import (
 
 func init() {
 	// Load common configuration.
-	config, err := common.LoadConfig()
+	config, err := config.ReadLocalConfig()
 	if err != nil {
 		// Just do nothing on error.
 		return
 	}
 
 	// Register repo init hook in case we are using RB.
-	if config.CodeReviewToolId() == Id {
+	if config.Modules.CodeReview == ModuleId {
 		repo.AddInitHook(ensureRbtVersion)
 	}
 }
 
-type moduleFactory struct{}
+func newCodeReviewTool() (common.CodeReviewTool, error) {
+	config, err := loadConfig()
+	if err != nil {
+		return nil, err
+	}
 
-func NewFactory() common.CodeReviewToolFactory {
-	return &moduleFactory{}
+	return &codeReviewTool{config}, nil
 }
 
-func (factory *moduleFactory) LocalConfigTemplate() string {
-	return LocalConfigTemplate
+type codeReviewTool struct {
+	config *moduleConfig
 }
 
-func (factory *moduleFactory) NewCodeReviewTool() (common.CodeReviewTool, error) {
-	return &codeReviewTool{}, nil
-}
-
-type codeReviewTool struct{}
-
-func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action, error) {
+func (module *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action, error) {
 	return action.Noop, nil
 }
 
-func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, error) {
+func (module *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, error) {
 	return action.Noop, nil
 }
 
-func (tool *codeReviewTool) PostReviewRequests(
+func (module *codeReviewTool) PostReviewRequests(
 	ctxs []*common.ReviewContext,
 	opts map[string]interface{},
 ) (err error) {
@@ -67,7 +65,7 @@ func (tool *codeReviewTool) PostReviewRequests(
 	// Try to post a review request for every commit and keep printing the errors.
 	// Return a common error in case there is any partial error encountered.
 	for _, ctx := range ctxs {
-		if ex := postReviewRequestForCommit(ctx, opts); ex != nil {
+		if ex := postReviewRequestForCommit(module.config, ctx, opts); ex != nil {
 			log.NewLine("")
 			errs.Log(ex)
 			err = errors.New("failed to post a review request")
@@ -76,7 +74,7 @@ func (tool *codeReviewTool) PostReviewRequests(
 	return
 }
 
-func (tool *codeReviewTool) PostReviewFollowupMessage() string {
+func (module *codeReviewTool) PostReviewFollowupMessage() string {
 	return `
 Now, please, take some time to go through all the review requests
 to check and annotate them for the reviewers to make their part easier.
@@ -100,6 +98,7 @@ This will create a new review request that is linked to the one being fixed.
 }
 
 func postReviewRequestForCommit(
+	config *moduleConfig,
 	ctx *common.ReviewContext,
 	opts map[string]interface{},
 ) error {
@@ -117,12 +116,6 @@ func postReviewRequestForCommit(
 		panic("story ID not set for the commit being posted")
 	}
 
-	// Load the RB config.
-	config, err := LoadConfig()
-	if err != nil {
-		return err
-	}
-
 	// Parse the options.
 	var (
 		fixes    = formatOptInteger(opts["fixes"])
@@ -136,7 +129,7 @@ func postReviewRequestForCommit(
 
 	// Post the review request.
 	args := []string{"post",
-		"--server", config.ServerURL().String(),
+		"--server", config.ServerURL.String(),
 		"--guess-fields", "yes",
 	}
 
@@ -219,15 +212,6 @@ You need to install RBTools version 0.7. Please run
 to install the correct version.
 
 `
-
-	// Load configuration and check the RBTools version only if Review Board is being used.
-	config, err := common.LoadConfig()
-	if err != nil {
-		return err
-	}
-	if config.CodeReviewToolId() != Id {
-		return nil
-	}
 
 	// Check the RBTools version being used.
 	task := "Check the RBTools version being used"
