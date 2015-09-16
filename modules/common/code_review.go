@@ -1,20 +1,17 @@
 package common
 
 import (
+	// Internal
 	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/config/loader"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/version"
 )
 
-// CodeReviewFactory interface -------------------------------------------------
+// CodeReviewModule interface --------------------------------------------------
 
-type CodeReviewToolFactory interface {
-	// LocalConfigTemplate returns the string that is inserted into the local config
-	// file during `repo bootstrap`. It is basically the local config section skeleton
-	// that the user has to fill in manually.
-	LocalConfigTemplate() string
-
-	// NewCodeReviewTool returns a new instance of the given code review tool module.
+type CodeReviewModule interface {
+	loader.Module
 	NewCodeReviewTool() (CodeReviewTool, error)
 }
 

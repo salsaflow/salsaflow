@@ -1,14 +1,16 @@
 package common
 
 import (
+	// Internal
 	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/config/loader"
 	"github.com/salsaflow/salsaflow/version"
 )
 
-// ReleaseNotesManagerFactory interface ----------------------------------------
+// ReleaseNotesModule interface ------------------------------------------------
 
-type ReleaseNotesManagerFactory interface {
-	LocalConfigTemplate() string
+type ReleaseNotesModule interface {
+	loader.Module
 	NewReleaseNotesManager() (ReleaseNotesManager, error)
 }
 
