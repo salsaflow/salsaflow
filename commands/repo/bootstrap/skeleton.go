@@ -18,7 +18,7 @@ import (
 
 const SkeletonCacheDirname = ".salsaflow_skeletons"
 
-func fetchOrUpdateSkeleton(skeleton string) error {
+func getOrUpdateSkeleton(skeleton string) error {
 	// Parse the skeleton string.
 	parts := strings.SplitN(skeleton, "/", 2)
 	if len(parts) != 2 {

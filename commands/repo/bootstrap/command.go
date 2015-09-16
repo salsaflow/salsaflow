@@ -5,19 +5,20 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
-	"path/filepath"
-	"strings"
-	"time"
+	"sort"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/app"
 	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/config"
+	"github.com/salsaflow/salsaflow/config/loader"
 	"github.com/salsaflow/salsaflow/errs"
-	"github.com/salsaflow/salsaflow/flag"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules"
-	"github.com/salsaflow/salsaflow/modules/common"
+	"github.com/salsaflow/salsaflow/prompt"
 
 	// Other
 	"gopkg.in/tchap/gocli.v2"
@@ -25,90 +26,24 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  bootstrap -issue_tracker=ISSUE_TRACKER
-            -code_review_tool=CODE_REVIEW_TOOL
-            [-release_notes=RELEASE_NOTES]
-            [-skeleton=SKELETON]`,
-	Short: "generate local config for SalsaFlow",
+  bootstrap [-skeleton=SKELETON] [-skeleton_only]`,
+	Short: "bootstrap repository for SalsaFlow",
 	Long: `
-  This command can be used to set up the repository to work with SalsaFlow.
-
-  SalsaFlow needs certain information to be kept in the repository
-  to be able to function properly. To make the initial repository setup
-  easier, repo bootstrap can be used to generate all necessary files,
-  which can be then modified manually if necessary.
-
-  The files are just dumped into the working tree, into .salsaflow directory.
-  The directory must be committed after making sure everything is correct.
-
-  Considering the flags, 'issue_tracker', 'code_review_tool' and
-  'release_notes' can be used to tell SalsaFlow what implementation to use
-  for particular service modules. The first two flags are required, the last one
-  is optional. See the AVAILABLE MODULES section for the allowed values.
-
-  The 'skeleton' flag is a bit different. It can be used to specify
-  a GitHub repository that is used as the skeleton for project custom scripts.
-  The repository is simply cloned and the contents are poured into .salsaflow.
-  The format is '<org>/<repo>', e.g. 'salsaflow/skeleton-golang'.
 	`,
 	Action: run,
 }
 
-func init() {
-	var (
-		issueTrackerKeys        = modules.AvailableIssueTrackerKeys()
-		codeReviewToolKeys      = modules.AvailableCodeReviewToolKeys()
-		releaseNotesManagerKeys = modules.AvailableReleaseNotesManagerKeys()
-	)
-
-	// Generate the long description so that it lists the availabe module keys.
-	var help bytes.Buffer
-	fmt.Fprintln(&help, "AVAILABLE MODULES:\n")
-	fmt.Fprintln(&help, "  Issue Trackers")
-	fmt.Fprintln(&help, "  --------------")
-	fmt.Fprintln(&help, "  These following values can be used for the issue_tracker flag:")
-	for _, key := range issueTrackerKeys {
-		fmt.Fprintf(&help, "    - %v\n", key)
-	}
-	fmt.Fprintln(&help)
-	fmt.Fprintln(&help, "  Code Review Systems")
-	fmt.Fprintln(&help, "  -------------------")
-	fmt.Fprintln(&help, "  The following values can be used for the code_review_tool flag:")
-	for _, key := range codeReviewToolKeys {
-		fmt.Fprintf(&help, "    - %v\n", key)
-	}
-	fmt.Fprintln(&help)
-	fmt.Fprintln(&help, "  Release Notes")
-	fmt.Fprintln(&help, "  -------------")
-	fmt.Fprintln(&help, "  The following values can be used for the release_notes flag:")
-	for _, key := range releaseNotesManagerKeys {
-		fmt.Fprintf(&help, "    - %v\n", key)
-	}
-	Command.Long = fmt.Sprintf("%v\n%v", Command.Long, help.String())
-
-	// Initialise the enum flags.
-	flagIssueTracker = flag.NewStringEnumFlag(issueTrackerKeys, "")
-	flagCodeReviewTool = flag.NewStringEnumFlag(codeReviewToolKeys, "")
-	flagReleaseNotesManager = flag.NewStringEnumFlag(releaseNotesManagerKeys, "")
-}
-
 var (
-	flagCodeReviewTool      *flag.StringEnumFlag
-	flagIssueTracker        *flag.StringEnumFlag
-	flagReleaseNotesManager *flag.StringEnumFlag
-	flagSkeleton            string
+	flagSkeleton     string
+	flagSkeletonOnly bool
 )
 
 func init() {
 	// Register flags.
-	Command.Flags.Var(flagCodeReviewTool, "code_review_tool",
-		"code review tool that is being used for the project")
-	Command.Flags.Var(flagIssueTracker, "issue_tracker",
-		"issue tracker that is being used for the project")
-	Command.Flags.Var(flagReleaseNotesManager, "release_notes",
-		"release notes module that is being used for the project")
 	Command.Flags.StringVar(&flagSkeleton, "skeleton", flagSkeleton,
 		"skeleton to be used to bootstrap the repository")
+	Command.Flags.BoolVar(&flagSkeletonOnly, "skeleton_only", flagSkeletonOnly,
+		"skip the config dialog and only install the skeleton")
 
 	// Register global flags.
 	appflags.RegisterGlobalFlags(&Command.Flags)
@@ -120,122 +55,183 @@ func run(cmd *gocli.Command, args []string) {
 		os.Exit(2)
 	}
 
-	// Make sure the required flags are set.
-	task := "Make sure all required flags are specified"
-	issueTrackerKey := flagIssueTracker.Value()
-	if issueTrackerKey == "" {
-		cmd.Usage()
-		errs.Fatal(errs.NewError(task, errors.New("flag 'issue_tracker' is not set")))
-	}
+	app.InitLogging()
 
-	codeReviewToolKey := flagCodeReviewTool.Value()
-	if codeReviewToolKey == "" {
-		cmd.Usage()
-		errs.Fatal(errs.NewError(task, errors.New("flag 'code_review_tool' is not set")))
-	}
+	defer prompt.RecoverCancel()
 
-	if err := runMain(); err != nil {
+	if err := runMain(cmd); err != nil {
 		errs.Fatal(err)
 	}
 }
 
-func runMain() error {
-	// Check the global configuration file.
-	task := "Check whether the global configuration file exists"
-	globalPath, err := config.GlobalConfigFileAbsolutePath()
-	if err != nil {
-		return errs.NewError(task, err)
+func runMain(cmd *gocli.Command) (err error) {
+	// Validate CL flags.
+	task := "Check the command line flags"
+	if flagSkeletonOnly && flagSkeleton == "" {
+		cmd.Usage()
+		return errs.NewError(
+			task, errors.New("-skeleton must be specified when -skeleton_only is set"))
 	}
 
-	if _, err := os.Stat(globalPath); err != nil {
-		if !os.IsNotExist(err) {
-			return errs.NewError(task, err)
-		}
-		log.Warn("Global configuration file not found")
-	}
-
-	// Instantiate the modules.
-	trackerFactory, err := modules.GetIssueTrackerFactory(flagIssueTracker.Value())
-	if err != nil {
+	// Make sure the local config directory exists.
+	if err := ensureLocalConfigDirectoryExists(); err != nil {
 		return err
 	}
+	action.RollbackOnError(&err, action.ActionFunc(deleteLocalConfigDirectory))
 
-	reviewFactory, err := modules.GetCodeReviewToolFactory(flagCodeReviewTool.Value())
-	if err != nil {
-		return err
-	}
-
-	var notesFactory common.ReleaseNotesManagerFactory
-	if v := flagReleaseNotesManager.Value(); v != "" {
-		var err error
-		notesFactory, err = modules.GetReleaseNotesManagerFactory(v)
-		if err != nil {
+	// Set up the global and local configuration file unless -skeleton_only.
+	if !flagSkeletonOnly {
+		if err := assembleAndWriteConfig(); err != nil {
 			return err
 		}
 	}
 
-	// Fetch or update the skeleton is necessary.
-	if flagSkeleton != "" {
-		task := "Fetch or update the given skeleton"
-		if err := fetchOrUpdateSkeleton(flagSkeleton); err != nil {
-			return errs.NewError(task, err)
+	// Install the skeleton into the local config directory if desired.
+	if skeleton := flagSkeleton; skeleton != "" {
+		if err := getAndPourSkeleton(skeleton); err != nil {
+			return err
 		}
 	}
 
-	// Make sure the local config directory exists.
-	task = "Create the local metadata directory"
-	log.Run(task)
-	configDir, err := config.LocalConfigDirectoryAbsolutePath()
+	fmt.Println()
+	log.Log("Successfully bootstrapped the repository for SalsaFlow")
+	log.NewLine("Do not forget to commit modified configuration files!")
+	return nil
+}
+
+func ensureLocalConfigDirectoryExists() error {
+	task := "Make sure the local configuration directory exists"
+
+	// Get the directory absolute path.
+	localConfigDir, err := config.LocalConfigDirectoryAbsolutePath()
 	if err != nil {
 		return errs.NewError(task, err)
 	}
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+
+	// In case the path exists, make sure it is a directory.
+	info, err := os.Stat(localConfigDir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return errs.NewError(task, err)
+		}
+	} else {
+		if !info.IsDir() {
+			return errs.NewError(task, fmt.Errorf("not a directory: %v", localConfigDir))
+		}
+		return nil
+	}
+
+	// Otherwise create the directory.
+	if err := os.MkdirAll(localConfigDir, 0755); err != nil {
 		return errs.NewError(task, err)
 	}
 
-	// Write the local configuration file.
-	task = "Write the local configuration file"
+	return nil
+}
+
+func deleteLocalConfigDirectory() error {
+	task := "Delete the local configuration directory"
 	log.Run(task)
-	configPath := filepath.Join(configDir, config.LocalConfigFilename)
-	file, err := os.OpenFile(configPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0640)
+
+	// Get the directory absolute path.
+	localConfigDir, err := config.LocalConfigDirectoryAbsolutePath()
 	if err != nil {
 		return errs.NewError(task, err)
 	}
-	defer file.Close()
 
-	ctx := &LocalContext{
-		EnabledTimestamp:             Time(time.Now()),
-		IssueTrackerKey:              flagIssueTracker.Value(),
-		IssueTrackerConfigTemplate:   strings.TrimSpace(trackerFactory.LocalConfigTemplate()),
-		CodeReviewToolKey:            flagCodeReviewTool.Value(),
-		CodeReviewToolConfigTemplate: strings.TrimSpace(reviewFactory.LocalConfigTemplate()),
+	// Delete the directory.
+	if err := os.RemoveAll(localConfigDir); err != nil {
+		return errs.NewError(task, err)
 	}
-	if notesFactory != nil {
-		ctx.ReleaseNotesManagerKey = flagReleaseNotesManager.Value()
-		ctx.ReleaseNotesManagerConfigTemplate = strings.TrimSpace(
-			notesFactory.LocalConfigTemplate())
+
+	return nil
+}
+
+func assembleAndWriteConfig() error {
+	// Group available modules by kind.
+	var (
+		issueTrackingModules []loader.Module
+		codeReviewModules    []loader.Module
+		releaseNotesModules  []loader.Module
+	)
+	groups := groupModulesByKind(modules.AvailableModules())
+	for _, group := range groups {
+		switch group[0].Kind() {
+		case loader.ModuleKindIssueTracking:
+			issueTrackingModules = group
+		case loader.ModuleKindCodeReview:
+			codeReviewModules = group
+		case loader.ModuleKindReleaseNotes:
+			releaseNotesModules = group
+		}
 	}
-	if err := WriteLocalConfigTemplate(file, ctx); err != nil {
-		return err
+
+	sort.Sort(commonModules(issueTrackingModules))
+	sort.Sort(commonModules(codeReviewModules))
+	sort.Sort(commonModules(releaseNotesModules))
+
+	// Run the common dialog.
+	task := "Run the core configuration dialog"
+	if err := loader.RunCommonBootstrapDialog(); err != nil {
+		return errs.NewError(task, err)
+	}
+
+	// Run the dialog.
+	task = "Run the modules configuration dialog"
+	err := loader.RunModuleBootstrapDialog(
+		&loader.ModuleDialogSection{issueTrackingModules, false},
+		&loader.ModuleDialogSection{codeReviewModules, false},
+		&loader.ModuleDialogSection{releaseNotesModules, true},
+	)
+	if err != nil {
+		return errs.NewError(task, err)
+	}
+
+	return nil
+}
+
+func getAndPourSkeleton(skeleton string) error {
+	// Get or update given skeleton.
+	task := fmt.Sprintf("Get or update skeleton '%v'", skeleton)
+	log.Run(task)
+	if err := getOrUpdateSkeleton(flagSkeleton); err != nil {
+		return errs.NewError(task, err)
 	}
 
 	// Move the skeleton files into place.
-	if flagSkeleton != "" {
-		task := "Copy the skeleton into the metadata directory"
-		log.Go(task)
-		log.NewLine("")
-		if err := pourSkeleton(flagSkeleton, configDir); err != nil {
-			return errs.NewError(task, err)
-		}
-		log.NewLine("")
-		log.Ok(task)
+	task = "Copy the skeleton into the configuration directory"
+	log.Go(task)
+
+	localConfigDir, err := config.LocalConfigDirectoryAbsolutePath()
+	if err != nil {
+		return errs.NewError(task, err)
 	}
 
-	fmt.Println(`
-The files were written into .salsaflow directory in the repository root.
+	log.NewLine("")
+	if err := pourSkeleton(flagSkeleton, localConfigDir); err != nil {
+		return errs.NewError(task, err)
+	}
+	log.NewLine("")
+	log.Ok(task)
 
-Please go through the generated files and make sure they are correct.
-Once you are sure they are ok, please commit them into the repository.
-`)
+	return nil
+}
+
+func writeConfigFile(path string, configObject interface{}) error {
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0640)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	content, err := config.Marshal(configObject)
+	if err != nil {
+		return err
+	}
+
+	if _, err := io.Copy(file, bytes.NewReader(content)); err != nil {
+		return err
+	}
+
 	return nil
 }
