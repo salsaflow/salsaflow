@@ -60,7 +60,7 @@ func (release *runningRelease) EnsureStageable() error {
 	io.WriteString(tw, "Story URL\tError\n")
 	io.WriteString(tw, "=========\t=====\n")
 
-	skipLabels := release.tracker.config.SkipCheckLabels()
+	skipLabels := release.tracker.config.SkipCheckLabels
 	shouldBeSkipped := func(story *pivotal.Story) bool {
 		for _, skipLabel := range skipLabels {
 			if labeled(story, skipLabel) {

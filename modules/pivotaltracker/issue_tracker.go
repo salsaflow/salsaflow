@@ -18,43 +18,35 @@ import (
 
 const ServiceName = "Pivotal Tracker"
 
-type moduleFactory struct{}
-
-func NewFactory() common.IssueTrackerFactory {
-	return &moduleFactory{}
+type issueTracker struct {
+	config *moduleConfig
 }
 
-func (factory *moduleFactory) LocalConfigTemplate() string {
-	return LocalConfigTemplate
-}
-
-func (factory *moduleFactory) NewIssueTracker() (common.IssueTracker, error) {
-	config, err := LoadConfig()
+func newIssueTracker() (common.IssueTracker, error) {
+	config, err := loadConfig()
 	if err != nil {
 		return nil, err
 	}
+
 	return &issueTracker{config}, nil
 }
 
-type issueTracker struct {
-	config Config
-}
-
-func (tracker *issueTracker) ServiceName() string {
+func (module *issueTracker) ServiceName() string {
 	return ServiceName
 }
 
-func (tracker *issueTracker) CurrentUser() (common.User, error) {
-	me, err := fetchMe()
+func (module *issueTracker) CurrentUser() (common.User, error) {
+	client := pivotal.NewClient(module.config.UserToken)
+	me, _, err := client.Me.Get()
 	if err != nil {
 		return nil, err
 	}
 	return &user{me}, nil
 }
 
-func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
+func (module *issueTracker) StartableStories() (stories []common.Story, err error) {
 	// Fetch the stories with the right story type.
-	ptStories, err := tracker.searchStories(
+	ptStories, err := module.searchStories(
 		"state:%v,%v", pivotal.StoryStateUnstarted, pivotal.StoryStatePlanned)
 	if err != nil {
 		return nil, err
@@ -72,36 +64,36 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 	}
 
 	// Return what is left.
-	return toCommonStories(ptStories, tracker), nil
+	return toCommonStories(ptStories, module), nil
 }
 
-func (tracker *issueTracker) ReviewableStories() (stories []common.Story, err error) {
-	ptStories, err := tracker.searchStories(
+func (module *issueTracker) ReviewableStories() (stories []common.Story, err error) {
+	ptStories, err := module.searchStories(
 		`(state:%v OR state:%v) AND -label:"%v" AND -label:"%v"`,
 		pivotal.StoryStateStarted, pivotal.StoryStateFinished,
-		tracker.config.ReviewedLabel(), tracker.config.SkipReviewLabel())
+		module.config.ReviewedLabel, module.config.SkipReviewLabel)
 	if err != nil {
 		return nil, err
 	}
 
-	return toCommonStories(ptStories, tracker), nil
+	return toCommonStories(ptStories, module), nil
 }
 
-func (tracker *issueTracker) ReviewedStories() (stories []common.Story, err error) {
-	ptStories, err := tracker.searchStories(
-		"state:%v AND label:\"%v\"", pivotal.StoryStateFinished, tracker.config.ReviewedLabel())
+func (module *issueTracker) ReviewedStories() (stories []common.Story, err error) {
+	ptStories, err := module.searchStories(
+		"state:%v AND label:\"%v\"", pivotal.StoryStateFinished, module.config.ReviewedLabel)
 	if err != nil {
 		return nil, err
 	}
 
-	return toCommonStories(ptStories, tracker), nil
+	return toCommonStories(ptStories, module), nil
 }
 
-func (tracker *issueTracker) ListStoriesByTag(tags []string) ([]common.Story, error) {
+func (module *issueTracker) ListStoriesByTag(tags []string) ([]common.Story, error) {
 	// Convert tags to ids.
 	ids := make([]string, 0, len(tags))
 	for _, tag := range tags {
-		id, err := tracker.StoryTagToReadableStoryId(tag)
+		id, err := module.StoryTagToReadableStoryId(tag)
 		if err != nil {
 			return nil, err
 		}
@@ -109,43 +101,43 @@ func (tracker *issueTracker) ListStoriesByTag(tags []string) ([]common.Story, er
 	}
 
 	// Fetch the relevant stories.
-	stories, err := tracker.storiesByIdOrdered(ids)
+	stories, err := module.storiesByIdOrdered(ids)
 	if err != nil {
 		return nil, err
 	}
 
 	// Convert to []common.Story and return.
-	return toCommonStories(stories, tracker), nil
+	return toCommonStories(stories, module), nil
 }
 
-func (tracker *issueTracker) ListStoriesByRelease(v *version.Version) ([]common.Story, error) {
-	stories, err := tracker.storiesByRelease(v)
+func (module *issueTracker) ListStoriesByRelease(v *version.Version) ([]common.Story, error) {
+	stories, err := module.storiesByRelease(v)
 	if err != nil {
 		return nil, err
 	}
-	return toCommonStories(stories, tracker), nil
+	return toCommonStories(stories, module), nil
 }
 
-func (tracker *issueTracker) NextRelease(
+func (module *issueTracker) NextRelease(
 	trunkVersion *version.Version,
 	nextTrunkVersion *version.Version,
 ) (common.NextRelease, error) {
 
-	return newNextRelease(tracker, trunkVersion, nextTrunkVersion)
+	return newNextRelease(module, trunkVersion, nextTrunkVersion)
 }
 
-func (tracker *issueTracker) RunningRelease(
+func (module *issueTracker) RunningRelease(
 	releaseVersion *version.Version,
 ) (common.RunningRelease, error) {
 
-	return newRunningRelease(releaseVersion, tracker)
+	return newRunningRelease(releaseVersion, module)
 }
 
-func (tracker *issueTracker) OpenStory(storyId string) error {
+func (module *issueTracker) OpenStory(storyId string) error {
 	return webbrowser.Open(fmt.Sprintf("https://pivotaltracker.com/story/show/%v", storyId))
 }
 
-func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId string, err error) {
+func (module *issueTracker) StoryTagToReadableStoryId(tag string) (storyId string, err error) {
 	parts := strings.Split(tag, "/")
 	if len(parts) != 3 {
 		return "", fmt.Errorf("invalid Pivotal Tracker Story-Id tag: %v", tag)
@@ -153,15 +145,15 @@ func (tracker *issueTracker) StoryTagToReadableStoryId(tag string) (storyId stri
 	return parts[2], nil
 }
 
-func (tracker *issueTracker) searchStories(
+func (module *issueTracker) searchStories(
 	queryFormat string,
 	v ...interface{},
 ) ([]*pivotal.Story, error) {
 
 	// Get the client.
 	var (
-		client    = pivotal.NewClient(tracker.config.UserToken())
-		projectId = tracker.config.ProjectId()
+		client    = pivotal.NewClient(module.config.UserToken)
+		projectId = module.config.ProjectId
 	)
 
 	// Generate the query.
@@ -175,7 +167,7 @@ func (tracker *issueTracker) searchStories(
 	stories, err := client.Stories.List(projectId, query)
 
 	// Filter stories by the component label when necessary.
-	if label := tracker.config.ComponentLabel(); label != "" {
+	if label := module.config.ComponentLabel; label != "" {
 		stories = filterStories(stories, func(story *pivotal.Story) bool {
 			return labeled(story, label)
 		})
@@ -184,19 +176,19 @@ func (tracker *issueTracker) searchStories(
 	return stories, err
 }
 
-func (tracker *issueTracker) updateStories(
+func (module *issueTracker) updateStories(
 	stories []*pivotal.Story,
 	updateFunc storyUpdateFunc,
 	rollbackFunc storyUpdateFunc,
 ) ([]*pivotal.Story, error) {
 	var (
-		client    = pivotal.NewClient(tracker.config.UserToken())
-		projectId = tracker.config.ProjectId()
+		client    = pivotal.NewClient(module.config.UserToken)
+		projectId = module.config.ProjectId
 	)
 	return updateStories(client, projectId, stories, updateFunc, rollbackFunc)
 }
 
-func (tracker *issueTracker) storiesById(ids []string) ([]*pivotal.Story, error) {
+func (module *issueTracker) storiesById(ids []string) ([]*pivotal.Story, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -209,12 +201,12 @@ func (tracker *issueTracker) storiesById(ids []string) ([]*pivotal.Story, error)
 	}
 
 	// Send the query.
-	return tracker.searchStories(filter.String())
+	return module.searchStories(filter.String())
 }
 
-func (tracker *issueTracker) storiesByIdOrdered(ids []string) ([]*pivotal.Story, error) {
+func (module *issueTracker) storiesByIdOrdered(ids []string) ([]*pivotal.Story, error) {
 	// Fetch the stories.
-	stories, err := tracker.storiesById(ids)
+	stories, err := module.storiesById(ids)
 	if err != nil {
 		return nil, err
 	}
@@ -238,17 +230,17 @@ func (tracker *issueTracker) storiesByIdOrdered(ids []string) ([]*pivotal.Story,
 	return ordered, nil
 }
 
-func (tracker *issueTracker) storiesByRelease(v *version.Version) ([]*pivotal.Story, error) {
-	return tracker.searchStories(`label:"%v"`, getReleaseLabel(v))
+func (module *issueTracker) storiesByRelease(v *version.Version) ([]*pivotal.Story, error) {
+	return module.searchStories(`label:"%v"`, getReleaseLabel(v))
 }
 
-func (tracker *issueTracker) canStoryBeStaged(story *pivotal.Story) bool {
+func (module *issueTracker) canStoryBeStaged(story *pivotal.Story) bool {
 	var (
-		config           = tracker.config
-		reviewedLabel    = config.ReviewedLabel()
-		skipReviewLabel  = config.SkipReviewLabel()
-		testedLabel      = config.TestedLabel()
-		skipTestingLabel = config.SkipTestingLabel()
+		config           = module.config
+		reviewedLabel    = config.ReviewedLabel
+		skipReviewLabel  = config.SkipReviewLabel
+		testedLabel      = config.TestedLabel
+		skipTestingLabel = config.SkipTestingLabel
 	)
 	var (
 		reviewed = labeled(story, reviewedLabel) || labeled(story, skipReviewLabel)

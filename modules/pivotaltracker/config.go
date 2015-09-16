@@ -1,38 +1,116 @@
 package pivotaltracker
 
 import (
+	// Stdlib
+	"fmt"
+	"sort"
+	"strings"
+
 	// Internal
-	"github.com/salsaflow/salsaflow/config"
+	"github.com/salsaflow/salsaflow/config/loader"
 	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/prompt"
+
+	// Vendor
+	"github.com/bgentry/speakeasy"
+	"gopkg.in/salsita/go-pivotaltracker.v1/v5/pivotal"
 )
 
-const Id = "pivotal_tracker"
+// Configuration ===============================================================
 
-const LocalConfigTemplate = `
-#pivotal_tracker:
-#  project_id: 123456
-#
-#  All config that follows is OPTIONAL.
-#
-#  # You can set the following key to filter the stories
-#  # SalsaFlow will be operating with when inside of this repository.
-#  # This is handy in case you are using a single PT projects
-#  # with multiple repositories.
-#  component_label: "server"
-#
-#  # The values visible there are the default choices.
-#  # In case the defaults are fine, just delete the section,
-#  # otherwise uncomment what you need to change.
-#  workflow_labels:
-#    point_me: "point_me"
-#    reviewed: "reviewed"
-#    skip_review: "no review"
-#    tested: "qa+"
-#    skip_testing: "no qa"
-#    skip_check_labels:
-#      - "wontfix"
-#      - "dupe"
-`
+type moduleConfig struct {
+	ProjectId        int
+	ComponentLabel   string
+	PointMeLabel     string
+	ReviewedLabel    string
+	SkipReviewLabel  string
+	TestedLabel      string
+	SkipTestingLabel string
+	SkipCheckLabels  []string
+	UserToken        string
+}
+
+func loadConfig() (*moduleConfig, error) {
+	// Load the config.
+	spec := newConfigSpec()
+	if err := loader.LoadConfig(spec); err != nil {
+		return nil, err
+	}
+
+	// Assemble the config object.
+	var (
+		local  = spec.local
+		global = spec.global
+	)
+	return &moduleConfig{
+		ProjectId:        local.ProjectId,
+		ComponentLabel:   *local.ComponentLabel,
+		PointMeLabel:     local.Labels.PointMeLabel,
+		ReviewedLabel:    local.Labels.ReviewedLabel,
+		SkipReviewLabel:  local.Labels.SkipReviewLabel,
+		TestedLabel:      local.Labels.TestedLabel,
+		SkipTestingLabel: local.Labels.SkipTestingLabel,
+		SkipCheckLabels:  local.Labels.SkipCheckLabels,
+		UserToken:        global.UserToken,
+	}, nil
+}
+
+// Configuration spec ----------------------------------------------------------
+
+type configSpec struct {
+	global *GlobalConfig
+	local  *LocalConfig
+}
+
+func newConfigSpec() *configSpec {
+	return &configSpec{}
+}
+
+// ConfigKey is a part of loader.ConfigSpec
+func (spec *configSpec) ConfigKey() string {
+	return ModuleId
+}
+
+// ModuleKind is a part of loader.ModuleConfigSpec
+func (spec *configSpec) ModuleKind() loader.ModuleKind {
+	return loader.ModuleKindIssueTracking
+}
+
+// GlobalConfig is a part of loader.ConfigSpec
+func (spec *configSpec) GlobalConfig() loader.ConfigContainer {
+	spec.global = &GlobalConfig{}
+	return spec.global
+}
+
+// LocalConfig is a part of loader.ConfigSpec
+func (spec *configSpec) LocalConfig() loader.ConfigContainer {
+	spec.local = &LocalConfig{spec: spec}
+	return spec.local
+}
+
+// Global configuration --------------------------------------------------------
+
+// GlobalConfig implements loader.ConfigContainer
+type GlobalConfig struct {
+	UserToken string `json:"token"`
+}
+
+// PromptUserForConfig is a part of loader.ConfigContainer
+func (global *GlobalConfig) PromptUserForConfig() error {
+	token, err := speakeasy.Ask("Insert your personal Pivotal Tracker token: ")
+	if err != nil {
+		return err
+	}
+	if token == "" {
+		prompt.PanicCancel()
+	}
+
+	global.UserToken = token
+	return nil
+}
+
+// Local configuration ---------------------------------------------------------
 
 const (
 	DefaultPointMeLabel     = "point me"
@@ -44,173 +122,116 @@ const (
 
 var DefaultSkipCheckLabels = []string{"dupe", "wontfix"}
 
-// Local configuration ---------------------------------------------------------
-
+// LocalConfig implements loader.ConfigContainer interface.
 type LocalConfig struct {
-	PT struct {
-		ProjectId      int    `yaml:"project_id"`
-		ComponentLabel string `yaml:"component_label"`
-		Labels         struct {
-			PointMeLabel     string   `yaml:"point_me"`
-			ReviewedLabel    string   `yaml:"reviewed"`
-			SkipReviewLabel  string   `yaml:"skip_review"`
-			TestedLabel      string   `yaml:"tested"`
-			SkipTestingLabel string   `yaml:"skip_testing"`
-			SkipCheckLabels  []string `yaml:"skip_check_labels"`
-		} `yaml:"workflow_labels"`
-	} `yaml:"pivotal_tracker"`
+	spec *configSpec
+
+	ProjectId      int     `json:"project_id"`
+	ComponentLabel *string `json:"component_label"`
+	Labels         struct {
+		PointMeLabel     string   `json:"point_me"`
+		ReviewedLabel    string   `json:"reviewed"`
+		SkipReviewLabel  string   `json:"skip_review"`
+		TestedLabel      string   `json:"tested"`
+		SkipTestingLabel string   `json:"skip_testing"`
+		SkipCheckLabels  []string `json:"skip_release_check_labels"`
+	} `json:"workflow_labels"`
 }
 
-func (local *LocalConfig) validate() error {
-	var (
-		task = "Validate the local Pivotal Tracker configuration"
-		pt   = &local.PT
-		err  error
-	)
-	switch {
-	case pt.ProjectId == 0:
-		err = &config.ErrKeyNotSet{Id + ".project_id"}
-	case pt.Labels.PointMeLabel == "":
-		err = &config.ErrKeyNotSet{Id + ".labels.point_me"}
-	case pt.Labels.ReviewedLabel == "":
-		err = &config.ErrKeyNotSet{Id + ".labels.reviewed"}
-	case pt.Labels.SkipReviewLabel == "":
-		err = &config.ErrKeyNotSet{Id + ".labels.skip_review"}
-	case pt.Labels.TestedLabel == "":
-		err = &config.ErrKeyNotSet{Id + ".labels.tested"}
-	case pt.Labels.SkipTestingLabel == "":
-		err = &config.ErrKeyNotSet{Id + ".labels.skip_testing"}
-	}
+// PromptUserForConfig is a part of loader.ConfigContainer interface.
+func (local *LocalConfig) PromptUserForConfig() error {
+	c := LocalConfig{spec: local.spec}
+
+	// Prompt for the project ID.
+	task := "Fetch available Pivotal Tracker projects"
+	log.Run(task)
+
+	client := pivotal.NewClient(local.spec.global.UserToken)
+
+	projects, _, err := client.Projects.List()
 	if err != nil {
 		return errs.NewError(task, err)
 	}
-	return nil
-}
+	sort.Sort(ptProjects(projects))
 
-// Global configuration --------------------------------------------------------
-
-type GlobalConfig struct {
-	PT struct {
-		UserToken string `yaml:"token"`
-	} `yaml:"pivotal_tracker"`
-}
-
-func (global *GlobalConfig) validate() error {
-	var (
-		task = "Validate the global Pivotal Tracker configuration"
-		pt   = &global.PT
-		err  error
-	)
-	switch {
-	case pt.UserToken == "":
-		err = &config.ErrKeyNotSet{Id + ".token"}
+	fmt.Println()
+	fmt.Println("Available Pivotal Tracker projects:")
+	fmt.Println()
+	for i, project := range projects {
+		fmt.Printf("  [%v] %v\n", i+1, project.Name)
 	}
+	fmt.Println()
+	fmt.Println("Choose the project to associate this repository with.")
+	index, err := prompt.PromptIndex("Project number: ", 1, len(projects))
 	if err != nil {
-		return errs.NewError(task, err)
+		if err == prompt.ErrCanceled {
+			prompt.PanicCancel()
+		}
+
+		return err
 	}
+	fmt.Println()
+
+	c.ProjectId = projects[index-1].Id
+
+	// Prompt for the labels.
+	promptForLabel := func(dst *string, labelName, defaultValue string) {
+		if err != nil {
+			return
+		}
+		question := fmt.Sprintf("%v label", labelName)
+		var label string
+		label, err = prompt.PromptDefault(question, defaultValue)
+		if err == nil {
+			*dst = label
+		}
+	}
+
+	var componentLabel string
+	promptForLabel(&componentLabel, "Component", "")
+	c.ComponentLabel = &componentLabel
+
+	promptForLabel(&c.Labels.PointMeLabel, "Point me", DefaultPointMeLabel)
+	promptForLabel(&c.Labels.ReviewedLabel, "Reviewed", DefaultReviewedLabel)
+	promptForLabel(&c.Labels.SkipReviewLabel, "Skip review", DefaultSkipReviewLabel)
+	promptForLabel(&c.Labels.TestedLabel, "Testing passed", DefaultTestedLabel)
+	promptForLabel(&c.Labels.SkipTestingLabel, "Skip testing", DefaultSkipTestingLabel)
+	if err != nil {
+		return err
+	}
+
+	// Prompt for the skip check labels.
+	skipCheckLabelsString, err := prompt.Prompt(fmt.Sprintf(
+		"Skip check labels (comma-separated) (%v added automatically): ",
+		strings.Join(DefaultSkipCheckLabels, ", ")))
+	if err != nil {
+		if err != prompt.ErrCanceled {
+			return err
+		}
+	}
+	c.Labels.SkipCheckLabels = DefaultSkipCheckLabels
+	skipCheckLabels := strings.SplitAfter(skipCheckLabelsString, ",")
+	for _, label := range skipCheckLabels {
+		if label != "" {
+			c.Labels.SkipCheckLabels = append(c.Labels.SkipCheckLabels, label)
+		}
+	}
+
+	*local = c
 	return nil
 }
 
-// Proxy object ----------------------------------------------------------------
+// Implement sort.Interface to sort projects alphabetically.
+type ptProjects []*pivotal.Project
 
-type Config interface {
-	ProjectId() int
-	ComponentLabel() string
-	PointMeLabel() string
-	ReviewedLabel() string
-	SkipReviewLabel() string
-	TestedLabel() string
-	SkipTestingLabel() string
-	SkipCheckLabels() []string
-	UserToken() string
+func (ps ptProjects) Len() int {
+	return len(ps)
 }
 
-var configCache Config
-
-func LoadConfig() (Config, error) {
-	// Try the cache first.
-	if configCache != nil {
-		return configCache, nil
-	}
-
-	// Load the local config.
-	var local LocalConfig
-	if err := config.UnmarshalLocalConfig(&local); err != nil {
-		return nil, err
-	}
-
-	labels := &local.PT.Labels
-	if labels.PointMeLabel == "" {
-		labels.PointMeLabel = DefaultPointMeLabel
-	}
-	if labels.ReviewedLabel == "" {
-		labels.ReviewedLabel = DefaultReviewedLabel
-	}
-	if labels.SkipReviewLabel == "" {
-		labels.SkipReviewLabel = DefaultSkipReviewLabel
-	}
-	if labels.TestedLabel == "" {
-		labels.TestedLabel = DefaultTestedLabel
-	}
-	if labels.SkipTestingLabel == "" {
-		labels.SkipTestingLabel = DefaultSkipTestingLabel
-	}
-	labels.SkipCheckLabels = append(labels.SkipCheckLabels, DefaultSkipCheckLabels...)
-
-	if err := local.validate(); err != nil {
-		return nil, err
-	}
-
-	// Load the global config.
-	var global GlobalConfig
-	if err := config.UnmarshalGlobalConfig(&global); err != nil {
-		return nil, err
-	}
-	if err := global.validate(); err != nil {
-		return nil, err
-	}
-
-	configCache = &configProxy{&local, &global}
-	return configCache, nil
+func (ps ptProjects) Less(i, j int) bool {
+	return ps[i].Name < ps[j].Name
 }
 
-type configProxy struct {
-	local  *LocalConfig
-	global *GlobalConfig
-}
-
-func (proxy *configProxy) ProjectId() int {
-	return proxy.local.PT.ProjectId
-}
-
-func (proxy *configProxy) ComponentLabel() string {
-	return proxy.local.PT.ComponentLabel
-}
-
-func (proxy *configProxy) PointMeLabel() string {
-	return proxy.local.PT.Labels.PointMeLabel
-}
-
-func (proxy *configProxy) ReviewedLabel() string {
-	return proxy.local.PT.Labels.ReviewedLabel
-}
-
-func (proxy *configProxy) SkipReviewLabel() string {
-	return proxy.local.PT.Labels.SkipReviewLabel
-}
-
-func (proxy *configProxy) TestedLabel() string {
-	return proxy.local.PT.Labels.TestedLabel
-}
-
-func (proxy *configProxy) SkipTestingLabel() string {
-	return proxy.local.PT.Labels.SkipTestingLabel
-}
-
-func (proxy *configProxy) SkipCheckLabels() []string {
-	return proxy.local.PT.Labels.SkipCheckLabels
-}
-
-func (proxy *configProxy) UserToken() string {
-	return proxy.global.PT.UserToken
+func (ps ptProjects) Swap(i, j int) {
+	ps[i], ps[j] = ps[j], ps[i]
 }
