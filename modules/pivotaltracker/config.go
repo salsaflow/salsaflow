@@ -13,7 +13,6 @@ import (
 	"github.com/salsaflow/salsaflow/prompt"
 
 	// Vendor
-	"github.com/bgentry/speakeasy"
 	"gopkg.in/salsita/go-pivotaltracker.v1/v5/pivotal"
 )
 
@@ -93,20 +92,17 @@ func (spec *configSpec) LocalConfig() loader.ConfigContainer {
 
 // GlobalConfig implements loader.ConfigContainer
 type GlobalConfig struct {
-	UserToken string `json:"token"`
+	UserToken string `prompt:"personal Pivotal Tracker token" secret:"true" json:"token"`
 }
 
 // PromptUserForConfig is a part of loader.ConfigContainer
 func (global *GlobalConfig) PromptUserForConfig() error {
-	token, err := speakeasy.Ask("Insert your personal Pivotal Tracker token: ")
-	if err != nil {
+	var c GlobalConfig
+	if err := prompt.Dialog(&c, "Insert your"); err != nil {
 		return err
 	}
-	if token == "" {
-		prompt.PanicCancel()
-	}
 
-	global.UserToken = token
+	*global = c
 	return nil
 }
 
