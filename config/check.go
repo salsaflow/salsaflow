@@ -16,20 +16,28 @@ func EnsureValueFilled(value interface{}, path string) error {
 	logger := log.V(log.Debug)
 
 	// Turn the interface into reflect.Value.
-	// In case the struct is a pointer, get the value the pointer is pointing to.
 	var (
-		v = reflect.Indirect(reflect.ValueOf(value))
+		v = reflect.ValueOf(value)
 		t = v.Type()
 	)
 
 	logger.Log(fmt.Sprintf(`config.EnsureValueFilled: Checking "%v" ... `, path))
 
+	// Handle pointers in a special way.
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			logger.NewLine("  ---> Nil")
+			return &ErrKeyNotSet{path}
+		}
+	}
+
 	// Decide what to do depending on the value kind.
-	switch v.Kind() {
+	iv := reflect.Indirect(v)
+	switch iv.Kind() {
 	case reflect.Struct:
-		return ensureStructFilled(v, path)
+		return ensureStructFilled(iv, path)
 	case reflect.Slice:
-		return ensureSliceFilled(v, path)
+		return ensureSliceFilled(iv, path)
 	}
 
 	// In case the value is not valid, return an error.
@@ -59,7 +67,7 @@ func ensureStructFilled(v reflect.Value, path string) error {
 	t := v.Type()
 	numFields := t.NumField()
 	for i := 0; i < numFields; i++ {
-		fv := reflect.Indirect(v.Field(i))
+		fv := v.Field(i)
 		ft := t.Field(i)
 
 		// Skip unexported fields.
