@@ -8,7 +8,6 @@ import (
 	"github.com/salsaflow/salsaflow/prompt"
 
 	// Vendor
-	"github.com/bgentry/speakeasy"
 	gh "github.com/google/go-github/github"
 )
 
@@ -55,18 +54,15 @@ func (spec *configSpec) LocalConfig() loader.ConfigContainer {
 // Global config ---------------------------------------------------------------
 
 type GlobalConfig struct {
-	GitHubToken string `json:"github_token"`
+	GitHubToken string `prompt:"GitHub token to be used for SalsaFlow updater" secret:"true" json:"github_token"`
 }
 
 func (global *GlobalConfig) PromptUserForConfig() error {
-	token, err := speakeasy.Ask("Insert the GitHub token to be used for SalsaFlow updater: ")
-	if token == "" {
-		prompt.PanicCancel()
-	}
-	if err != nil {
+	var c GlobalConfig
+	if err := prompt.Dialog(&c, "Insert the"); err != nil {
 		return err
 	}
 
-	global.GitHubToken = token
+	*global = c
 	return nil
 }
