@@ -3,13 +3,14 @@ package common
 import (
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/config/loader"
 	"github.com/salsaflow/salsaflow/version"
 )
 
-// IssueTrackerFactory interface -----------------------------------------------
+// IssueTrackingModule interface -----------------------------------------------
 
-type IssueTrackerFactory interface {
-	LocalConfigTemplate() string
+type IssueTrackingModule interface {
+	loader.Module
 	NewIssueTracker() (IssueTracker, error)
 }
 

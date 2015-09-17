@@ -3,92 +3,79 @@ package reviewboard
 import (
 	// Stdlib
 	"net/url"
-	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/config"
-	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/config/loader"
+	"github.com/salsaflow/salsaflow/prompt"
 )
 
-const Id = "review_board"
+// Configuration ===============================================================
 
-const LocalConfigTemplate = `
-#review_board:
-#  server_url: "https://review.example.com"
-`
-
-// Local configuration -------------------------------------------------------
-
-type LocalConfig struct {
-	RB struct {
-		ServerURL string `yaml:"server_url"`
-	} `yaml:"review_board"`
+type moduleConfig struct {
+	ServerURL *url.URL
 }
 
-func (local LocalConfig) validate() error {
-	var (
-		task      = "Validate the local Review Board configuration"
-		serverURL = local.RB.ServerURL
-	)
-	switch {
-	case serverURL == "":
-		return errs.NewError(task, &config.ErrKeyNotSet{Id + ".server_url"})
+func loadConfig() (*moduleConfig, error) {
+	spec := newConfigSpec()
+	if err := loader.LoadConfig(spec); err != nil {
+		return nil, err
 	}
 
-	if _, err := url.Parse(serverURL); err != nil {
-		return errs.NewError(task, &config.ErrKeyInvalid{Id + ".server_url", serverURL})
-	}
+	serverURL, _ := url.Parse(spec.local.ServerURL)
+	return &moduleConfig{serverURL}, nil
+}
 
+// Configuration spec ----------------------------------------------------------
+
+type configSpec struct {
+	local *LocalConfig
+}
+
+func newConfigSpec() *configSpec {
+	return &configSpec{}
+}
+
+func (spec *configSpec) ConfigKey() string {
+	return ModuleId
+}
+
+func (spec *configSpec) ModuleKind() loader.ModuleKind {
+	return ModuleKind
+}
+
+func (spec *configSpec) GlobalConfig() loader.ConfigContainer {
 	return nil
 }
 
-// Proxy struct ----------------------------------------------------------------
-
-type Config interface {
-	ServerURL() *url.URL
+func (spec *configSpec) LocalConfig() loader.ConfigContainer {
+	spec.local = &LocalConfig{}
+	return spec.local
 }
 
-var configCache Config
+// Local configuration ---------------------------------------------------------
 
-func LoadConfig() (Config, error) {
-	// Try the cache first.
-	if configCache != nil {
-		return configCache, nil
-	}
+type LocalConfig struct {
+	ServerURL string `prompt:"server URL of the Review Board server" json:"server_url"`
+}
 
-	// Load local config.
-	var (
-		proxy configProxy
-		local LocalConfig
-	)
-	if err := config.UnmarshalLocalConfig(&local); err != nil {
-		return nil, err
-	}
-	if err := local.validate(); err != nil {
-		return nil, err
-	}
-
-	server := local.RB.ServerURL
-	if !strings.HasSuffix(server, "/") {
-		server += "/"
-	}
-	// This cannot really fail since we check this in the validation function.
-	// So in case this actually fails, panic to signal there is something wrong.
-	serverURL, err := url.Parse(server)
+// PromptUserForConfig is a part of loader.ConfigContainer interface.
+func (local *LocalConfig) PromptUserForConfig() error {
+	var c LocalConfig
+	err := prompt.Dialog(&c, "Insert the")
 	if err != nil {
-		panic(err)
+		return err
 	}
-	proxy.serverURL = serverURL
 
-	// Save the new instance into the cache and return.
-	configCache = &proxy
-	return configCache, nil
+	*local = c
+	return nil
 }
 
-type configProxy struct {
-	serverURL *url.URL
-}
-
-func (proxy *configProxy) ServerURL() *url.URL {
-	return proxy.serverURL
+// Validate implements loader.Validator interface.
+func (local *LocalConfig) Validate(sectionPath string) error {
+	_, err := url.Parse(local.ServerURL)
+	if err != nil {
+		return &config.ErrKeyInvalid{sectionPath + ".server_url", local.ServerURL}
+	}
+	return nil
 }

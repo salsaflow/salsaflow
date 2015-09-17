@@ -37,6 +37,9 @@ type Client struct {
 	// Me service
 	Me *MeService
 
+	// Project service
+	Projects *ProjectService
+
 	// Story service
 	Stories *StoryService
 }
@@ -50,6 +53,7 @@ func NewClient(apiToken string) *Client {
 		userAgent: defaultUserAgent,
 	}
 	client.Me = newMeService(client)
+	client.Projects = newProjectService(client)
 	client.Stories = newStoryService(client)
 	return client
 }

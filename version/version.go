@@ -76,11 +76,11 @@ func (v *Version) toVersion(kind versionKind) (*Version, error) {
 
 	switch kind {
 	case vkTrunk:
-		ver.Pre = []semver.PRVersion{config.TrunkSuffix()}
+		ver.Pre = []semver.PRVersion{config.TrunkSuffix}
 	case vkTesting:
-		ver.Pre = []semver.PRVersion{config.TestingSuffix()}
+		ver.Pre = []semver.PRVersion{config.TestingSuffix}
 	case vkStage:
-		ver.Pre = []semver.PRVersion{config.StageSuffix()}
+		ver.Pre = []semver.PRVersion{config.StagingSuffix}
 	case vkStable:
 		ver.Pre = nil
 	default:

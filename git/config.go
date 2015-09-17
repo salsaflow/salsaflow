@@ -1,115 +1,102 @@
 package git
 
 import (
-	"github.com/salsaflow/salsaflow/config"
+	// Internal
+	"github.com/salsaflow/salsaflow/config/loader"
 	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/prompt"
 )
 
-// Local configuration -------------------------------------------------------
-
-const (
-	DefaultRemoteName = "origin"
-
-	DefaultTrunkBranchName   = "develop"
-	DefaultReleaseBranchName = "release"
-	DefaultStageBranchName   = "stage"
-	DefaultStableBranchName  = "master"
-)
-
-const ConfigKeyRemote = "salsaflow.remote"
-
-type LocalConfig struct {
-	Git struct {
-		Branches struct {
-			Trunk   string `yaml:"trunk"`
-			Release string `yaml:"release"`
-			Stage   string `yaml:"stage"`
-			Stable  string `yaml:"stable"`
-		} `yaml:"branches"`
-	} `yaml:"git"`
+func init() {
+	loader.RegisterBootstrapConfigSpec(newConfigSpec())
 }
 
-func (local *LocalConfig) fillDefaults() {
-	bs := &local.Git.Branches
-	if bs.Trunk == "" {
-		bs.Trunk = DefaultTrunkBranchName
-	}
-	if bs.Release == "" {
-		bs.Release = DefaultReleaseBranchName
-	}
-	if bs.Stage == "" {
-		bs.Stage = DefaultStageBranchName
-	}
-	if bs.Stable == "" {
-		bs.Stable = DefaultStableBranchName
-	}
+// Configuration ===============================================================
+
+const ConfigKey = "salsaflow.core.git"
+
+const DefaultRemoteName = "origin"
+
+// Config holds the complete Git-related config needed by SalsaFlow.
+type Config struct {
+	LocalConfig
+	RemoteName string
 }
 
-// Configuration proxy ---------------------------------------------------------
-
-type Config interface {
-	RemoteName() string
-	TrunkBranchName() string
-	ReleaseBranchName() string
-	StagingBranchName() string
-	StableBranchName() string
-}
-
-var configCache Config
-
-func LoadConfig() (Config, error) {
-	// Try the cache first.
-	if configCache != nil {
-		return configCache, nil
-	}
-
-	task := "Load git-related SalsaFlow config"
-
-	// Parse the local config file.
-	proxy := &configProxy{
-		local: &LocalConfig{},
-	}
-	if err := config.UnmarshalLocalConfig(proxy.local); err != nil {
+// LoadConfig can be used to load Git-related configuration for SalsaFlow.
+func LoadConfig() (*Config, error) {
+	// Load the configuration according to the spec.
+	task := "Load Git-related configuration"
+	spec := newConfigSpec()
+	if err := loader.LoadConfig(spec); err != nil {
 		return nil, errs.NewError(task, err)
 	}
-	proxy.local.fillDefaults()
 
-	// Consult git config for the project remote name.
-	remote, err := GetConfigString(ConfigKeyRemote)
+	// Get the remote name, which may be stored in git config.
+	task = "Get the remote name for the main project repository"
+	remoteName, err := GetConfigString(GitConfigKeyRemote)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
-	if remote == "" {
-		remote = DefaultRemoteName
+	if remoteName == "" {
+		remoteName = DefaultRemoteName
 	}
-	proxy.remote = remote
 
-	// Save the new instance into the cache and return.
-	configCache = proxy
-	return configCache, nil
+	// Return the main config struct.
+	return &Config{
+		LocalConfig: *spec.local,
+		RemoteName:  remoteName,
+	}, nil
 }
 
-type configProxy struct {
-	remote string
-	local  *LocalConfig
+// Configuration spec ----------------------------------------------------------
+
+func newConfigSpec() *configSpec {
+	return &configSpec{}
 }
 
-func (proxy *configProxy) RemoteName() string {
-	return proxy.remote
+// configSpec implements loader.ConfigSpec inteface.
+type configSpec struct {
+	local *LocalConfig
 }
 
-func (proxy *configProxy) TrunkBranchName() string {
-	return proxy.local.Git.Branches.Trunk
+// ConfigKey is a part of loader.ConfigSpec interface.
+func (spec *configSpec) ConfigKey() string {
+	return ConfigKey
 }
 
-func (proxy *configProxy) ReleaseBranchName() string {
-	return proxy.local.Git.Branches.Release
+// GlobalConfig is a part of loader.ConfigSpec inteface.
+func (spec *configSpec) GlobalConfig() loader.ConfigContainer {
+	return nil
 }
 
-func (proxy *configProxy) StagingBranchName() string {
-	return proxy.local.Git.Branches.Stage
+// LocalConfig is a part of loader.ConfigSpec interface.
+func (spec *configSpec) LocalConfig() loader.ConfigContainer {
+	spec.local = &LocalConfig{}
+	return spec.local
 }
 
-func (proxy *configProxy) StableBranchName() string {
-	return proxy.local.Git.Branches.Stable
+// Local config ----------------------------------------------------------------
+
+const GitConfigKeyRemote = "salsaflow.remote"
+
+// LocalConfig implements loader.ConfigContainer interface.
+type LocalConfig struct {
+	TrunkBranchName   string `prompt:"trunk branch name"   default:"develop" json:"trunk_branch"`
+	ReleaseBranchName string `prompt:"release branch name" default:"release" json:"release_branch"`
+	StagingBranchName string `prompt:"staging branch name" default:"stage"   json:"staging_branch"`
+	StableBranchName  string `prompt:"stable branch name"  default:"master"  json:"stable_branch"`
+}
+
+// PromptUserForConfig is a part of loader.ConfigContainer interface.
+func (local *LocalConfig) PromptUserForConfig() error {
+	task := "Prompt the user for local Git-related configuration"
+
+	var c LocalConfig
+	if err := prompt.Dialog(&c, "Insert the"); err != nil {
+		return errs.NewError(task, err)
+	}
+
+	*local = c
+	return nil
 }

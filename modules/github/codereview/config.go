@@ -1,99 +1,92 @@
 package github
 
 import (
-	"github.com/salsaflow/salsaflow/config"
-	"github.com/salsaflow/salsaflow/errs"
+	// Internal
+	"github.com/salsaflow/salsaflow/config/loader"
+	"github.com/salsaflow/salsaflow/prompt"
 )
 
-const (
-	DefaultReviewIssueLabel      = "review"
-	DefaultStoryImplementedLabel = "implemented"
-)
+// Configuration ===============================================================
 
-// Local configuration -------------------------------------------------------
+type moduleConfig struct {
+	Token                 string
+	ReviewLabel           string
+	StoryImplementedLabel string
+}
+
+func loadConfig() (*moduleConfig, error) {
+	spec := newConfigSpec()
+	if err := loader.LoadConfig(spec); err != nil {
+		return nil, err
+	}
+	return &moduleConfig{
+		Token:                 spec.global.Token,
+		ReviewLabel:           spec.local.ReviewLabel,
+		StoryImplementedLabel: spec.local.StoryImplementedLabel,
+	}, nil
+}
+
+// Configuration spec ----------------------------------------------------------
+
+type configSpec struct {
+	global *GlobalConfig
+	local  *LocalConfig
+}
+
+func newConfigSpec() *configSpec {
+	return &configSpec{}
+}
+
+func (spec *configSpec) ConfigKey() string {
+	return ModuleId
+}
+
+func (spec *configSpec) ModuleKind() loader.ModuleKind {
+	return ModuleKind
+}
+
+func (spec *configSpec) GlobalConfig() loader.ConfigContainer {
+	spec.global = &GlobalConfig{}
+	return spec.global
+}
+
+func (spec *configSpec) LocalConfig() loader.ConfigContainer {
+	spec.local = &LocalConfig{}
+	return spec.local
+}
+
+// Local configuration ---------------------------------------------------------
 
 type LocalConfig struct {
-	GitHub struct {
-		ReviewLabel           string `yaml:"review_issue_label"`
-		StoryImplementedLabel string `yaml:"story_implemented_label"`
-	} `yaml:"github"`
+	ReviewLabel           string `prompt:"with"           default:"review"      json:"review_issue_label"`
+	StoryImplementedLabel string `prompt:"as implemented" default:"implemented" json:"story_implemented_label"`
 }
 
-// Global config ---------------------------------------------------------------
-
-type GlobalConfig struct {
-	GitHub struct {
-		Token string `yaml:"token"`
-	} `yaml:"github"`
-}
-
-func (global *GlobalConfig) validate() error {
-	task := "Validate the global GitHub configuration"
-	if global.GitHub.Token == "" {
-		return errs.NewError(task, &config.ErrKeyNotSet{"github.token"})
+// PromptUserForConfig is a part of loader.ConfigContainer interface.
+func (local *LocalConfig) PromptUserForConfig() error {
+	var c LocalConfig
+	err := prompt.Dialog(&c, "Insert the label to be used to mark the GitHub review issues")
+	if err != nil {
+		return err
 	}
+
+	*local = c
 	return nil
 }
 
-// Config proxy ----------------------------------------------------------------
+// Global configuration --------------------------------------------------------
 
-type Config interface {
-	ReviewLabel() string
-	StoryImplementedLabel() string
-	Token() string
+type GlobalConfig struct {
+	Token string `prompt:"token to be used for creating GitHub review issues" secret:"true" json:"token"`
 }
 
-var configCache Config
-
-func LoadConfig() (Config, error) {
-	// Try the cache first.
-	if configCache != nil {
-		return configCache, nil
+// PromptUserForConfig is a part of loader.ConfigContainer interface.
+func (global *GlobalConfig) PromptUserForConfig() error {
+	var c GlobalConfig
+	if err := prompt.Dialog(&c, "Insert the"); err != nil {
+		return err
 	}
 
-	// Unmarshal.
-	var global GlobalConfig
-	if err := config.UnmarshalGlobalConfig(&global); err != nil {
-		return nil, err
-	}
-	if err := global.validate(); err != nil {
-		return nil, err
-	}
-
-	var local LocalConfig
-	if err := config.UnmarshalLocalConfig(&local); err != nil {
-		return nil, err
-	}
-	if local.GitHub.ReviewLabel == "" {
-		local.GitHub.ReviewLabel = DefaultReviewIssueLabel
-	}
-	if local.GitHub.StoryImplementedLabel == "" {
-		local.GitHub.StoryImplementedLabel = DefaultStoryImplementedLabel
-	}
-
-	// Save the new instance into the cache and return.
-	configCache = &configProxy{
-		apiToken:              global.GitHub.Token,
-		reviewIssueLabel:      local.GitHub.ReviewLabel,
-		storyImplementedLabel: local.GitHub.StoryImplementedLabel,
-	}
-	return configCache, nil
-}
-
-type configProxy struct {
-	apiToken              string
-	reviewIssueLabel      string
-	storyImplementedLabel string
-}
-
-func (proxy *configProxy) Token() string {
-	return proxy.apiToken
-}
-
-func (proxy *configProxy) ReviewLabel() string {
-	return proxy.reviewIssueLabel
-}
-
-func (proxy *configProxy) StoryImplementedLabel() string {
-	return proxy.storyImplementedLabel
+	*global = c
+	return nil
 }

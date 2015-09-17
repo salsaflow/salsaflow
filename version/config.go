@@ -1,92 +1,123 @@
 package version
 
 import (
+	// Stdlib
+	"fmt"
+
 	// Internal
-	"github.com/salsaflow/salsaflow/config"
+	"github.com/salsaflow/salsaflow/config/loader"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/prompt"
 
 	// Vendor
 	"github.com/blang/semver"
+	"github.com/fatih/color"
 )
 
-// Local configuration -------------------------------------------------------
+func init() {
+	loader.RegisterBootstrapConfigSpec(newConfigSpec())
+}
 
-const (
-	DefaultTrunkSuffix   = "dev"
-	DefaultTestingSuffix = "qa"
-	DefaultStageSuffix   = "stage"
-)
+// Configuration ===============================================================
+
+const ConfigKey = "salsaflow.core.versioning"
+
+type Config struct {
+	TrunkSuffix   semver.PRVersion
+	TestingSuffix semver.PRVersion
+	StagingSuffix semver.PRVersion
+}
+
+// LoadConfig can be used to load versioning-related configuration for SalsaFlow.
+func LoadConfig() (*Config, error) {
+	task := "Load versioning-related configuration"
+	spec := newConfigSpec()
+	if err := loader.LoadConfig(spec); err != nil {
+		return nil, errs.NewError(task, err)
+	}
+	return spec.local.parse()
+}
+
+// Configuration spec ----------------------------------------------------------
+
+func newConfigSpec() *configSpec {
+	return &configSpec{}
+}
+
+type configSpec struct {
+	local *LocalConfig
+}
+
+func (spec *configSpec) ConfigKey() string {
+	return ConfigKey
+}
+
+func (spec *configSpec) GlobalConfig() loader.ConfigContainer {
+	return nil
+}
+
+func (spec *configSpec) LocalConfig() loader.ConfigContainer {
+	spec.local = &LocalConfig{}
+	return spec.local
+}
+
+// Local config ----------------------------------------------------------------
 
 type LocalConfig struct {
-	V struct {
-		TrunkSuffix   string `yaml:"trunk_suffix"`
-		TestingSuffix string `yaml:"testing_suffix"`
-		StageSuffix   string `yaml:"stage_suffix"`
-	} `yaml:"versioning"`
+	TrunkSuffix   string `prompt:"trunk version string suffix"   default:"dev"   json:"trunk_suffix"`
+	TestingSuffix string `prompt:"testing version string suffix" default:"qa"    json:"testing_suffix"`
+	StagingSuffix string `prompt:"staging version string suffix" default:"stage" json:"staging_suffix"`
 }
 
-func newLocalConfig() *LocalConfig {
-	var local LocalConfig
-	local.V.TrunkSuffix = DefaultTrunkSuffix
-	local.V.TestingSuffix = DefaultTestingSuffix
-	local.V.StageSuffix = DefaultStageSuffix
-	return &local
-}
+func (local *LocalConfig) PromptUserForConfig() error {
+	task := "Prompt the user for local versioning-related configuration"
 
-// Proxy struct ----------------------------------------------------------------
+	for {
+		var c LocalConfig
+		if err := prompt.Dialog(&c, "Insert the"); err != nil {
+			return errs.NewError(task, err)
+		}
 
-type Config interface {
-	TrunkSuffix() semver.PRVersion
-	TestingSuffix() semver.PRVersion
-	StageSuffix() semver.PRVersion
-}
+		if _, err := c.parse(); err != nil {
+			fmt.Println()
+			color.Yellow("Invalid version suffix inserted, please try again!")
+			fmt.Println()
+			continue
+		}
 
-var configCache Config
-
-func LoadConfig() (Config, error) {
-	// Try the cache first.
-	if configCache != nil {
-		return configCache, nil
+		*local = c
+		return nil
 	}
+}
 
-	// Load local config.
-	local := newLocalConfig()
-	if err := config.UnmarshalLocalConfig(local); err != nil {
-		return nil, err
+func (local *LocalConfig) Validate() error {
+	_, err := local.parse()
+	return err
+}
+
+func (local *LocalConfig) parse() (*Config, error) {
+	task := "Parse the version string suffixes"
+
+	var (
+		config Config
+		err    error
+	)
+	parse := func(dst *semver.PRVersion, src string) {
+		if err != nil {
+			return
+		}
+		var v semver.PRVersion
+		v, err = semver.NewPRVersion(src)
+		if err == nil {
+			*dst = v
+		}
 	}
-
-	// Parse version suffixes.
-	trunk, err := semver.NewPRVersion(local.V.TrunkSuffix)
+	parse(&config.TrunkSuffix, local.TrunkSuffix)
+	parse(&config.TestingSuffix, local.TestingSuffix)
+	parse(&config.StagingSuffix, local.StagingSuffix)
 	if err != nil {
-		return nil, err
-	}
-	testing, err := semver.NewPRVersion(local.V.TestingSuffix)
-	if err != nil {
-		return nil, err
-	}
-	stage, err := semver.NewPRVersion(local.V.StageSuffix)
-	if err != nil {
-		return nil, err
+		return nil, errs.NewError(task, err)
 	}
 
-	// Save the new instance into the cache and return.
-	configCache = &configProxy{trunk, testing, stage}
-	return configCache, nil
-}
-
-type configProxy struct {
-	trunk   semver.PRVersion
-	testing semver.PRVersion
-	stage   semver.PRVersion
-}
-
-func (proxy *configProxy) TrunkSuffix() semver.PRVersion {
-	return proxy.trunk
-}
-
-func (proxy *configProxy) TestingSuffix() semver.PRVersion {
-	return proxy.testing
-}
-
-func (proxy *configProxy) StageSuffix() semver.PRVersion {
-	return proxy.stage
+	return &config, nil
 }

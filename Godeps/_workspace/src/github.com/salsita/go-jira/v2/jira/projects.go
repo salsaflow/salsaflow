@@ -22,12 +22,35 @@ import (
 	"net/http"
 )
 
+type Project struct {
+	Self       string      `json:"self"`
+	Id         string      `json:"id"`
+	Key        string      `json:"key"`
+	Name       string      `json:"name"`
+	AvatarURLs *AvatarURLs `json:"avatarUrls,omitempty"`
+}
+
 type ProjectService struct {
 	client *Client
 }
 
 func newProjectService(client *Client) *ProjectService {
 	return &ProjectService{client}
+}
+
+func (service *ProjectService) List() ([]*Project, *http.Response, error) {
+	req, err := service.client.NewRequest("GET", "project", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var projects []*Project
+	resp, err := service.client.Do(req, &projects)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return projects, resp, nil
 }
 
 func (service *ProjectService) ListVersions(projectIdOrKey string) ([]*Version, *http.Response, error) {

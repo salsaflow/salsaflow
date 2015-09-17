@@ -109,8 +109,8 @@ func runMain() error {
 		return err
 	}
 	var (
-		remoteName = config.RemoteName()
-		trunkName  = config.TrunkBranchName()
+		remoteName = config.RemoteName
+		trunkName  = config.TrunkBranchName
 	)
 
 	// Make sure trunk is up to date.

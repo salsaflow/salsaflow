@@ -12,6 +12,7 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/prompt/storyprompt"
 	"github.com/salsaflow/salsaflow/releases"
 	"github.com/salsaflow/salsaflow/version"
 
@@ -113,7 +114,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// Check the Point Me label.
 	task = "Make sure there are no unpointed stories"
 	log.Run(task)
-	pmLabel := release.tracker.config.PointMeLabel()
+	pmLabel := release.tracker.config.PointMeLabel
 
 	// Fetch the already assigned but unpointed stories.
 	pmStories, err := release.tracker.searchStories(
@@ -130,7 +131,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 	// In case there are some unpointed stories, stop the release.
 	if len(pmStories) != 0 {
 		fmt.Println("\nThe following stories are still yet to be pointed:\n")
-		err := prompt.ListStories(toCommonStories(pmStories, release.tracker), os.Stdout)
+		err := storyprompt.ListStories(toCommonStories(pmStories, release.tracker), os.Stdout)
 		if err != nil {
 			return false, err
 		}
@@ -157,7 +158,7 @@ func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {
 			fmt.Println()
 			fmt.Println(item.header)
 			fmt.Println()
-			err := prompt.ListStories(toCommonStories(item.stories, release.tracker), os.Stdout)
+			err := storyprompt.ListStories(toCommonStories(item.stories, release.tracker), os.Stdout)
 			if err != nil {
 				return false, err
 			}
@@ -184,8 +185,8 @@ func (release *nextRelease) Start() (action.Action, error) {
 	// Add release labels to the relevant stories.
 	var (
 		config    = release.tracker.config
-		client    = pivotal.NewClient(config.UserToken())
-		projectId = config.ProjectId()
+		client    = pivotal.NewClient(config.UserToken)
+		projectId = config.ProjectId
 	)
 
 	task := "Label the stories with the release label"

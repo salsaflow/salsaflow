@@ -14,8 +14,7 @@ import (
 var ErrRepositoryNotInitialised = errors.New("repository not initialised")
 
 func Init(force bool) error {
-	// Set up logging.
-	log.SetV(log.MustStringToLevel(appflags.FlagLog.Value()))
+	InitLogging()
 
 	// Make sure the repo is initialised.
 	if err := repo.Init(force); err != nil {
@@ -23,6 +22,11 @@ func Init(force bool) error {
 	}
 
 	return nil
+}
+
+func InitLogging() {
+	// Set up logging.
+	log.SetV(log.MustStringToLevel(appflags.FlagLog.Value()))
 }
 
 func InitOrDie() {

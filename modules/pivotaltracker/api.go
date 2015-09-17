@@ -19,17 +19,6 @@ var (
 	ErrApiCall               = errors.New("Pivotal Tracker: API call failed")
 )
 
-func fetchMe() (*pivotal.Me, error) {
-	config, err := LoadConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	client := pivotal.NewClient(config.UserToken())
-	me, _, err := client.Me.Get()
-	return me, err
-}
-
 func addLabelFunc(label string) storyUpdateFunc {
 	return func(story *pivotal.Story) *pivotal.StoryRequest {
 		// Make sure the label is not already there.

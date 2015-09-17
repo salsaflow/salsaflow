@@ -36,10 +36,10 @@ func (story *story) Type() string {
 func (story *story) State() common.StoryState {
 	var (
 		config           = story.tracker.config
-		reviewedLabel    = config.ReviewedLabel()
-		skipReviewLabel  = config.SkipReviewLabel()
-		testedLabel      = config.TestedLabel()
-		skipTestingLabel = config.SkipTestingLabel()
+		reviewedLabel    = config.ReviewedLabel
+		skipReviewLabel  = config.SkipReviewLabel
+		testedLabel      = config.TestedLabel
+		skipTestingLabel = config.SkipTestingLabel
 	)
 
 	switch story.Story.State {
@@ -132,8 +132,8 @@ func (story *story) SetAssignees(users []common.User) error {
 
 	var (
 		config    = story.tracker.config
-		client    = pivotal.NewClient(config.UserToken())
-		projectId = config.ProjectId()
+		client    = pivotal.NewClient(config.UserToken)
+		projectId = config.ProjectId
 	)
 	updateRequest := &pivotal.StoryRequest{OwnerIds: &ownerIds}
 	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
@@ -149,8 +149,8 @@ func (story *story) Start() error {
 
 	var (
 		config    = story.tracker.config
-		client    = pivotal.NewClient(config.UserToken())
-		projectId = config.ProjectId()
+		client    = pivotal.NewClient(config.UserToken)
+		projectId = config.ProjectId
 	)
 	updateRequest := &pivotal.StoryRequest{State: pivotal.StoryStateStarted}
 	updatedStory, _, err := client.Stories.Update(projectId, story.Story.Id, updateRequest)
@@ -177,8 +177,8 @@ func (story *story) MarkAsImplemented() (action.Action, error) {
 	// Set the story state to finished.
 	var (
 		config    = story.tracker.config
-		client    = pivotal.NewClient(config.UserToken())
-		projectId = config.ProjectId()
+		client    = pivotal.NewClient(config.UserToken)
+		projectId = config.ProjectId
 	)
 
 	updateTask := fmt.Sprintf("Update Pivotal Tracker story (id = %v)", story.Story.Id)

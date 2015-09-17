@@ -24,6 +24,7 @@ import (
 	"github.com/salsaflow/salsaflow/modules"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/prompt"
+	"github.com/salsaflow/salsaflow/prompt/storyprompt"
 
 	// Other
 	"gopkg.in/tchap/gocli.v2"
@@ -159,8 +160,8 @@ func postBranch(parentBranch string) error {
 		return err
 	}
 	var (
-		remoteName  = gitConfig.RemoteName()
-		trunkBranch = gitConfig.TrunkBranchName()
+		remoteName  = gitConfig.RemoteName
+		trunkBranch = gitConfig.TrunkBranchName
 	)
 
 	// Get the current branch name.
@@ -292,7 +293,7 @@ You are about to post some of the following commits for code review:
 			return nil, err
 		}
 
-		remoteName := gitConfig.RemoteName()
+		remoteName := gitConfig.RemoteName
 		upToDate, err := git.IsBranchSynchronized(currentBranch, remoteName)
 		if err != nil {
 			return nil, err
@@ -847,7 +848,7 @@ func implementedDialog(ctxs []*common.ReviewContext) (implemented bool, act acti
 	// Prompt the user for confirmation.
 	fmt.Println("\nIt is possible to mark the affected stories as implemented.")
 	fmt.Println("The following stories were associated with one or more commits:\n")
-	prompt.ListStories(stories, os.Stdout)
+	storyprompt.ListStories(stories, os.Stdout)
 	fmt.Println()
 	confirmed, err := prompt.Confirm(
 		"Do you wish to mark these stories as implemented?", false)
@@ -949,7 +950,7 @@ Your choice: `
 
 		// Present the stories to the user.
 		fmt.Println()
-		if err := prompt.ListStories(ss, os.Stdout); err != nil {
+		if err := storyprompt.ListStories(ss, os.Stdout); err != nil {
 			return nil, errs.NewError(task, err)
 		}
 		fmt.Println()

@@ -20,7 +20,7 @@ func ParseUpstreamURL() (owner, repo string, err error) {
 	if err != nil {
 		return "", "", err
 	}
-	remoteName := gitConfig.RemoteName()
+	remoteName := gitConfig.RemoteName
 
 	// Get the upstream URL.
 	task := fmt.Sprintf("Get URL for git remote '%v'", remoteName)

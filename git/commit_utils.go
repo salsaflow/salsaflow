@@ -97,9 +97,9 @@ func FixCommitSources(commits []*Commit) error {
 		return err
 	}
 	var (
-		remoteName    = config.RemoteName()
-		trunkBranch   = config.TrunkBranchName()
-		releaseBranch = config.ReleaseBranchName()
+		remoteName    = config.RemoteName
+		trunkBranch   = config.TrunkBranchName
+		releaseBranch = config.ReleaseBranchName
 
 		remoteTrunkBranch   = fmt.Sprintf("%v/%v", remoteName, trunkBranch)
 		remoteReleaseBranch = fmt.Sprintf("%v/%v", remoteName, releaseBranch)

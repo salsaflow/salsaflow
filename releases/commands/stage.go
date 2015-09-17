@@ -42,9 +42,9 @@ func Stage(options *StageOptions) (act action.Action, err error) {
 		return nil, err
 	}
 	var (
-		remoteName    = gitConfig.RemoteName()
-		releaseBranch = gitConfig.ReleaseBranchName()
-		stagingBranch = gitConfig.StagingBranchName()
+		remoteName    = gitConfig.RemoteName
+		releaseBranch = gitConfig.ReleaseBranchName
+		stagingBranch = gitConfig.StagingBranchName
 	)
 
 	// Instantiate the issue tracker.
