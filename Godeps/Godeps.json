@@ -1,10 +1,14 @@
 {
 	"ImportPath": "github.com/salsaflow/salsaflow",
-	"GoVersion": "go1.5",
+	"GoVersion": "go1.5.1",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
+		{
+			"ImportPath": "github.com/bgentry/speakeasy",
+			"Rev": "200c3052657e041d0b8abab4ad65e0ba64a9f8c4"
+		},
 		{
 			"ImportPath": "github.com/blang/semver",
 			"Comment": "v3.0.1",
@@ -47,7 +51,7 @@
 		},
 		{
 			"ImportPath": "github.com/salsita/go-jira/v2/jira",
-			"Rev": "96f003574571a8b744e2f2a6df6fe52dd1d09c4c"
+			"Rev": "3565b0189c50f019c4419da570687a8073c3f5e3"
 		},
 		{
 			"ImportPath": "github.com/salsita/go-sprintly/sprintly",
@@ -84,8 +88,8 @@
 		},
 		{
 			"ImportPath": "gopkg.in/salsita/go-pivotaltracker.v1/v5/pivotal",
-			"Comment": "v1.1.0",
-			"Rev": "20ca9b2ae0b8ccdb250410fd4178323d4a075145"
+			"Comment": "v1.1.0-4-gb6e2b3a",
+			"Rev": "b6e2b3a6bf9392aca27783b0e1b41fa45c615138"
 		},
 		{
 			"ImportPath": "gopkg.in/tchap/gocli.v2",
