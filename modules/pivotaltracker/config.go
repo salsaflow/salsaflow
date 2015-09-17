@@ -196,23 +196,51 @@ func (local *LocalConfig) PromptUserForConfig() error {
 		return err
 	}
 
-	// Prompt for the skip check labels.
+	// Prompt for the release skip check labels.
 	skipCheckLabelsString, err := prompt.Prompt(fmt.Sprintf(
-		"Skip check labels (comma-separated) (%v added automatically): ",
+		"Skip check labels, comma-separated (%v always included): ",
 		strings.Join(DefaultSkipCheckLabels, ", ")))
 	if err != nil {
 		if err != prompt.ErrCanceled {
 			return err
 		}
 	}
-	c.Labels.SkipCheckLabels = DefaultSkipCheckLabels
-	skipCheckLabels := strings.SplitAfter(skipCheckLabelsString, ",")
-	for _, label := range skipCheckLabels {
-		if label != "" {
-			c.Labels.SkipCheckLabels = append(c.Labels.SkipCheckLabels, label)
-		}
-	}
 
+	// Append the new labels to the default ones.
+	// Make sure there are no duplicates and empty strings.
+	var (
+		insertedLabels = strings.Split(skipCheckLabelsString, ",")
+		lenDefault     = len(DefaultSkipCheckLabels)
+		lenInserted    = len(insertedLabels)
+	)
+
+	// Save a few allocations.
+	skipCheckLabels := make([]string, lenDefault, lenDefault+lenInserted)
+	copy(skipCheckLabels, DefaultSkipCheckLabels)
+
+LabelLoop:
+	for _, insertedLabel := range insertedLabels {
+		// Trim spaces.
+		insertedLabel = strings.TrimSpace(insertedLabel)
+
+		// Skip empty strings.
+		if insertedLabel == "" {
+			continue
+		}
+
+		// Make sure there are no duplicates.
+		for _, existingLabel := range skipCheckLabels {
+			if insertedLabel == existingLabel {
+				continue LabelLoop
+			}
+		}
+
+		// Append the label.
+		skipCheckLabels = append(skipCheckLabels, insertedLabel)
+	}
+	c.Labels.SkipCheckLabels = skipCheckLabels
+
+	// Success!
 	*local = c
 	return nil
 }
