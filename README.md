@@ -50,7 +50,7 @@ Modules may also require some additional packages to be installed.
 ## Usage ##
 
 Well, the best thing you can do is to just run `salsaflow -h` and read.
-More in-depth SalsaFlow principes are explained in the [wiki](https://github.com/salsaflow/salsaflow/wiki).
+More in-depth SalsaFlow principes are explained on the [wiki](https://github.com/salsaflow/salsaflow/wiki).
 
 The complete list of SalsaFlow commands follows (links pointing to the `develop` docs):
 
@@ -71,10 +71,12 @@ The complete list of SalsaFlow commands follows (links pointing to the `develop`
 * [version](https://github.com/salsaflow/salsaflow/blob/develop/commands/version/README.md)
 * [version bump](https://github.com/salsaflow/salsaflow/blob/develop/commands/version/bump/README.md)
 
-SalsaFlow can only be used when you are within a project repository.
-The repository is automagically initialised when you run any SalsaFlow command there.
-SalsaFlow uses a couple of git hooks, which are installed as a part
-of the initialisation process.
+SalsaFlow can only be used when you are within a project repository (except the
+`pkg` subcommands, these can be used anywhere).
+
+The repository is automagically initialised when you run any SalsaFlow command there,
+but you can also trigger the process by running `repo init`. SalsaFlow uses a couple of git hooks,
+which are installed during the initialisation process.
 
 You probably want to read the following section about SalsaFlow configuration
 before doing anything serious since SalsaFlow will anyway refuse to do anything
@@ -86,41 +88,28 @@ There are two places where SalsaFlow configuration is being kept:
 
 1. The local, project-specific configuration is expected to be placed
    into `.salsaflow` directory in the repository root. This directory
-   contains the local configuration file, `config.yml`, as well as
+   contains the local configuration file, `config.json`, as well as
    some project-specific custom scripts that are to be supplied
    by the user and committed into `.salsaflow/scripts`. More on custom
    scripts later.
-2. The global, user-wide configuration is to be placed into `$HOME/.salsaflow.yml`.
+2. The global, user-wide configuration is written into `$HOME/.salsaflow.json`.
    This file mostly contains the data that cannot be committed,
    i.e. access tokens and such.
 
 ### Global Configuration ###
 
-The global, user-specific configuration file resides in `$HOME/.salsaflow.yml`.
-The format depends mostly on the modules that are active. No worries, modules
-are explained later.
-
-The only config that is necessary is a GitHub API token that can be used to
-read public repositories. It is used for upgrading SF since it accesses
-GitHub releases for SalsaFlow. So, the format is following:
-
-```yaml
-github:
-  token: "your-github-token"
-```
+The global, user-specific configuration file resides in `$HOME/.salsaflow.json`.
+It stores module-specific configuration as a map. The format obviously depends
+on what modules are being used.
 
 ### Local Configuration ###
 
-SalsaFlow looks for the local cofiguration file in `.salsaflow/config.yml`.
-The only universally required local configuration keys are
-
-```yaml
-issue_tracker: "<module-id>"
-code_review_tool: "<module-id>"
-```
+SalsaFlow looks for the local cofiguration file in `$REPO_ROOT/.salsaflow/config.json`.
+The structure is similar to the global configuration file except the fact that
+it also includes the list of active modules for particular module kinds.
 
 Too see a full example, just check the SalsaFlow
-[config](https://github.com/salsaflow/salsaflow/blob/develop/.salsaflow/config.yml) for this project.
+[config](https://github.com/salsaflow/salsaflow/blob/develop/.salsaflow/config.json) for this project.
 
 #### Scripts ####
 
@@ -153,43 +142,16 @@ Check some [examples](https://github.com/salsaflow/skeleton-golang) to understan
 
 #### Project Bootstrapping ####
 
-To get up to speed quickly, `repo bootstrap` command can be used to prepare the local
-configuration file so that the user only fills in the missing values that are clearly marked.
+To get up to speed quickly, `repo bootstrap` command can be used to generated the initial
+configuration. The user is prompted for all necessary data, no need to edit
+config files manually.
 
 `repo bootstrap` can be also told to use certain GitHub repository to bootstrap the local
-configuration directory. When this bootstrapping skeleton is supplied, the contents of the given
-repository are simply poured into the local configuration directory. This can be easily used to
+configuration directory. When this bootstrapping skeleton is supplied, the content of the given
+repository is simply poured into the local configuration directory. This can be easily used to
 share custom scripts for certain project type so that the scripts are implemented once and then
 just copied around. You can check the [repository](https://github.com/salsaflow/skeleton-golang)
 that was used to bootstrap SalsaFlow itself.
-
-#### Modules ####
-
-SalsaFlow is modular where possible, and the configuration files contain
-sections where the configuration for these modules is specified.
-
-A module must be first activated:
-
-```yaml
-issue_tracker: "jira"
-code_review_tool: "review_board"
-```
-
-This is very close to dependency injection. There are a few module types and it
-must be specified what implementation to use for the given module type (interface).
-
-Then, when necessary, the module-specific config goes to the section
-that is names after the module name, for example:
-
-```yaml
-jira:
-  server_url: "https://jira.example.com"
-  project_key: "SF"
-review_board:
-  server_url: "https://review.example.com"
-```
-
-The configuration for all available modules is described in more details later.
 
 ## Modules ##
 
@@ -197,123 +159,16 @@ SalsaFlow interacts with various services to carry out requested actions.
 The only supported VCS is [Git](git-scm.com), so that part is hard-coded in SalsaFlow,
 but other serviced are configurable in the local configuration file, namely:
 
-* The issue tracker module must be specified under the `issue_tracker` key.
-  Allowed values are: `jira`.
-* The code review module must be specified under the `code_review_tool` key.
-  Allowed values are: `review_board`.
+* the issue tracking module,
+* the code review module, and
+* the release notes module (optional).
 
-### Supported Issue Trackers ###
-
-#### JIRA ####
-
-To activate this module, put the following config into the **local** configuration file:
-
-```yaml
-issue_tracker: "jira"
-jira:
-  server_url: "https://jira.example.com"
-  project_key: "SF"
-```
-
-where
-
-* `server_url` is the URL that can be used to access JIRA, and
-* `project_key` is the JIRA project key that the repository is associated with.
-
-The **global** configuration file must then contain the following additional config:
-
-```yaml
-jira:
-  credentials:
-    - server_prefix: jira.example.com
-      username: "username"
-      password: "secret"
-    - server_prefix: jira.another-example.com
-      username: "another-username"
-      password: "another-secret"
-```
-
-where
-
-* `server_prefix` is being used to bind credentials to JIRA instance.
-   The URL scheme is not being used for matching, hence `jira.example.com`.
-   You can specify multiple records, the longest match wins.
-* `username` is the JIRA username to be used for the given JIRA instance, and
-* `password` is the JIRA password to be used for the given JIRA instance.
-
-As apparent from the example, there can be multiple server records in the file.
-
-#### Pivotal Tracker ####
-
-To activate this module, put the following config into the **local** configuration file:
-
-```yaml
-issue_tracker: "pivotal_tracker"
-pivotal_tracker:
-  project_id: 123456
-```
-
-where
-
-* `project_id` is the Pivotal Tracker project ID, obviously.
-
-The **global** configuration file must then contain the following additional config:
-
-```yaml
-pivotal_tracker:
-  token: "secret-token-goes-here"
-```
-
-where
-
-* `token` is your personal Pivotal Tracker API token.
-
-### Supported Code Review Tools ###
-
-#### Review Board ####
-
-To activate this module, put the following config into the **local** configuration file:
-
-```yaml
-code_review_tool: "review_board"
-review_board:
-  server_url: "https://review.example.com"
-```
-
-where
-
-* `server_url` is the URL that can be used to access Review Board.
-
-Please make sure that `RBTools` package version `0.6.x` is installed.
-This module relies on the `rbt` command heavily.
-
-#### GitHub ####
-
-To activate this module, put the following config into the **local** configuration file:
-
-```yaml
-code_review_tool: "github"
-```
-
-You can also optionally add
-
-```yaml
-github:
-  review_issue_label: "review-label-goes-here"
-```
-
-to overwrite the default review label, which is `review`.
-
-The **global** configuration file must then contain the following additional config:
-
-```yaml
-github:
-  token: "secret-token-goes-here"
-```
-
-where
-
-* `token` is your personal GitHub API token that can be used to create issues.
+`repo bootstrap` lists the available modules during repository bootstrapping.
+The values actually listed depend on what modules are compiled into SalsaFlow.
+You don't really need to understand much about modules unless you feel like
+implement a new module for SalsaFlow. The user is prompted for all necessary
+data when bootstrapping the project, which is a once-time action, and then the
+active modules are simply used by SalsaFlow transparently.
 
 ## Original Authors ##
 
