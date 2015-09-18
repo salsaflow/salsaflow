@@ -29,6 +29,21 @@ var Command = &gocli.Command{
   bootstrap [-skeleton=SKELETON] [-skeleton_only]`,
 	Short: "bootstrap repository for SalsaFlow",
 	Long: `
+Bootstrap the repository for SalsaFlow.
+
+This command should be used to set up the local configuration directory
+for SalsaFlow (the directory that is then committed into the repository).
+
+The user is prompted for all necessary data.
+
+The -skeleton flag can be used to specify the repository to be used
+for custom scripts. It expects a string of "$OWNER/$REPO" and then uses
+the repository located at github.com/$OWNER/$REPO. It clones the repository
+and copies the content into the local configuration directory.
+
+In case the repository is bootstrapped, but the skeleton is missing,
+it can be added by specifying -skeleton=SKELETON -skeleton_only.
+That will skip the configuration file generation step.
 	`,
 	Action: run,
 }
