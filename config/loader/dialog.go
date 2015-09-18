@@ -2,6 +2,7 @@ package loader
 
 import (
 	// Stdlib
+	"fmt"
 	"os"
 	"strconv"
 	"text/template"
@@ -152,6 +153,7 @@ func promptUserToSelectModule(modules []Module, optional bool) (Module, error) {
 		}
 
 		if optional && answer == "s" {
+			fmt.Println()
 			color.Cyan("Skipping module kind '%v'", kind)
 			return nil, nil
 		}
