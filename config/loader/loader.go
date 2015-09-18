@@ -201,6 +201,12 @@ func promptAndWrite(configFile configFile, args *loadArgs) (err error) {
 	fmt.Println()
 
 	defer func() {
+		// In case we are panicking, forward the panic.
+		if r := recover(); r != nil {
+			panic(r)
+		}
+
+		// Otherwise print the colored message.
 		fmt.Println()
 		if err == nil {
 			color.Green("-----> Done")

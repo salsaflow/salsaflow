@@ -240,23 +240,24 @@ func (global *GlobalConfig) Validate(sectionPath string) (err error) {
 	if err := config.Unmarshal(record.RawConfig, &c); err != nil {
 		return err
 	}
+	// Store the unmarshalled local config for later use.
+	// That is why LocalConfig.Unmarshal is not doing anything.
+	global.spec.local = &c
 
 	serverURL, err := url.Parse(c.ServerURL)
 	if err != nil {
 		return err
 	}
+	// Store the current server URL for later use.
+	global.currentServerURL = serverURL
 
 	creds := credentialsForServerURL(global.Credentials, serverURL)
 	if creds == nil {
 		return fmt.Errorf("not JIRA credentials for given server URL: %v", serverURL)
 	}
-
-	// Store the data for later use.
-	// We even store the local configuration file here.
-	// That is why LocalConfig.Unmarshal returns null. It is already cached at that time.
-	global.currentServerURL = serverURL
+	// Store the credentials for later use.
 	global.currentCreds = creds
-	global.spec.local = &c
+
 	return nil
 }
 
