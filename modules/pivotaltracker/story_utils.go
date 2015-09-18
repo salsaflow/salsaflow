@@ -10,8 +10,10 @@ import (
 
 func toCommonStories(stories []*pivotal.Story, tracker *issueTracker) []common.Story {
 	commonStories := make([]common.Story, len(stories))
-	for i := range stories {
-		commonStories[i] = &story{stories[i], tracker}
+	for i, s := range stories {
+		if s != nil {
+			commonStories[i] = &story{s, tracker}
+		}
 	}
 	return commonStories
 }

@@ -142,12 +142,14 @@ func (tracker *issueTracker) searchStories(queryFormat string, v ...interface{})
 
 func toCommonStories(issues []*jira.Issue, tracker *issueTracker) []common.Story {
 	stories := make([]common.Story, len(issues))
-	for i := range issues {
-		s, err := newStory(issues[i], tracker)
-		if err != nil {
-			panic(err)
+	for i, issue := range issues {
+		if issue != nil {
+			s, err := newStory(issues[i], tracker)
+			if err != nil {
+				panic(err)
+			}
+			stories[i] = s
 		}
-		stories[i] = s
 	}
 	return stories
 }

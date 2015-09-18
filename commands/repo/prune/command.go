@@ -331,8 +331,13 @@ BranchLoop:
 	// Filter the branches according to the story state.
 	storyByTag := make(map[string]common.Story, len(stories))
 	for i, story := range stories {
-		// tag[i] corresponds to stories[i]
-		storyByTag[tags[i]] = story
+		// tags[i] corresponds to stories[i]
+		tag := tags[i]
+		if story != nil {
+			storyByTag[tag] = story
+		} else {
+			log.Warn(fmt.Sprintf("Story for tag '%v' was not found in the issue tracker", tag))
+		}
 	}
 
 	allowedStates := allowedStoryStates()

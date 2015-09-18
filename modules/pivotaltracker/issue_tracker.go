@@ -223,8 +223,7 @@ func (module *issueTracker) storiesByIdOrdered(ids []string) ([]*pivotal.Story, 
 			ordered = append(ordered, story)
 			continue
 		}
-
-		panic("unreachable code reached")
+		ordered = append(ordered, nil)
 	}
 
 	return ordered, nil

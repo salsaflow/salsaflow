@@ -291,7 +291,7 @@ func listStoriesByIdOrdered(api *jira.Client, ids []string) ([]*jira.Issue, erro
 			continue
 		}
 
-		panic("unreachable code reached")
+		ordered = append(ordered, nil)
 	}
 
 	return ordered, nil
