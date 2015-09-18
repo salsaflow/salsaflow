@@ -24,7 +24,7 @@ import (
 )
 
 var Command = &gocli.Command{
-	UsageLine: "start [-no_branch] [-no_push]",
+	UsageLine: "start [-base=BASE] [-no_branch] [-no_push]",
 	Short:     "start a new story",
 	Long: `
 Start a new issue tracker story.
@@ -36,18 +36,22 @@ is started in the issue tracker.
 Unless -no_branch is specified, the user is asked to insert
 the branch name to be used for the branch holding the story commits.
 The branch of the given name is created on top of the trunk branch
-and checked out. Then it is pushed unless -no_push is specified.
+and checked out. A custom base branch can be set by using -base.
+The story branch is then pushed unless -no_push is specified.
 	`,
 	Action: run,
 }
 
 var (
+	flagBase     string
 	flagNoBranch bool
 	flagNoPush   bool
 )
 
 func init() {
 	// Register flags.
+	Command.Flags.StringVar(&flagBase, "base", flagBase,
+		"the branch to base the story branch on")
 	Command.Flags.BoolVar(&flagNoBranch, "no_branch", flagNoBranch,
 		"do not create a new story branch")
 	Command.Flags.BoolVar(&flagNoPush, "no_push", flagNoPush,
@@ -195,17 +199,22 @@ func createBranch() (action.Action, error) {
 	}
 
 	var (
-		remoteName  = gitConfig.RemoteName
-		trunkBranch = gitConfig.TrunkBranchName
+		remoteName = gitConfig.RemoteName
+		baseBranch = gitConfig.TrunkBranchName
 	)
+	if flagBase != "" {
+		baseBranch = flagBase
+	}
+
+	// Fetch the remote repository.
 	if err := git.UpdateRemotes(remoteName); err != nil {
 		return nil, errs.NewError(task, err)
 	}
 
 	// Make sure the trunk branch is up to date.
-	task = fmt.Sprintf("Make sure branch '%v' is up to date", trunkBranch)
+	task = fmt.Sprintf("Make sure branch '%v' is up to date", baseBranch)
 	log.Run(task)
-	if err := git.CheckOrCreateTrackingBranch(trunkBranch, remoteName); err != nil {
+	if err := git.CheckOrCreateTrackingBranch(baseBranch, remoteName); err != nil {
 		return nil, errs.NewError(task, err)
 	}
 
@@ -240,9 +249,9 @@ Insert an empty string to skip the branch creation step: `)
 	fmt.Println()
 
 	createTask := fmt.Sprintf(
-		"Create branch '%v' on top of branch '%v'", branchName, trunkBranch)
+		"Create branch '%v' on top of branch '%v'", branchName, baseBranch)
 	log.Run(createTask)
-	if err := git.Branch(branchName, trunkBranch); err != nil {
+	if err := git.Branch(branchName, baseBranch); err != nil {
 		return nil, errs.NewError(createTask, err)
 	}
 
