@@ -21,6 +21,7 @@ import (
 	"github.com/salsaflow/salsaflow/version"
 
 	// Other
+	"github.com/fatih/color"
 	"gopkg.in/tchap/gocli.v2"
 )
 
@@ -221,6 +222,11 @@ func runMain() (err error) {
 			log.Warn("Failed to post the release notes, continuing anyway ...")
 		}
 	}
+
+	// Tell the user we succeeded.
+	color.Green("\n-----> Release %v deployed successfully!\n\n", stableVersion)
+	color.Cyan("Let's check whether the next release branch can be staged already.\n")
+	color.Cyan("In other words, we will try to run `release stage` and see what happens.\n\n")
 
 	// Now we proceed to the staging step. We do not roll back
 	// the previous changes on error since this is a separate step.
