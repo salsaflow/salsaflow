@@ -7,7 +7,7 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
-	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/git/gitutil"
 	"github.com/salsaflow/salsaflow/version"
 
 	// Other
@@ -59,7 +59,7 @@ func runMain(versionString string) error {
 
 	// In case -commit is set, set and commit the version string.
 	if flagCommit {
-		currentBranch, err := git.CurrentBranch()
+		currentBranch, err := gitutil.CurrentBranch()
 		if err != nil {
 			return err
 		}

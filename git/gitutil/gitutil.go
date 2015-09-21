@@ -79,3 +79,12 @@ func RelativePath(pathFromRoot string) (relativePath string, err error) {
 func ShowFileByBranch(file, branch string) (content *bytes.Buffer, err error) {
 	return RunCommand("show", fmt.Sprintf("%v:%v", branch, file))
 }
+
+func CurrentBranch() (branch string, err error) {
+	stdout, err := Run("rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytes.TrimSpace(stdout.Bytes())), nil
+}
