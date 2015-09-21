@@ -208,7 +208,7 @@ func createBranch(branch, target string) (action.Action, error) {
 
 func ResetKeep(branch, ref string) (err error) {
 	// Remember the current branch.
-	currentBranch, err := CurrentBranch()
+	currentBranch, err := gitutil.CurrentBranch()
 	if err != nil {
 		return err
 	}
@@ -368,15 +368,6 @@ func EnsureFileClean(relativePath string) error {
 		return &ErrDirtyFile{relativePath}
 	}
 	return nil
-}
-
-func CurrentBranch() (branch string, err error) {
-	stdout, err := Run("rev-parse", "--abbrev-ref", "HEAD")
-	if err != nil {
-		return "", err
-	}
-
-	return string(bytes.TrimSpace(stdout.Bytes())), nil
 }
 
 func GetConfigString(key string) (value string, err error) {

@@ -13,6 +13,7 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/flag"
 	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/git/gitutil"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules"
 	"github.com/salsaflow/salsaflow/modules/common"
@@ -192,7 +193,7 @@ func collectStoryBranches(remoteName string) ([]*git.GitBranch, error) {
 	}
 
 	// Get the current branch name so that it can be excluded.
-	currentBranch, err := git.CurrentBranch()
+	currentBranch, err := gitutil.CurrentBranch()
 	if err != nil {
 		return nil, err
 	}

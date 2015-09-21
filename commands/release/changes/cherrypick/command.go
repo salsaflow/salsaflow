@@ -13,6 +13,7 @@ import (
 	"github.com/salsaflow/salsaflow/changes"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/git/gitutil"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules"
 	"github.com/salsaflow/salsaflow/prompt"
@@ -99,7 +100,7 @@ func runMain() error {
 	}
 
 	// Remember the current branch.
-	currentBranch, err := git.CurrentBranch()
+	currentBranch, err := gitutil.CurrentBranch()
 	if err != nil {
 		return err
 	}

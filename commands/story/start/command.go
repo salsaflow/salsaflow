@@ -12,6 +12,7 @@ import (
 	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/git/gitutil"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules"
 	"github.com/salsaflow/salsaflow/modules/common"
@@ -184,7 +185,7 @@ StoryLoop:
 
 func createBranch() (action.Action, error) {
 	// Get the current branch name.
-	originalBranch, err := git.CurrentBranch()
+	originalBranch, err := gitutil.CurrentBranch()
 	if err != nil {
 		return nil, err
 	}

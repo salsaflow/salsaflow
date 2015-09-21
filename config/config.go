@@ -11,6 +11,7 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git/gitutil"
 )
 
 func Marshal(v interface{}) ([]byte, error) {
@@ -62,16 +63,29 @@ func writeConfig(absolutePath string, content interface{}, perm os.FileMode) err
 }
 
 func readAndUnmarshalConfig(absolutePath string, v interface{}) error {
+	currentBranch := func() string {
+		branch, err := gitutil.CurrentBranch()
+		if err != nil {
+			return err.Error()
+		}
+		return branch
+	}
+
 	// Read the file.
 	task := "Read given configuration file"
 	content, err := ioutil.ReadFile(absolutePath)
 	if err != nil {
 		hint := fmt.Sprintf(`
-Failed to read the configuration file local at
+Failed to read the configuration file expected to be located at
 
   %v
 
-`, absolutePath)
+The Git branch where the error occurred: %v
+
+Make sure the configuration file exists and is committed
+at the Git branch mentioned above.
+
+`, absolutePath, currentBranch())
 		return errs.NewErrorWithHint(task, err, hint)
 	}
 
@@ -83,10 +97,12 @@ Failed to parse the configuration file located at
 
   %v
 
+The Git branch where the error occurred: %v
+
 Make sure the configuration file is valid JSON
 that follows the right configuration schema.
 
-`, absolutePath)
+`, absolutePath, currentBranch())
 
 		return errs.NewErrorWithHint(task, err, hint)
 	}

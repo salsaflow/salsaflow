@@ -8,13 +8,14 @@ import (
 	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/git/gitutil"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/scripts"
 )
 
 func GetByBranch(branch string) (ver *Version, err error) {
 	// Remember the current branch.
-	currentBranch, err := git.CurrentBranch()
+	currentBranch, err := gitutil.CurrentBranch()
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +57,7 @@ func SetForBranch(ver *Version, branch string) (act action.Action, err error) {
 	}
 
 	// Remember the current branch.
-	currentBranch, err := git.CurrentBranch()
+	currentBranch, err := gitutil.CurrentBranch()
 	if err != nil {
 		return nil, err
 	}

@@ -20,6 +20,7 @@ import (
 	"github.com/salsaflow/salsaflow/commands/review/post/constants"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/git/gitutil"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules"
 	"github.com/salsaflow/salsaflow/modules/common"
@@ -165,7 +166,7 @@ func postBranch(parentBranch string) error {
 	)
 
 	// Get the current branch name.
-	currentBranch, err := git.CurrentBranch()
+	currentBranch, err := gitutil.CurrentBranch()
 	if err != nil {
 		return err
 	}
@@ -282,7 +283,7 @@ You are about to post some of the following commits for code review:
 	// Use force in case we are not on any SF core branch.
 	if canAmend {
 		// Get the current branch name.
-		currentBranch, err := git.CurrentBranch()
+		currentBranch, err := gitutil.CurrentBranch()
 		if err != nil {
 			return nil, err
 		}
@@ -468,7 +469,7 @@ and read the DESCRIPTION section.
 	log.Run("Prepare a temporary branch to rewrite commit messages")
 
 	// Get the current branch name.
-	currentBranch, err := git.CurrentBranch()
+	currentBranch, err := gitutil.CurrentBranch()
 	if err != nil {
 		return nil, err
 	}
@@ -730,7 +731,7 @@ func sendReviewRequests(ctxs []*common.ReviewContext, implemented bool) error {
 	}
 
 	// Post the review for the whole branch.
-	currentBranch, err := git.CurrentBranch()
+	currentBranch, err := gitutil.CurrentBranch()
 	if err != nil {
 		return err
 	}
@@ -892,7 +893,7 @@ func merge(commit, branch string, flags ...string) error {
 	task := fmt.Sprintf("Merge '%v' into branch '%v'", commit, branch)
 	log.Run(task)
 
-	currentBranch, err := git.CurrentBranch()
+	currentBranch, err := gitutil.CurrentBranch()
 	if err != nil {
 		return errs.NewError(task, err)
 	}
