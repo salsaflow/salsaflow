@@ -3,11 +3,11 @@ package modules
 import (
 	// Internal
 	"github.com/salsaflow/salsaflow/config/loader"
-	githubCodeReview "github.com/salsaflow/salsaflow/modules/github/codereview"
-	githubReleaseNotes "github.com/salsaflow/salsaflow/modules/github/releasenotes"
-	"github.com/salsaflow/salsaflow/modules/jira"
-	"github.com/salsaflow/salsaflow/modules/pivotaltracker"
-	"github.com/salsaflow/salsaflow/modules/reviewboard"
+	githubCodeReview "github.com/salsaflow/salsaflow/modules/code_review/github"
+	"github.com/salsaflow/salsaflow/modules/code_review/reviewboard"
+	"github.com/salsaflow/salsaflow/modules/issue_tracking/jira"
+	"github.com/salsaflow/salsaflow/modules/issue_tracking/pivotaltracker"
+	githubReleaseNotes "github.com/salsaflow/salsaflow/modules/release_notes/github"
 )
 
 var registeredModules = []loader.Module{
