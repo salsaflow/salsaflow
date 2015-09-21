@@ -80,7 +80,7 @@ Failed to read the configuration file expected to be located at
 
   %v
 
-The Git branch where the error occured: %v
+The Git branch where the error occurred: %v
 
 Make sure the configuration file exists and is committed
 at the Git branch mentioned above.
@@ -97,7 +97,7 @@ Failed to parse the configuration file located at
 
   %v
 
-The Git branch where the error occured: %v
+The Git branch where the error occurred: %v
 
 Make sure the configuration file is valid JSON
 that follows the right configuration schema.
