@@ -53,7 +53,9 @@ func EnsureValueFilled(value interface{}, path string) error {
 		return &ErrKeyNotSet{path}
 	}
 
-	logger.NewLine("  ---> OK")
+	if logger {
+		logger.NewLine(fmt.Sprintf("  ---> OK (set to '%v')", v.Interface()))
+	}
 	return nil
 }
 
