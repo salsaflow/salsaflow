@@ -136,11 +136,7 @@ func (tracker *issueTracker) NextRelease(
 	nextTrunkVersion *version.Version,
 ) (common.NextRelease, error) {
 
-	panic("not implemented")
-
-	/*
-		return newNextRelease(tracker, trunkVersion, nextTrunkVersion)
-	*/
+	return newNextRelease(tracker, trunkVersion, nextTrunkVersion)
 }
 
 // RunningRelease is a part of common.IssueTracker interface.
