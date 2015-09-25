@@ -307,11 +307,6 @@ func marshal(container ConfigContainer) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// In case v is nil, return nil as well.
-	// This means that no config needs to be stored.
-	if v == nil {
-		return nil, nil
-	}
 
 	return config.Marshal(v)
 }

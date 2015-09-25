@@ -42,5 +42,9 @@ func (container *emptyModuleConfigContainer) PromptUserForConfig() error {
 }
 
 func (container *emptyModuleConfigContainer) Marshal() (interface{}, error) {
-	return nil, nil
+	return struct{}{}, nil
+}
+
+func (container *emptyModuleConfigContainer) Unmarshal(unmarshal func(interface{}) error) error {
+	return nil
 }
