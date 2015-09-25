@@ -89,3 +89,40 @@ func GetOrCreateMilestoneForTitle(
 	// Create the milestone when not found.
 	return CreateMilestone(client, owner, repo, title)
 }
+
+func CloseMilestone(
+	client *github.Client,
+	owner string,
+	repo string,
+	milestone *github.Milestone,
+) (*github.Milestone, action.Action, error) {
+
+	// Copy the milestone to have it stored locally for the rollback closure.
+	mstone := *milestone
+
+	// A helper closure.
+	setState := func(milestone *github.Milestone, state string) (*github.Milestone, error) {
+		task := fmt.Sprintf("Mark GitHub milestone '%v' as %v", *milestone.Title, state)
+		log.Run(task)
+		m, _, err := client.Issues.EditMilestone(owner, repo, *milestone.Number, &github.Milestone{
+			State: &state,
+		})
+		if err != nil {
+			return nil, errs.NewError(task, err)
+		}
+		return m, nil
+	}
+
+	// Close the chosen milestone.
+	m, err := setState(&mstone, "closed")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Return the rollback function.
+	act := action.ActionFunc(func() error {
+		_, err := setState(&mstone, "open")
+		return err
+	})
+	return m, act, nil
+}

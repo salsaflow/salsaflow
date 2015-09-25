@@ -144,11 +144,7 @@ func (tracker *issueTracker) RunningRelease(
 	releaseVersion *version.Version,
 ) (common.RunningRelease, error) {
 
-	panic("not implemented")
-
-	/*
-		return newRunningRelease(releaseVersion, tracker)
-	*/
+	return newRunningRelease(tracker, releaseVersion)
 }
 
 // OpenStory is a part of common.IssueTracker interface.
@@ -376,4 +372,35 @@ func (tracker *issueTracker) getOrCreateMilestone(
 		title  = v.BaseString()
 	)
 	return ghissues.GetOrCreateMilestoneForTitle(client, owner, repo, title)
+}
+
+func (tracker *issueTracker) closeMilestone(
+	v *version.Version,
+) (m *github.Milestone, act action.Action, err error) {
+
+	// Use a chain to group the actions.
+	chain := action.NewActionChain()
+	defer chain.RollbackOnError(&err)
+
+	// Get the associated milestone.
+	milestone, act, err := tracker.getOrCreateMilestone(v)
+	if err != nil {
+		return nil, nil, err
+	}
+	chain.Push(act)
+
+	// Mark it as closed.
+	var (
+		client = tracker.newClient()
+		owner  = tracker.config.GitHubOwner
+		repo   = tracker.config.GitHubRepository
+	)
+	milestone, act, err = ghissues.CloseMilestone(client, owner, repo, milestone)
+	if err != nil {
+		return nil, nil, err
+	}
+	chain.Push(act)
+
+	// Return the results.
+	return milestone, chain, nil
 }
