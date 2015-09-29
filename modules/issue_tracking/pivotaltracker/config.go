@@ -144,7 +144,7 @@ func (local *LocalConfig) PromptUserForConfig() error {
 
 	client := pivotal.NewClient(local.spec.global.UserToken)
 
-	projects, err := client.Projects.List()
+	projects, _, err := client.Projects.List()
 	if err != nil {
 		return errs.NewError(task, err)
 	}
