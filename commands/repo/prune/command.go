@@ -344,11 +344,16 @@ BranchLoop:
 	allowedStates := allowedStoryStates()
 
 	// checkCommits returns whether the commits passed in are ok
-	// considering the state of the stories found in these commits.
-	// In case there is a state that is not allowed detected,
-	// the state is returned from the function as well.
+	// considering the state of the stories found in these commits,
+	// whether the branch containing these commits can be deleted.
 	checkCommits := func(commits []*git.Commit) (common.StoryState, bool) {
+		var storyFound bool
 		for _, commit := range commits {
+			// Skip commits with empty Story-Id tag.
+			if commit.StoryIdTag == "" {
+				continue
+			}
+
 			// In case the story is not found, the tag is not recognized
 			// by the current issue tracker. In that case we just skip the commit.
 			story, ok := storyByTag[commit.StoryIdTag]
@@ -362,10 +367,12 @@ BranchLoop:
 			if _, ok := allowedStates[storyState]; !ok {
 				return storyState, false
 			}
+
+			storyFound = true
 		}
 
 		// We went through all the commits and they are fine, check passed.
-		return common.StoryStateInvalid, true
+		return common.StoryStateInvalid, storyFound
 	}
 
 	// Go through the branches and only return these that
