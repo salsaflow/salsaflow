@@ -202,6 +202,13 @@ func runMain() (err error) {
 		log.Log("Release notes module disabled, not doing anything")
 	}
 
+	// Close the release in the issue tracker.
+	act, err = release.Release()
+	if err != nil {
+		return err
+	}
+	defer action.RollbackOnError(&err, act)
+
 	// Push the changes to the remote repository.
 	task = "Push changes to the remote repository"
 	log.Run(task)

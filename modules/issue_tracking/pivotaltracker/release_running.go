@@ -203,10 +203,10 @@ func (release *runningRelease) EnsureReleasable() error {
 	return errs.NewErrorWithHint(task, common.ErrNotReleasable, hint.String())
 }
 
-func (release *runningRelease) Release() error {
+func (release *runningRelease) Release() (action.Action, error) {
 	// There is no release step in the Pivotal Tracker really.
 	// All the stories are accepted, nothing to be done here.
-	return nil
+	return action.Noop, nil
 }
 
 func (release *runningRelease) loadStories() ([]*pivotal.Story, error) {

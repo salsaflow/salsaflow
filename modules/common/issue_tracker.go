@@ -167,5 +167,5 @@ type RunningRelease interface {
 	// EnsureReleasable shall return *ErrNotReleasable in case
 	// it is not possible to release the given release.
 	EnsureReleasable() error
-	Release() error
+	Release() (action.Action, error)
 }

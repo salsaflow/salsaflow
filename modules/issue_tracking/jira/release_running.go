@@ -149,7 +149,10 @@ IssueLoop:
 		hint.String())
 }
 
-func (release *runningRelease) Release() error {
+func (release *runningRelease) Release() (action.Action, error) {
+	task := "Mark relevant JIRA issues as released"
+	log.Run(task)
+
 	// Release all issues that are accepted.
 	issues := make([]*jira.Issue, 0, len(release.issues))
 	for _, issue := range release.issues {
@@ -159,11 +162,15 @@ func (release *runningRelease) Release() error {
 	}
 	if len(issues) == 0 {
 		log.Warn("No accepted stories found in JIRA")
-		return nil
+		return action.Noop, nil
 	}
 
-	return performBulkTransition(
+	err := performBulkTransition(
 		newClient(release.tracker.config), issues, transitionIdRelease, "")
+	if err != nil {
+		return nil, errs.NewError(task, err)
+	}
+	return action.Noop, nil
 }
 
 func ensureStageableIssue(issue *jira.Issue) error {
