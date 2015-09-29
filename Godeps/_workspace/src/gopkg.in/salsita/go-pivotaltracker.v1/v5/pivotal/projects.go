@@ -86,19 +86,23 @@ func newProjectService(client *Client) *ProjectService {
 }
 
 // List returns all active projects for the current user.
-func (service *ProjectService) List() ([]*Project, *http.Response, error) {
-	req, err := service.client.NewRequest("GET", "projects", nil)
+// It works in much the same way as StoryService.List()
+func (service *ProjectService) List() ([]*Project, error) {
+	reqFunc := func() *http.Request {
+		req, _ := service.client.NewRequest("GET", "projects", nil)
+		return req
+	}
+
+	cursor, err := newCursor(service.client, reqFunc, 0)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	var projects []*Project
-	resp, err := service.client.Do(req, &projects)
-	if err != nil {
-		return nil, resp, err
+	if err := cursor.all(&projects); err != nil {
+		return nil, err
 	}
-
-	return projects, resp, err
+	return projects, nil
 }
 
 func (service *ProjectService) Get(projectId int) (*Project, *http.Response, error) {

@@ -37,7 +37,6 @@ func newCursor(client *Client, fn requestFn, limit int) (c *cursor, err error) {
 // already closed and an error. When next() reaches the end of a paginated
 // endpoint, it returns io.EOF as the error.
 func (c *cursor) next(v interface{}) (resp *http.Response, err error) {
-
 	// The cursor has reached the end, return io.EOF
 	if c.end {
 		return nil, io.EOF
@@ -60,27 +59,11 @@ func (c *cursor) next(v interface{}) (resp *http.Response, err error) {
 		return nil, err
 	}
 
-	// Helper to extract and convert Header values that are Int's
-	getIntHeader := func(resp *http.Response, k string) int {
-		if err != nil {
-			return 0
-		}
-		v := resp.Header.Get(k)
-		if v == "" {
-			return 0
-		}
-		i, cerr := strconv.Atoi(v)
-		if cerr != nil {
-			err = cerr
-		}
-		return i
-	}
-
 	// Get limit, offset, total and returned headers for pagination
-	limit := getIntHeader(resp, "X-Tracker-Pagination-Limit")
-	offset := getIntHeader(resp, "X-Tracker-Pagination-Offset")
-	total := getIntHeader(resp, "X-Tracker-Pagination-Total")
-	returned := getIntHeader(resp, "X-Tracker-Pagination-Returned")
+	limit := getIntHeader(&err, resp, "X-Tracker-Pagination-Limit")
+	offset := getIntHeader(&err, resp, "X-Tracker-Pagination-Offset")
+	total := getIntHeader(&err, resp, "X-Tracker-Pagination-Total")
+	returned := getIntHeader(&err, resp, "X-Tracker-Pagination-Returned")
 	if err != nil {
 		return nil, err
 	}
@@ -99,4 +82,71 @@ func (c *cursor) next(v interface{}) (resp *http.Response, err error) {
 	}
 
 	return resp, nil
+}
+
+func (c *cursor) all(v interface{}) error {
+	// Get the total number of items.
+	total, err := c.total()
+	if err != nil {
+		return err
+	}
+
+	// Get the request object.
+	req := c.requestFn()
+
+	// Set limit=total, offset=0 to get all data at once.
+	values, err := url.ParseQuery(req.URL.RawQuery)
+	if err != nil {
+		return err
+	}
+	values.Set("limit", strconv.Itoa(total))
+	values.Set("offset", "0")
+	req.URL.RawQuery = values.Encode()
+
+	// Do the request, decode JSON to v.
+	_, err = c.client.Do(req, v)
+	return err
+}
+
+func (c *cursor) total() (int, error) {
+	// Get the request object.
+	req := c.requestFn()
+
+	// Set limit=0, offset=0 to just get the pagination information.
+	values, err := url.ParseQuery(req.URL.RawQuery)
+	if err != nil {
+		return 0, err
+	}
+	values.Set("limit", "0")
+	values.Set("offset", "0")
+	req.URL.RawQuery = values.Encode()
+
+	// Do the request, decode JSON to v
+	resp, err := c.client.Do(req, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	total := getIntHeader(&err, resp, "X-Tracker-Pagination-Total")
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+// Helper to extract and convert Header values that are Int's
+func getIntHeader(err *error, resp *http.Response, header string) int {
+	if *err != nil {
+		return 0
+	}
+	v := resp.Header.Get(header)
+	if v == "" {
+		return 0
+	}
+	i, ex := strconv.Atoi(v)
+	if ex != nil {
+		*err = ex
+		return 0
+	}
+	return i
 }
