@@ -18,20 +18,15 @@
 package jira
 
 type User struct {
-	Self         string `json:"self,omitempty"`
-	Key          string `json:"key,omitempty"`
-	Name         string `json:"name,omitempty"`
-	EmailAddress string `json:"emailAddress,omitempty"`
-	AvatarURLs   struct {
-		Size16 string `json:"16x16,omitempty"`
-		Size24 string `json:"24x24,omitempty"`
-		Size32 string `json:"32x32,omitempty"`
-		Size48 string `json:"48x48,omitempty"`
-	} `json:"avatarUrls,omitempty"`
-	DisplayName string `json:"displayName,omitempty"`
-	Active      bool   `json:"active,omitempty"`
-	TimeZone    string `json:"timeZone,omitempty"`
-	Groups      struct {
+	Self         string      `json:"self,omitempty"`
+	Key          string      `json:"key,omitempty"`
+	Name         string      `json:"name,omitempty"`
+	EmailAddress string      `json:"emailAddress,omitempty"`
+	AvatarURLs   *AvatarURLs `json:"avatarUrls,omitempty"`
+	DisplayName  string      `json:"displayName,omitempty"`
+	Active       bool        `json:"active,omitempty"`
+	TimeZone     string      `json:"timeZone,omitempty"`
+	Groups       struct {
 		Size  int `json:"size,omitempty"`
 		Items []struct {
 			Name string `json:"name,omitempty"`
