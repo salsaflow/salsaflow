@@ -15,7 +15,7 @@ type ErrModuleNotFound struct {
 }
 
 func (err *ErrModuleNotFound) Error() string {
-	return fmt.Sprintf("module '%v' not found")
+	return fmt.Sprintf("module '%v' not found", err.moduleId)
 }
 
 // ErrModuleNotSet is returned when the module of the given kind is not active,

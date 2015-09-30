@@ -43,23 +43,19 @@ func (module *codeReviewTool) InitialiseRelease(v *version.Version) (action.Acti
 		return nil, err
 	}
 
+	// Get a GitHub client.
+	client := ghutil.NewClient(module.config.Token)
+
 	// Check whether the review milestone exists or not.
 	// People can create milestones manually, so this makes the thing more robust.
+	title := milestoneTitle(v)
 	task := fmt.Sprintf("Check whether GitHub review milestone exists for release %v", v.BaseString())
 	log.Run(task)
-	milestone, err := milestoneForVersion(module.config, owner, repo, v)
+	_, act, err := ghissues.GetOrCreateMilestoneForTitle(client, owner, repo, title)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
-	if milestone != nil {
-		// Milestone already exists, we are done.
-		log.Log(fmt.Sprintf("GitHub review milestone '%v' already exists", milestoneTitle(v)))
-		return nil, nil
-	}
-
-	// Create the review milestone.
-	_, act, err := createMilestone(module.config, owner, repo, v)
-	return act, err
+	return act, nil
 }
 
 func (module *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, error) {
@@ -615,30 +611,12 @@ func createMilestone(
 	v *version.Version,
 ) (*github.Milestone, action.Action, error) {
 
-	// Create the review milestone.
+	// Create the review milestone for the given version.
 	var (
-		title         = milestoneTitle(v)
-		milestoneTask = fmt.Sprintf("Create GitHub review milestone '%v'", title)
-		client        = ghutil.NewClient(config.Token)
+		client = ghutil.NewClient(config.Token)
+		title  = milestoneTitle(v)
 	)
-	log.Run(milestoneTask)
-	milestone, _, err := client.Issues.CreateMilestone(owner, repo, &github.Milestone{
-		Title: github.String(title),
-	})
-	if err != nil {
-		return nil, nil, errs.NewError(milestoneTask, err)
-	}
-
-	// Return a rollback function.
-	return milestone, action.ActionFunc(func() error {
-		log.Rollback(milestoneTask)
-		task := fmt.Sprintf("Delete GitHub review milestone '%v'", title)
-		_, err := client.Issues.DeleteMilestone(owner, repo, *milestone.Number)
-		if err != nil {
-			return errs.NewError(task, err)
-		}
-		return nil
-	}), nil
+	return ghissues.CreateMilestone(client, owner, repo, title)
 }
 
 func milestoneForVersion(
@@ -648,27 +626,12 @@ func milestoneForVersion(
 	v *version.Version,
 ) (*github.Milestone, error) {
 
-	// Fetch milestones for the given repository.
+	// Find the milestone matching the version.
 	var (
-		task   = fmt.Sprintf("Fetch GitHub milestones for %v/%v", owner, repo)
 		client = ghutil.NewClient(config.Token)
 		title  = milestoneTitle(v)
 	)
-	milestones, _, err := client.Issues.ListMilestones(owner, repo, nil)
-	if err != nil {
-		return nil, errs.NewError(task, err)
-	}
-
-	// Find the right one.
-	task = fmt.Sprintf("Find review milestone for release %v", v)
-	for _, milestone := range milestones {
-		if *milestone.Title == title {
-			return &milestone, nil
-		}
-	}
-
-	// Milestone not found.
-	return nil, nil
+	return ghissues.FindMilestoneByTitle(client, owner, repo, title)
 }
 
 func getOrCreateMilestoneForCommit(
@@ -684,19 +647,13 @@ func getOrCreateMilestoneForCommit(
 		return nil, err
 	}
 
-	// Try to get the milestone.
-	milestone, err := milestoneForVersion(config, owner, repo, v)
-	if err != nil {
-		return nil, err
-	}
-	if milestone == nil {
-		// Create the milestone when not found.
-		milestone, _, err := createMilestone(config, owner, repo, v)
-		return milestone, err
-	}
-
-	// Milestone found, return it.
-	return milestone, nil
+	// Get or create the milestone for the given title.
+	var (
+		client = ghutil.NewClient(config.Token)
+		title  = milestoneTitle(v)
+	)
+	milestone, _, err := ghissues.GetOrCreateMilestoneForTitle(client, owner, repo, title)
+	return milestone, err
 }
 
 func milestoneTitle(v *version.Version) string {
