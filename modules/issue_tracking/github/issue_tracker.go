@@ -370,8 +370,15 @@ func (tracker *issueTracker) getOrCreateMilestone(
 		owner  = tracker.config.GitHubOwner
 		repo   = tracker.config.GitHubRepository
 		title  = v.BaseString()
+
+		milestone *github.Milestone
+		act       action.Action
+		err       error
 	)
-	return ghissues.GetOrCreateMilestoneForTitle(client, owner, repo, title)
+	withRequestAllocated(func() {
+		milestone, act, err = ghissues.GetOrCreateMilestoneForTitle(client, owner, repo, title)
+	})
+	return milestone, act, err
 }
 
 func (tracker *issueTracker) closeMilestone(
@@ -395,7 +402,9 @@ func (tracker *issueTracker) closeMilestone(
 		owner  = tracker.config.GitHubOwner
 		repo   = tracker.config.GitHubRepository
 	)
-	milestone, act, err = ghissues.CloseMilestone(client, owner, repo, milestone)
+	withRequestAllocated(func() {
+		milestone, act, err = ghissues.CloseMilestone(client, owner, repo, milestone)
+	})
 	if err != nil {
 		return nil, nil, err
 	}
