@@ -103,10 +103,11 @@ func runMain(cmd *gocli.Command) (err error) {
 	}
 
 	// Make sure the local config directory exists.
-	if err := ensureLocalConfigDirectoryExists(); err != nil {
+	act, err := ensureLocalConfigDirectoryExists()
+	if err != nil {
 		return err
 	}
-	action.RollbackOnError(&err, action.ActionFunc(deleteLocalConfigDirectory))
+	action.RollbackOnError(&err, act)
 
 	// Set up the global and local configuration file unless -skeleton_only.
 	if !flagSkeletonOnly {
@@ -128,52 +129,44 @@ func runMain(cmd *gocli.Command) (err error) {
 	return nil
 }
 
-func ensureLocalConfigDirectoryExists() error {
+func ensureLocalConfigDirectoryExists() (action.Action, error) {
 	task := "Make sure the local configuration directory exists"
 
 	// Get the directory absolute path.
 	localConfigDir, err := config.LocalConfigDirectoryAbsolutePath()
 	if err != nil {
-		return errs.NewError(task, err)
+		return nil, errs.NewError(task, err)
 	}
 
 	// In case the path exists, make sure it is a directory.
 	info, err := os.Stat(localConfigDir)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return errs.NewError(task, err)
+			return nil, errs.NewError(task, err)
 		}
 	} else {
 		if !info.IsDir() {
-			return errs.NewError(task, fmt.Errorf("not a directory: %v", localConfigDir))
+			return nil, errs.NewError(task, fmt.Errorf("not a directory: %v", localConfigDir))
 		}
-		return nil
+		return action.Noop, nil
 	}
 
 	// Otherwise create the directory.
 	if err := os.MkdirAll(localConfigDir, 0755); err != nil {
-		return errs.NewError(task, err)
+		return nil, errs.NewError(task, err)
 	}
 
-	return nil
-}
-
-func deleteLocalConfigDirectory() error {
-	task := "Delete the local configuration directory"
-	log.Run(task)
-
-	// Get the directory absolute path.
-	localConfigDir, err := config.LocalConfigDirectoryAbsolutePath()
-	if err != nil {
-		return errs.NewError(task, err)
-	}
-
-	// Delete the directory.
-	if err := os.RemoveAll(localConfigDir); err != nil {
-		return errs.NewError(task, err)
-	}
-
-	return nil
+	// Return the rollback function.
+	act := action.ActionFunc(func() error {
+		// Delete the directory.
+		log.Rollback(task)
+		task := "Delete the local configuration directory"
+		if err := os.RemoveAll(localConfigDir); err != nil {
+			return errs.NewError(task, err)
+		}
+		return nil
+	})
+	return act, nil
 }
 
 func assembleAndWriteConfig() error {
