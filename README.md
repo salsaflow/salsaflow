@@ -187,7 +187,7 @@ but other serviced are configurable in the local configuration file, namely:
 The values actually listed depend on what modules are compiled into SalsaFlow.
 You don't really need to understand much about modules unless you feel like
 implement a new module for SalsaFlow. The user is prompted for all necessary
-data when bootstrapping the project, which is a once-time action, and then the
+data when bootstrapping the project, which is a one-time action, and then the
 active modules are simply used by SalsaFlow transparently.
 
 ## Original Authors ##
