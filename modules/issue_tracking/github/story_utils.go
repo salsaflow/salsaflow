@@ -12,11 +12,11 @@ import (
 )
 
 // toCommonStories turns []*github.Issue into []common.Story
-func toCommonStories(issues []*github.Issue, module *issueTracker) []common.Story {
+func toCommonStories(issues []*github.Issue, tracker *issueTracker) []common.Story {
 	commonStories := make([]common.Story, len(issues))
 	for i, issue := range issues {
 		if issue != nil {
-			commonStories[i] = &story{issue, module}
+			commonStories[i] = &story{issue, tracker}
 		}
 	}
 	return commonStories
@@ -32,14 +32,14 @@ func labeled(issue *github.Issue, label string) bool {
 	return false
 }
 
-// pruneWorkflowLabels gets the label slice passed in and splits it
-// into the workflow labels as used by SalsaFlow and the rest.
-func pruneWorkflowLabels(
+// pruneStateLabels gets the label slice passed in and splits it
+// into the state labels as used by SalsaFlow and the rest.
+func pruneStateLabels(
 	config *moduleConfig,
 	labels []github.Label,
 ) (remainingLabels, prunedLabels []github.Label) {
 
-	workflowLabels := map[string]struct{}{
+	stateLabels := map[string]struct{}{
 		config.ApprovedLabel:         struct{}{},
 		config.BeingImplementedLabel: struct{}{},
 		config.ImplementedLabel:      struct{}{},
@@ -57,7 +57,7 @@ func pruneWorkflowLabels(
 		pruned    = make([]github.Label, 0, len(labels))
 	)
 	for _, label := range labels {
-		if _, ok := workflowLabels[*label.Name]; ok {
+		if _, ok := stateLabels[*label.Name]; ok {
 			pruned = append(pruned, label)
 		} else {
 			remaining = append(remaining, label)

@@ -16,8 +16,8 @@ import (
 )
 
 type story struct {
-	issue  *github.Issue
-	module *issueTracker
+	issue   *github.Issue
+	tracker *issueTracker
 }
 
 func (story *story) Id() string {
@@ -33,17 +33,17 @@ func (story *story) Type() string {
 }
 
 func (story *story) State() common.StoryState {
-	return abstractState(story.issue, story.module.config)
+	return abstractState(story.issue, story.tracker.config)
 }
 
 func (story *story) URL() string {
 	return fmt.Sprintf("https://github.com/%v/%v/issues/%v",
-		story.module.config.GitHubOwner, story.module.config.GitHubRepository, *story.issue.Number)
+		story.tracker.config.GitHubOwner, story.tracker.config.GitHubRepository, *story.issue.Number)
 }
 
 func (story *story) Tag() string {
 	return fmt.Sprintf("%v/%v#%v",
-		story.module.config.GitHubOwner, story.module.config.GitHubRepository, *story.issue.Number)
+		story.tracker.config.GitHubOwner, story.tracker.config.GitHubRepository, *story.issue.Number)
 }
 
 func (story *story) Title() string {
@@ -63,33 +63,33 @@ func (story *story) AddAssignee(user common.User) error {
 
 func (story *story) SetAssignees(users []common.User) error {
 	task := fmt.Sprintf("Set the assignee for issue %v", story.ReadableId())
+	assignee := users[0].(*user)
 
-	var (
-		client   = story.module.newClient()
-		assignee = users[0].(*user)
-		owner    = story.module.config.GitHubOwner
-		repo     = story.module.config.GitHubRepository
-		issueNum = *story.issue.Number
+	updateFunc := func(
+		client *github.Client,
+		owner string,
+		repo string,
+		issue *github.Issue,
+	) (*github.Issue, error) {
 
-		issue *github.Issue
-		err   error
-	)
-	withRequestAllocated(func() {
-		issue, _, err = client.Issues.Edit(owner, repo, issueNum, &github.IssueRequest{
+		updated, _, err := client.Issues.Edit(owner, repo, *issue.Number, &github.IssueRequest{
 			Assignee: assignee.me.Login,
 		})
-	})
+		return updated, err
+	}
+
+	updated, _, err := story.tracker.updateIssues([]*github.Issue{story.issue}, updateFunc, nil)
 	if err != nil {
 		return errs.NewError(task, err)
 	}
 
-	story.issue = issue
+	story.issue = updated[0]
 	return nil
 }
 
 func (story *story) Start() error {
 	task := fmt.Sprintf("Start GitHub issue %v", story.ReadableId())
-	_, err := story.setWorkflowLabel(story.module.config.BeingImplementedLabel)
+	_, err := story.setStateLabel(story.tracker.config.BeingImplementedLabel)
 	if err != nil {
 		return errs.NewError(task, err)
 	}
@@ -98,7 +98,7 @@ func (story *story) Start() error {
 
 func (story *story) MarkAsImplemented() (action.Action, error) {
 	task := fmt.Sprintf("Mark GitHub issue %v as implemented", story.ReadableId())
-	act, err := story.setWorkflowLabel(story.module.config.ImplementedLabel)
+	act, err := story.setStateLabel(story.tracker.config.ImplementedLabel)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
@@ -110,18 +110,18 @@ func (s *story) LessThan(otherStory common.Story) bool {
 }
 
 func (s *story) IssueTracker() common.IssueTracker {
-	return s.module
+	return s.tracker
 }
 
 func (s *story) isLabeled(label string) bool {
 	return labeled(s.issue, label)
 }
 
-func (s *story) setWorkflowLabel(label string) (action.Action, error) {
-	task := fmt.Sprintf("Set workflow label to '%v' for issue %v", label, s.ReadableId())
+func (s *story) setStateLabel(label string) (action.Action, error) {
+	task := fmt.Sprintf("Set state label to '%v' for issue %v", label, s.ReadableId())
 
 	// Get the right label list.
-	remainingLabels, prunedLabels := pruneWorkflowLabels(s.module.config, s.issue.Labels)
+	remainingLabels, prunedLabels := pruneStateLabels(s.tracker.config, s.issue.Labels)
 
 	newLabels := make([]string, 0, len(remainingLabels)+1)
 	for _, l := range remainingLabels {
@@ -131,9 +131,9 @@ func (s *story) setWorkflowLabel(label string) (action.Action, error) {
 
 	// Update the issue.
 	var (
-		client   = s.module.newClient()
-		owner    = s.module.config.GitHubOwner
-		repo     = s.module.config.GitHubRepository
+		client   = s.tracker.newClient()
+		owner    = s.tracker.config.GitHubOwner
+		repo     = s.tracker.config.GitHubRepository
 		issueNum = *s.issue.Number
 
 		updatedLabels []github.Label

@@ -158,7 +158,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 		prunedLabels    = make(map[int][]string, len(issues))
 	)
 	for _, issue := range issues {
-		remaining, pruned := pruneWorkflowLabels(release.tracker.config, issue.Labels)
+		remaining, pruned := pruneStateLabels(release.tracker.config, issue.Labels)
 		remainingLabels[*issue.Number] = toLabelStrings(remaining)
 		prunedLabels[*issue.Number] = toLabelStrings(pruned)
 	}
