@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
@@ -185,10 +184,6 @@ func assembleAndWriteConfig() error {
 			releaseNotesModules = group
 		}
 	}
-
-	sort.Sort(commonModules(issueTrackingModules))
-	sort.Sort(commonModules(codeReviewModules))
-	sort.Sort(commonModules(releaseNotesModules))
 
 	// Run the common dialog.
 	task := "Run the core configuration dialog"
