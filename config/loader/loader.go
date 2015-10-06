@@ -57,22 +57,35 @@ func bootstrapGlobalConfig(spec ConfigSpec) error {
 func bootstrapLocalConfig(spec ConfigSpec) error {
 	task := "Bootstrap local config according to the spec"
 
-	// Pre-read local config since it is needed
-	// in the pre-write hook as well.
+	// Some handy variables.
+	configKey := spec.ConfigKey()
+	container := spec.LocalConfig()
+	moduleSpec, isModuleSpec := spec.(ModuleConfigSpec)
+
+	// Pre-read local config.
+	// It is needed the pre-write hook as well.
 	local, err := config.ReadLocalConfig()
 	readConfig := func() (configFile, error) {
 		return local, err
 	}
 
-	// In case the spec is a ModuleConfigSpec, this pre-write hook
-	// modifies the local config file to activate the module being configured.
-	configKey := spec.ConfigKey()
-	preWriteHook := func() (bool, error) {
-		moduleSpec, ok := spec.(ModuleConfigSpec)
-		if ok {
+	// Handle module config specs a bit differently.
+	var preWriteHook func() (bool, error)
+	if isModuleSpec {
+		// Make sure the config container is not nil in case this is a module config.
+		// In case the local config container is nil, the pre-write hook is not executed
+		// and the active module ID is not set, and that would be a problem.
+		// Returning a nil local config container is a valid choice, but we still
+		// need the pre-write hook to be executed to set the active module ID.
+		if container == nil {
+			container = newEmptyModuleConfigContainer(configKey, moduleSpec.ModuleKind())
+		}
+
+		// In case this is a module config spec, set the the pre-write hook
+		// to modify the local config file to activate the module being configured.
+		preWriteHook = func() (bool, error) {
 			return SetActiveModule(local, moduleSpec.ModuleKind(), configKey)
 		}
-		return false, nil
 	}
 
 	// The post-write hook simply tells the user to commit the local config file.
@@ -86,7 +99,7 @@ func bootstrapLocalConfig(spec ConfigSpec) error {
 	if err := load(&loadArgs{
 		configKind:      "local",
 		configKey:       configKey,
-		configContainer: spec.LocalConfig(),
+		configContainer: container,
 		readConfig:      readConfig,
 		emptyConfig:     emptyLocalConfig,
 		preWriteHook:    preWriteHook,
@@ -142,7 +155,6 @@ func load(args *loadArgs) error {
 	)
 
 	// Do nothing in case the container is nil.
-	// That means that the config is not specified at all.
 	if container == nil {
 		return nil
 	}
@@ -165,6 +177,7 @@ func load(args *loadArgs) error {
 	}
 
 	// Find the config record for the given key.
+	// In case there is an error and the prompt is allowed, prompt the user.
 	section, err := configFile.ConfigRecord(configKey)
 	if err != nil {
 		return prompt(err)

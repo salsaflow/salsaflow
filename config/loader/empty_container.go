@@ -5,23 +5,14 @@ import (
 )
 
 // emptyModuleConfigContainer implements ModuleContainer interface.
+// It is used internally when a nil ConfigContainer is returned so that
+// the logic can be simpler by not having to treat this scenario separately.
 type emptyModuleConfigContainer struct {
 	configKey  string
 	moduleKind ModuleKind
 }
 
-// NewEmptyModuleContainer can be used to get a ConfigContainer implementation that does nothing.
-// This is handy in case the module doesn't need any configuration. Even if that is true,
-// the relevant config spec must return a non-nil ConfigContainer so that the active module ID
-// is set to the right module ID. And that is exactly what this function is for.
-//
-// You can use it like:
-//
-//     func (spec *configSpec) LocalConfig() loader.ConfigContainer {
-//         return loader.NewEmtyModuleConfigContainer(ModuleId, ModuleKind)
-//	   }
-//
-func NewEmptyModuleConfigContainer(configKey string, moduleKind ModuleKind) ConfigContainer {
+func newEmptyModuleConfigContainer(configKey string, moduleKind ModuleKind) ConfigContainer {
 	return &emptyModuleConfigContainer{
 		configKey:  configKey,
 		moduleKind: moduleKind,

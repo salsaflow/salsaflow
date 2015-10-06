@@ -51,7 +51,7 @@ func (spec *configSpec) GlobalConfig() loader.ConfigContainer {
 
 // LocalConfig is a part of loader.ConfigSpec
 func (spec *configSpec) LocalConfig() loader.ConfigContainer {
-	return loader.NewEmptyModuleConfigContainer(ModuleId, ModuleKind)
+	return nil
 }
 
 // Global configuration --------------------------------------------------------
