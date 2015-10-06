@@ -15,49 +15,6 @@ import (
 	"github.com/google/go-github/github"
 )
 
-// setMilestone returns an update function that can be passed into
-// updateIssues to set the milestone to the given value.
-func setMilestone(milestone *github.Milestone) issueUpdateFunc {
-	return func(
-		client *github.Client,
-		owner string,
-		repo string,
-		issue *github.Issue,
-	) (*github.Issue, error) {
-
-		issue, _, err := client.Issues.Edit(owner, repo, *issue.Number, &github.IssueRequest{
-			Milestone: milestone.Number,
-		})
-		return issue, err
-	}
-}
-
-// unsetMilestone returns an update function that can be passed into
-// updateIssues to clear the milestone.
-func unsetMilestone() issueUpdateFunc {
-	return func(
-		client *github.Client,
-		owner string,
-		repo string,
-		issue *github.Issue,
-	) (*github.Issue, error) {
-
-		// It is not possible to unset the milestone using go-github
-		// in a nice way, we have to do it manually.
-		u := fmt.Sprintf("repos/%v/%v/issues/%v", owner, repo, *issue.Number)
-		req, err := client.NewRequest("PATCH", u, json.RawMessage([]byte("{milestone:null}")))
-		if err != nil {
-			return nil, err
-		}
-
-		var i github.Issue
-		if _, err := client.Do(req, &i); err != nil {
-			return nil, err
-		}
-		return &i, nil
-	}
-}
-
 type issueUpdateFunc func(client *github.Client, owner, repo string, issue *github.Issue) (*github.Issue, error)
 
 type issueUpdateResult struct {
@@ -159,4 +116,47 @@ func updateIssues(
 		return nil
 	})
 	return updatedIssues, act, nil
+}
+
+// setMilestone returns an update function that can be passed into
+// updateIssues to set the milestone to the given value.
+func setMilestone(milestone *github.Milestone) issueUpdateFunc {
+	return func(
+		client *github.Client,
+		owner string,
+		repo string,
+		issue *github.Issue,
+	) (*github.Issue, error) {
+
+		issue, _, err := client.Issues.Edit(owner, repo, *issue.Number, &github.IssueRequest{
+			Milestone: milestone.Number,
+		})
+		return issue, err
+	}
+}
+
+// unsetMilestone returns an update function that can be passed into
+// updateIssues to clear the milestone.
+func unsetMilestone() issueUpdateFunc {
+	return func(
+		client *github.Client,
+		owner string,
+		repo string,
+		issue *github.Issue,
+	) (*github.Issue, error) {
+
+		// It is not possible to unset the milestone using go-github
+		// in a nice way, we have to do it manually.
+		u := fmt.Sprintf("repos/%v/%v/issues/%v", owner, repo, *issue.Number)
+		req, err := client.NewRequest("PATCH", u, json.RawMessage([]byte("{milestone:null}")))
+		if err != nil {
+			return nil, err
+		}
+
+		var i github.Issue
+		if _, err := client.Do(req, &i); err != nil {
+			return nil, err
+		}
+		return &i, nil
+	}
 }
