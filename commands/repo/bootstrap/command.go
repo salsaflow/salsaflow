@@ -2,10 +2,8 @@ package bootstrapCmd
 
 import (
 	// Stdlib
-	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"sort"
 
@@ -235,25 +233,6 @@ func getAndPourSkeleton(skeleton string) error {
 	}
 	log.NewLine("")
 	log.Ok(task)
-
-	return nil
-}
-
-func writeConfigFile(path string, configObject interface{}) error {
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0640)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	content, err := config.Marshal(configObject)
-	if err != nil {
-		return err
-	}
-
-	if _, err := io.Copy(file, bytes.NewReader(content)); err != nil {
-		return err
-	}
 
 	return nil
 }
