@@ -6,7 +6,7 @@
     "release_notes": "salsaflow.modules.releasenotes.github"
   },
   "configuration": {
-    "salsaflow.codereview.github": {
+    "salsaflow.modules.codereview.github": {
       "review_issue_label": "review",
       "story_implemented_label": "implemented"
     },
