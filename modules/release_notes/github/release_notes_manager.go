@@ -31,7 +31,7 @@ type releaseNotesManager struct {
 	config *moduleConfig
 }
 
-func (module *releaseNotesManager) PostReleaseNotes(
+func (manager *releaseNotesManager) PostReleaseNotes(
 	releaseNotes *common.ReleaseNotes,
 ) (action.Action, error) {
 
@@ -42,7 +42,7 @@ func (module *releaseNotesManager) PostReleaseNotes(
 	}
 
 	// Instantiate the API client.
-	client := github.NewClient(module.config.Token)
+	client := github.NewClient(manager.config.Token)
 
 	// Format the release notes.
 	task := "Format the release notes"

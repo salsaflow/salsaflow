@@ -36,7 +36,7 @@ type codeReviewTool struct {
 	config *moduleConfig
 }
 
-func (module *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action, error) {
+func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action, error) {
 	// Get necessary config.
 	owner, repo, err := ghutil.ParseUpstreamURL()
 	if err != nil {
@@ -44,7 +44,7 @@ func (module *codeReviewTool) InitialiseRelease(v *version.Version) (action.Acti
 	}
 
 	// Get a GitHub client.
-	client := ghutil.NewClient(module.config.Token)
+	client := ghutil.NewClient(tool.config.Token)
 
 	// Check whether the review milestone exists or not.
 	// People can create milestones manually, so this makes the thing more robust.
@@ -58,9 +58,9 @@ func (module *codeReviewTool) InitialiseRelease(v *version.Version) (action.Acti
 	return act, nil
 }
 
-func (module *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, error) {
+func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, error) {
 	// Get a GitHub client.
-	client := ghutil.NewClient(module.config.Token)
+	client := ghutil.NewClient(tool.config.Token)
 
 	owner, repo, err := ghutil.ParseUpstreamURL()
 	if err != nil {
@@ -71,7 +71,7 @@ func (module *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action
 	releaseString := v.BaseString()
 	task := fmt.Sprintf("Get GitHub review milestone for release %v", releaseString)
 	log.Run(task)
-	milestone, err := milestoneForVersion(module.config, owner, repo, v)
+	milestone, err := milestoneForVersion(tool.config, owner, repo, v)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
@@ -115,7 +115,7 @@ func (module *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action
 	}), nil
 }
 
-func (module *codeReviewTool) PostReviewRequests(
+func (tool *codeReviewTool) PostReviewRequests(
 	ctxs []*common.ReviewContext,
 	opts map[string]interface{},
 ) (err error) {
@@ -159,7 +159,7 @@ func (module *codeReviewTool) PostReviewRequests(
 		for _, ctx := range ctxs {
 			commits = append(commits, ctx.Commit)
 		}
-		if ex := postAssignedReviewRequest(module.config, owner, repo, story, commits, opts); ex != nil {
+		if ex := postAssignedReviewRequest(tool.config, owner, repo, story, commits, opts); ex != nil {
 			errs.Log(ex)
 			err = errPostReviewRequest
 		}
@@ -167,7 +167,7 @@ func (module *codeReviewTool) PostReviewRequests(
 
 	// Post the unassigned commits.
 	for _, commit := range unassignedCommits {
-		if ex := postUnassignedReviewRequest(module.config, owner, repo, commit, opts); ex != nil {
+		if ex := postUnassignedReviewRequest(tool.config, owner, repo, commit, opts); ex != nil {
 			errs.Log(ex)
 			err = errPostReviewRequest
 		}
@@ -176,7 +176,7 @@ func (module *codeReviewTool) PostReviewRequests(
 	return
 }
 
-func (module *codeReviewTool) PostReviewFollowupMessage() string {
+func (tool *codeReviewTool) PostReviewFollowupMessage() string {
 	return `
 GitHub review issues successfully created.
 
