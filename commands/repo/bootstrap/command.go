@@ -26,35 +26,43 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  bootstrap [-skeleton=SKELETON] [-skeleton_only]`,
+  bootstrap -skeleton=SKELETON [-skeleton_only]
+
+  bootstrap -no_skeleton`,
 	Short: "bootstrap repository for SalsaFlow",
 	Long: `
-Bootstrap the repository for SalsaFlow.
+  Bootstrap the repository for SalsaFlow.
 
-This command should be used to set up the local configuration directory
-for SalsaFlow (the directory that is then committed into the repository).
+  This command should be used to set up the local configuration directory
+  for SalsaFlow (the directory that is then committed into the repository).
 
-The user is prompted for all necessary data.
+  The user is prompted for all necessary data.
 
-The -skeleton flag can be used to specify the repository to be used
-for custom scripts. It expects a string of "$OWNER/$REPO" and then uses
-the repository located at github.com/$OWNER/$REPO. It clones the repository
-and copies the content into the local configuration directory.
+  The -skeleton flag can be used to specify the repository to be used
+  for custom scripts. It expects a string of "$OWNER/$REPO" and then uses
+  the repository located at github.com/$OWNER/$REPO. It clones the repository
+  and copies the content into the local configuration directory.
 
-In case the repository is bootstrapped, but the skeleton is missing,
-it can be added by specifying -skeleton=SKELETON -skeleton_only.
-That will skip the configuration file generation step.
+  In case no skeleton is to be used to bootstrap the repository,
+  -no_skeleton must be specified explicitly.
+
+  In case the repository is bootstrapped, but the skeleton is missing,
+  it can be added by specifying -skeleton=SKELETON -skeleton_only.
+  That will skip the configuration file generation step.
 	`,
 	Action: run,
 }
 
 var (
+	flagNoSkeleton   bool
 	flagSkeleton     string
 	flagSkeletonOnly bool
 )
 
 func init() {
 	// Register flags.
+	Command.Flags.BoolVar(&flagNoSkeleton, "no_skeleton", flagNoSkeleton,
+		"do not use any skeleton to bootstrap the repository")
 	Command.Flags.StringVar(&flagSkeleton, "skeleton", flagSkeleton,
 		"skeleton to be used to bootstrap the repository")
 	Command.Flags.BoolVar(&flagSkeletonOnly, "skeleton_only", flagSkeletonOnly,
@@ -82,7 +90,13 @@ func run(cmd *gocli.Command, args []string) {
 func runMain(cmd *gocli.Command) (err error) {
 	// Validate CL flags.
 	task := "Check the command line flags"
-	if flagSkeletonOnly && flagSkeleton == "" {
+	switch {
+	case flagSkeleton == "" && !flagNoSkeleton:
+		cmd.Usage()
+		return errs.NewError(
+			task, errors.New("-no_skeleton must be specified when no skeleton is given"))
+
+	case flagSkeletonOnly && flagSkeleton == "":
 		cmd.Usage()
 		return errs.NewError(
 			task, errors.New("-skeleton must be specified when -skeleton_only is set"))
