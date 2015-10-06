@@ -1,9 +1,9 @@
 {
   "salsaflow_enabled_timestamp": "2014-09-02T12:36:11.142902641+01:00",
   "active_modules": {
-    "issue_tracking": "salsaflow.issuetracking.jira",
-    "code_review": "salsaflow.codereview.github",
-    "release_notes": "salsaflow.releasenotes.github"
+    "issue_tracking": "salsaflow.modules.issuetracking.jira",
+    "code_review": "salsaflow.modules.codereview.github",
+    "release_notes": "salsaflow.modules.releasenotes.github"
   },
   "configuration": {
     "salsaflow.codereview.github": {
@@ -21,7 +21,7 @@
       "testing_suffix": "qa",
       "staging_suffix": "stage"
     },
-    "salsaflow.issuetracking.jira": {
+    "salsaflow.modules.issuetracking.jira": {
       "server_url": "https://jira.salsitasoft.com",
       "project_key": "SF"
     }
