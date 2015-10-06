@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/config"
@@ -147,6 +148,7 @@ type loadArgs struct {
 func load(args *loadArgs) error {
 	// Save the args into regular variables.
 	var (
+		configKind     = args.configKind
 		configKey      = args.configKey
 		container      = args.configContainer
 		readConfig     = args.readConfig
@@ -186,12 +188,22 @@ func load(args *loadArgs) error {
 	// Unmarshal the record according to the spec.
 	// In case there is an error and the prompt is allowed, prompt the user.
 	if err := unmarshal(section.RawConfig, container); err != nil {
+		fmt.Println()
+		log.Log(fmt.Sprintf(
+			"Failed to unmarshal %v configuration, will try to run the bootstrap dialog",
+			configKind))
+		log.NewLine(fmt.Sprintf("(err = %v)", err.Error()))
 		return prompt(err)
 	}
 
 	// Validate the returned object according to the spec.
 	// In case there is an error and the prompt is allowed, prompt the user.
 	if err := validate(container, section.Path()); err != nil {
+		fmt.Println()
+		log.Log(fmt.Sprintf(
+			"%v configuration section invalid, will try to run the bootstrap dialog",
+			strings.Title(configKind)))
+		log.NewLine(fmt.Sprintf("(error = %v)", err.Error()))
 		return prompt(err)
 	}
 
@@ -292,13 +304,7 @@ func unmarshal(data []byte, container ConfigContainer) error {
 	} else {
 		err = unmarshalFunc(container)
 	}
-	if err != nil {
-		fmt.Println()
-		log.Log("Failed to unmarshal configuration, will run the bootstrap dialog")
-		log.NewLine(fmt.Sprintf("(err = %v)", err.Error()))
-		return err
-	}
-	return nil
+	return err
 }
 
 // marshal marshals container and returns the raw data.
@@ -338,13 +344,7 @@ func validate(container ConfigContainer, sectionPath string) error {
 	} else {
 		err = config.EnsureValueFilled(container, sectionPath)
 	}
-	if err != nil {
-		fmt.Println()
-		log.Log("Configuration section invalid, will run the bootstrap dialog")
-		log.NewLine(fmt.Sprintf("(error = %v)", err.Error()))
-		return err
-	}
-	return nil
+	return err
 }
 
 func readLocalConfig() (configFile, error) {
