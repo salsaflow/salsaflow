@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	ModuleId   = "salsaflow.codereview.reviewboard"
+	ModuleId   = "salsaflow.modules.codereview.reviewboard"
 	ModuleKind = loader.ModuleKindCodeReview
 )
 

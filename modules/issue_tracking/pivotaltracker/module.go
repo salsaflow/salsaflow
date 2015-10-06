@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	ModuleId   = "salsaflow.issuetracking.pivotaltracker"
+	ModuleId   = "salsaflow.modules.issuetracking.pivotaltracker"
 	ModuleKind = loader.ModuleKindIssueTracking
 )
 

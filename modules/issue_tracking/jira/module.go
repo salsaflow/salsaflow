@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	ModuleId   = "salsaflow.issuetracking.jira"
+	ModuleId   = "salsaflow.module.issuetracking.jira"
 	ModuleKind = loader.ModuleKindIssueTracking
 )
 

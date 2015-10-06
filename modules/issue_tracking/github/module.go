@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	ModuleId   = "salsaflow.issuetracking.github"
+	ModuleId   = "salsaflow.modules.issuetracking.github"
 	ModuleKind = loader.ModuleKindIssueTracking
 )
 
