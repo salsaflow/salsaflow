@@ -26,6 +26,20 @@ So, to use the pre-built binaries,
 2. copy the content to a directory in your `PATH`.
    Make sure that all the files are in the same directory.
 
+#### Upgrading SalsaFlow ####
+
+In case you are using the pre-built binaries and you want to upgrade
+you SalsaFlow to the most recent version, you case use `salsaflow pkg upgrade`.
+In fetches the artifacts attached to the latest GitHub release and replaces
+the current executables.
+
+In case you need to run `pkg upgrade` as root, you may need to use
+`-config` flag to tell SalsaFlow here your global configuration file is.
+It is better, though, to place SalsaFlow executables in a directory that is
+writable by your usual user and just add that directory into `PATH`.
+
+More about configuration is mentioned later.
+
 ### Installing from Sources ###
 
 1. Install [Go](https://golang.org/dl/) (used Go 1.3.3, but any Go 1.x should do the trick).
@@ -86,21 +100,27 @@ useful until it is configured properly.
 
 There are two places where SalsaFlow configuration is being kept:
 
-1. The local, project-specific configuration is expected to be placed
+1. The global, user-wide configuration is written into `$HOME/.salsaflow.json`.
+   This file mostly contains the data that cannot be committed,
+   i.e. access tokens and such.
+2. The local, project-specific configuration is expected to be placed
    into `.salsaflow` directory in the repository root. This directory
    contains the local configuration file, `config.json`, as well as
    some project-specific custom scripts that are to be supplied
    by the user and committed into `.salsaflow/scripts`. More on custom
    scripts later.
-2. The global, user-wide configuration is written into `$HOME/.salsaflow.json`.
-   This file mostly contains the data that cannot be committed,
-   i.e. access tokens and such.
 
 ### Global Configuration ###
 
 The global, user-specific configuration file resides in `$HOME/.salsaflow.json`.
-It stores module-specific configuration as a map. The format obviously depends
+It stores module-specific configuration as a map. The exact format obviously depends
 on what modules are being used.
+
+You can use `-config` flag with any command to specify the path to the
+global configuration file manually. This is handy when you need to run `pkg
+upgrade` as root using `sudo`. In that case `$HOME` is not pointing to the home
+directory of your usual user and SalsaFlow will fail to find the right
+configuration file unless told where to look for it using `-config`.
 
 ### Local Configuration ###
 
