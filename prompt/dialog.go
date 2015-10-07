@@ -11,16 +11,19 @@ import (
 )
 
 func Dialog(value interface{}, questionPrefix string) error {
+	fmt.Println("Just press Enter to use the default value (if available).")
+	fmt.Println()
+	return dialogStruct(value, questionPrefix)
+}
+
+func dialogStruct(value interface{}, questionPrefix string) error {
 	var (
 		v = reflect.Indirect(reflect.ValueOf(value))
 		t = v.Type()
 	)
-	if v.Kind() != reflect.Struct {
-		panic(fmt.Errorf("not a struct: %v", v.Kind()))
+	if kind := v.Kind(); kind != reflect.Struct {
+		panic(fmt.Errorf("not a struct: %v", kind))
 	}
-
-	fmt.Println("Just press Enter to use the default value (if available).")
-	fmt.Println()
 
 	numFields := t.NumField()
 	for i := 0; i < numFields; i++ {
@@ -29,6 +32,14 @@ func Dialog(value interface{}, questionPrefix string) error {
 
 		// Skip unexported fields.
 		if ft.PkgPath != "" {
+			continue
+		}
+
+		// Fill structs recursively.
+		if kind := reflect.Indirect(fv).Kind(); kind == reflect.Struct {
+			if err := dialogStruct(fv.Addr().Interface(), questionPrefix); err != nil {
+				return err
+			}
 			continue
 		}
 
