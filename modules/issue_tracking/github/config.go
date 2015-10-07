@@ -151,19 +151,19 @@ var DefaultSkipCheckLabels = []string{"dupe", "wontfix"}
 type LocalConfig struct {
 	spec *configSpec
 
-	StoryLabel string `json:"story_label"`
+	StoryLabel string `prompt:"label to use to to distinguish story issues" default:"story" json:"story_label"`
 
 	StateLabels struct {
-		ApprovedLabel         string `json:"approved"`
-		BeingImplementedLabel string `json:"being_implemented"`
-		ImplementedLabel      string `json:"implemented"`
-		ReviewedLabel         string `json:"reviewed"`
-		SkipReviewLabel       string `json:"skip_review"`
-		PassedTestingLabel    string `json:"passed_testing"`
-		FailedTestingLabel    string `json:"failed_testing"`
-		SkipTestingLabel      string `json:"skip_testing"`
-		StagedLabel           string `json:"staged_for_acceptance"`
-		RejectedLabel         string `json:"client_rejected"`
+		ApprovedLabel         string `prompt:"'approved' label" default:"approved" json:"approved"`
+		BeingImplementedLabel string `prompt:"'being implemented' label" default:"being implemented" json:"being_implemented"`
+		ImplementedLabel      string `prompt:"'implemented' label" default:"implemented" json:"implemented"`
+		ReviewedLabel         string `prompt:"'reviewed' label" default:"reviewed" json:"reviewed"`
+		SkipReviewLabel       string `prompt:"'no review' label" default:"no review" json:"skip_review"`
+		PassedTestingLabel    string `prompt:"'passed testing' label" default:"qa+" json:"passed_testing"`
+		FailedTestingLabel    string `prompt:"'failed testing' label" default:"qa-" json:"failed_testing"`
+		SkipTestingLabel      string `prompt:"'skip testing' label" default:"no qa" json:"skip_testing"`
+		StagedLabel           string `prompt:"'staged' label" default:"staged" json:"staged_for_acceptance"`
+		RejectedLabel         string `prompt:"'rejected' label" default:"rejected" json:"client_rejected"`
 	} `json:"state_labels"`
 
 	SkipCheckLabels []string `json:"skip_release_check_labels"`
@@ -174,39 +174,13 @@ func (local *LocalConfig) PromptUserForConfig() error {
 	c := LocalConfig{spec: local.spec}
 
 	// Prompt for the labels.
-	var err error
-	promptForLabel := func(dst *string, labelName, defaultValue string) {
-		if err != nil {
-			return
-		}
-		question := fmt.Sprintf("%v label", labelName)
-		var label string
-		label, err = prompt.PromptDefault(question, defaultValue)
-		if err == nil {
-			*dst = label
-		}
-	}
-
-	promptForLabel(&c.StoryLabel, "Story", DefaultStoryLabel)
-
-	promptForLabel(&c.StateLabels.ApprovedLabel, "Approved", DefaultApprovedLabel)
-	promptForLabel(
-		&c.StateLabels.BeingImplementedLabel, "Being implemented", DefaultBeingImplementedLabel)
-	promptForLabel(&c.StateLabels.ImplementedLabel, "Implemented", DefaultImplementedLabel)
-	promptForLabel(&c.StateLabels.ReviewedLabel, "Reviewed", DefaultReviewedLabel)
-	promptForLabel(&c.StateLabels.SkipReviewLabel, "Skip review", DefaultSkipReviewLabel)
-	promptForLabel(&c.StateLabels.PassedTestingLabel, "Passed testing", DefaultPassedTestingLabel)
-	promptForLabel(&c.StateLabels.FailedTestingLabel, "Failed testing", DefaultFailedTestingLabel)
-	promptForLabel(&c.StateLabels.SkipTestingLabel, "Skip testing", DefaultSkipTestingLabel)
-	promptForLabel(&c.StateLabels.StagedLabel, "Staged", DefaultStagedLabel)
-	promptForLabel(&c.StateLabels.RejectedLabel, "Client rejected", DefaultRejectedLabel)
-	if err != nil {
+	if err := prompt.Dialog(&c, "Insert the"); err != nil {
 		return err
 	}
 
 	// Prompt for the release skip check labels.
 	skipCheckLabelsString, err := prompt.Prompt(fmt.Sprintf(
-		"Skip check labels, comma-separated (%v always included): ",
+		"Insert the release skip check labels, comma-separated (%v always included): ",
 		strings.Join(DefaultSkipCheckLabels, ", ")))
 	if err != nil {
 		if err != prompt.ErrCanceled {
