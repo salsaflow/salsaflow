@@ -105,11 +105,9 @@ func loadActiveModule(kind loader.ModuleKind) (loader.Module, error) {
 	// Get the module matching the module kind.
 	activeModuleId := loader.ActiveModule(localConfig, kind)
 	if activeModuleId == "" {
-		var (
-			task = fmt.Sprintf("Get active module ID for module kind '%v'", kind)
-			err  = &ErrModuleNotSet{kind}
-			hint = "\nMake sure the ID is specified in the local configuration file.\n\n"
-		)
+		task := fmt.Sprintf("Get active module ID for module kind '%v'", kind)
+		err := &ErrModuleNotSet{kind}
+		hint := "\nMake sure the ID is specified in the local configuration file.\n\n"
 		return nil, errs.NewErrorWithHint(task, err, hint)
 	}
 
@@ -119,5 +117,18 @@ func loadActiveModule(kind loader.ModuleKind) (loader.Module, error) {
 			return module, nil
 		}
 	}
-	return nil, &ErrModuleNotFound{activeModuleId}
+
+	task := fmt.Sprintf("Load active module for module kind '%v'", kind)
+	err = &ErrModuleNotFound{activeModuleId}
+	hint := `
+The module for the given module ID was not found.
+This can happen for one of the following reasons:
+
+  1. the module ID as stored in the local configuration file is mistyped, or
+  2. the module for the given module ID was not linked into your SalsaFlow.
+
+Check the scenarios as mentioned above to fix the issue.
+
+`
+	return nil, errs.NewErrorWithHint(task, err, hint)
 }
