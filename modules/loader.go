@@ -1,9 +1,13 @@
 package modules
 
 import (
+	// Stdlib
+	"fmt"
+
 	// Internal
 	"github.com/salsaflow/salsaflow/config"
 	"github.com/salsaflow/salsaflow/config/loader"
+	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/modules/common"
 )
 
@@ -101,7 +105,12 @@ func loadActiveModule(kind loader.ModuleKind) (loader.Module, error) {
 	// Get the module matching the module kind.
 	activeModuleId := loader.ActiveModule(localConfig, kind)
 	if activeModuleId == "" {
-		return nil, &ErrModuleNotSet{kind}
+		var (
+			task = fmt.Sprintf("Get active module ID for module kind '%v'", kind)
+			err  = &ErrModuleNotSet{kind}
+			hint = "\nMake sure the ID is specified in the local configuration file.\n\n"
+		)
+		return nil, errs.NewErrorWithHint(task, err, hint)
 	}
 
 	// Find the module among the registered modules.
