@@ -3,6 +3,7 @@ package loader
 import (
 	// Stdlib
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -56,7 +57,7 @@ func bootstrapGlobalConfig(spec ConfigSpec) error {
 }
 
 func bootstrapLocalConfig(spec ConfigSpec) error {
-	task := "Bootstrap local config according to the spec"
+	task := "Bootstrap local configuration according to the spec"
 
 	// Some handy variables.
 	configKey := spec.ConfigKey()
@@ -115,7 +116,7 @@ func loadLocalConfig(spec ConfigSpec) error {
 	// Run the common loading function with the right arguments.
 	// Setting disallowPrompt to true makes the function return an error
 	// in case the config record is not valid instead of running the dialog.
-	task := "Load local config according to the spec"
+	task := "Load local configuration according to the spec"
 	if err := load(&loadArgs{
 		configKind:      "local",
 		configKey:       spec.ConfigKey(),
@@ -173,7 +174,20 @@ func load(args *loadArgs) error {
 
 	prompt := func(err error) error {
 		if disallowPrompt {
-			return err
+			err := errors.New("configuration dialog disabled")
+			task := "Prompt the user for configuration according to the spec"
+			hint := `
+The configuration dialog for the local configuration file can only be run
+during 'repo bootstrap' so that the configuration file is not modified
+without anybody noticing in the middle of other work being done.
+
+Please fix the issues manually, either by manually editing the local
+configuration file or by re-running 'repo bootstrap' command.
+
+Don't forget to commit the changes.
+
+`
+			return errs.NewErrorWithHint(task, err, hint)
 		}
 		return promptAndWrite(configFile, args)
 	}
