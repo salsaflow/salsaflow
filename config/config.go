@@ -85,6 +85,9 @@ The Git branch where the error occurred: %v
 Make sure the configuration file exists and is committed
 at the Git branch mentioned above.
 
+You might want to check 'repo bootstrap' command
+to see how the given configuration file can be generated.
+
 `, absolutePath, currentBranch())
 		return errs.NewErrorWithHint(task, err, hint)
 	}
@@ -101,6 +104,9 @@ The Git branch where the error occurred: %v
 
 Make sure the configuration file is valid JSON
 that follows the right configuration schema.
+
+You might want to check 'repo bootstrap' command
+to see how the given configuration file can be re-generated.
 
 `, absolutePath, currentBranch())
 
