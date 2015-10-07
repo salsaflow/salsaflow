@@ -28,17 +28,17 @@ var Command = &gocli.Command{
 	UsageLine: "start [-base=BASE] [-no_branch] [-no_push]",
 	Short:     "start a new story",
 	Long: `
-Start a new issue tracker story.
+  Start a new issue tracker story.
 
-The user is shown the list of stories that can be started.
-When they choose one, they are assigned to that story and the story
-is started in the issue tracker.
+  The user is shown the list of stories that can be started.
+  When they choose one, they are assigned to that story and the story
+  is started in the issue tracker.
 
-Unless -no_branch is specified, the user is asked to insert
-the branch name to be used for the branch holding the story commits.
-The branch of the given name is created on top of the trunk branch
-and checked out. A custom base branch can be set by using -base.
-The story branch is then pushed unless -no_push is specified.
+  Unless -no_branch is specified, the user is asked to insert
+  the branch name to be used for the branch holding the story commits.
+  The branch of the given name is created on top of the trunk branch
+  and checked out. A custom base branch can be set by using -base.
+  The story branch is then pushed unless -no_push is specified.
 	`,
 	Action: run,
 }
