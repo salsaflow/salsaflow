@@ -174,8 +174,8 @@ func load(args *loadArgs) error {
 
 	prompt := func(err error) error {
 		if disallowPrompt {
-			err := errors.New("configuration dialog disabled")
 			task := "Prompt the user for configuration according to the spec"
+			ex := errors.New("configuration dialog disabled")
 			hint := `
 The configuration dialog for the local configuration file can only be run
 during 'repo bootstrap' so that the configuration file is not modified
@@ -187,7 +187,9 @@ configuration file or by re-running 'repo bootstrap' command.
 Don't forget to commit the changes.
 
 `
-			return errs.NewErrorWithHint(task, err, hint)
+			// XXX: This prints stuff in a wrong order.
+			errs.Log(errs.NewErrorWithHint(task, ex, hint))
+			return err
 		}
 		return promptAndWrite(configFile, args)
 	}
