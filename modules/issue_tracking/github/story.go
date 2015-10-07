@@ -118,60 +118,67 @@ func (s *story) isLabeled(label string) bool {
 }
 
 func (s *story) setStateLabel(label string) (action.Action, error) {
-	task := fmt.Sprintf("Set state label to '%v' for issue %v", label, s.ReadableId())
-
-	// Get the right label list.
-	remainingLabels, prunedLabels := pruneStateLabels(s.tracker.config, s.issue.Labels)
-
-	newLabels := make([]string, 0, len(remainingLabels)+1)
-	for _, l := range remainingLabels {
-		newLabels = append(newLabels, *l.Name)
-	}
-	newLabels = append(newLabels, label)
-
-	// Update the issue.
-	var (
-		client   = s.tracker.newClient()
-		owner    = s.tracker.config.GitHubOwner
-		repo     = s.tracker.config.GitHubRepository
-		issueNum = *s.issue.Number
-
-		updatedLabels []github.Label
-		err           error
-	)
-	withRequestAllocated(func() {
-		updatedLabels, _, err = client.Issues.ReplaceLabelsForIssue(
-			owner, repo, issueNum, newLabels)
-	})
-	if err != nil {
-		return nil, errs.NewError(task, err)
-	}
-	s.issue.Labels = updatedLabels
-
-	return action.ActionFunc(func() error {
-		newLabels := make([]string, 0, len(remainingLabels)+len(prunedLabels))
-		appendLabels := func(labels []github.Label) {
-			for _, label := range labels {
-				newLabels = append(newLabels, *label.Name)
-			}
-		}
-		appendLabels(prunedLabels)
-		task := fmt.Sprintf("Set the workflow labels to [%v] for issue %v",
-			strings.Join(newLabels, ", "), s.ReadableId())
-		appendLabels(remainingLabels)
-
+	// A helper function for setting issue labels.
+	setLabels := func(labels []string) error {
 		var (
+			client   = s.tracker.newClient()
+			owner    = s.tracker.config.GitHubOwner
+			repo     = s.tracker.config.GitHubRepository
+			issueNum = *s.issue.Number
+
 			updatedLabels []github.Label
 			err           error
 		)
 		withRequestAllocated(func() {
 			updatedLabels, _, err = client.Issues.ReplaceLabelsForIssue(
-				owner, repo, issueNum, newLabels)
+				owner, repo, issueNum, labels)
 		})
 		if err != nil {
-			return errs.NewError(task, err)
+			return err
 		}
 		s.issue.Labels = updatedLabels
+		return nil
+	}
+
+	// A helper function for appending label names.
+	appendLabelNames := func(names []string, labels []github.Label) []string {
+		for _, label := range labels {
+			names = append(names, *label.Name)
+		}
+		return names
+	}
+
+	// Set the state labels.
+	task := fmt.Sprintf("Set state label to '%v' for issue %v", label, s.ReadableId())
+
+	// Get the right label list.
+	otherLabels, prunedLabels := pruneStateLabels(s.tracker.config, s.issue.Labels)
+	newLabels := make([]string, 0, len(otherLabels)+1)
+	newLabels = appendLabelNames(newLabels, otherLabels)
+	newLabels = append(newLabels, label)
+
+	// Update the issue.
+	if err := setLabels(newLabels); err != nil {
+		return nil, errs.NewError(task, err)
+	}
+
+	// Return a rollback function.
+	return action.ActionFunc(func() error {
+		// Append the pruned labels.
+		newLabels := make([]string, 0, len(otherLabels)+len(prunedLabels))
+		newLabels = appendLabelNames(newLabels, prunedLabels)
+
+		// Generate the task string.
+		task := fmt.Sprintf("Set the state labels to [%v] for issue %v",
+			strings.Join(newLabels, ", "), s.ReadableId())
+
+		// Append the other labels as well, thus getting the original label list.
+		newLabels = appendLabelNames(newLabels, otherLabels)
+
+		// Update the issue.
+		if err := setLabels(newLabels); err != nil {
+			return errs.NewError(task, err)
+		}
 		return nil
 	}), nil
 }
