@@ -16,8 +16,9 @@ install:
 	${INSTALL} github.com/salsaflow/salsaflow/bin/hooks/salsaflow-pre-push
 
 test:
-	${TEST} github.com/salsaflow/salsaflow/github
-	${TEST} github.com/salsaflow/salsaflow/github/issues
+	${TEST} github.com/salsaflow/salsaflow/github \
+	        github.com/salsaflow/salsaflow/github/issues \
+	        github.com/salsaflow/salsaflow/modules/issue_tracking/github
 
 lint:
 	@go list -f '{{join .Deps "\n"}}' | \
@@ -44,8 +45,9 @@ godep-install:
 	${GODEP_INSTALL} github.com/salsaflow/salsaflow/bin/hooks/salsaflow-pre-push
 
 godep-test:
-	${GODEP_TEST} github.com/salsaflow/salsaflow/github
-	${GODEP_TEST} github.com/salsaflow/salsaflow/github/issues
+	${GODEP_TEST} github.com/salsaflow/salsaflow/github \
+	              github.com/salsaflow/salsaflow/github/issues \
+	              github.com/salsaflow/salsaflow/modules/issue_tracking/github
 
 deps.fetch:
 	@cat Godeps/Godeps.json | \
