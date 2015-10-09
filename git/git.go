@@ -184,13 +184,13 @@ func resetBranch(branch, target string) (action.Action, error) {
 	}
 
 	// Reset the branch.
-	if err := ResetKeep(branch, target); err != nil {
+	if err := Branch("-f", branch, target); err != nil {
 		return nil, err
 	}
 
 	return action.ActionFunc(func() error {
 		// On rollback, reset the branch to the original position.
-		return ResetKeep(branch, current)
+		return Branch("-f", branch, current)
 	}), nil
 }
 
