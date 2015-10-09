@@ -484,7 +484,7 @@ and read the DESCRIPTION section.
 
 	// Prepare a temporary branch that will be used to amend commit messages.
 	task = "Create a temporary branch to rewrite commit messages"
-	if err := git.Branch("-f", constants.TempBranchName, parentSHA); err != nil {
+	if err := git.SetBranch(constants.TempBranchName, parentSHA); err != nil {
 		return nil, errs.NewError(task, err)
 	}
 	defer func() {
@@ -572,7 +572,7 @@ Inserting 'u' will mark the commit as unassigned:`, commit.SHA, commitMessageTit
 
 	// Reset the current branch to point to the new branch.
 	task = "Reset the current branch to point to the temporary branch"
-	if err := git.ResetKeep(currentBranch, constants.TempBranchName); err != nil {
+	if err := git.SetBranch(currentBranch, constants.TempBranchName); err != nil {
 		return nil, errs.NewError(task, err)
 	}
 
