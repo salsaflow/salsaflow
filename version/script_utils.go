@@ -110,6 +110,6 @@ func SetForBranch(ver *Version, branch string) (act action.Action, err error) {
 	return action.ActionFunc(func() (err error) {
 		// On rollback, reset the target branch to the original position.
 		log.Rollback(mainTask)
-		return git.ResetKeep(branch, originalPosition)
+		return git.SetBranch(branch, originalPosition)
 	}), nil
 }

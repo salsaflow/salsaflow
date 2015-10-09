@@ -184,13 +184,13 @@ func resetBranch(branch, target string) (action.Action, error) {
 	}
 
 	// Reset the branch.
-	if err := Branch("-f", branch, target); err != nil {
+	if err := SetBranch(branch, target); err != nil {
 		return nil, err
 	}
 
 	return action.ActionFunc(func() error {
 		// On rollback, reset the branch to the original position.
-		return Branch("-f", branch, current)
+		return SetBranch(branch, current)
 	}), nil
 }
 
@@ -206,31 +206,8 @@ func createBranch(branch, target string) (action.Action, error) {
 	}), nil
 }
 
-func ResetKeep(branch, ref string) (err error) {
-	// Remember the current branch.
-	currentBranch, err := gitutil.CurrentBranch()
-	if err != nil {
-		return err
-	}
-
-	// Checkout the branch to be reset.
-	if err := Checkout(branch); err != nil {
-		return err
-	}
-	defer func() {
-		// Checkout the original branch on return.
-		if ex := Checkout(currentBranch); ex != nil {
-			if err == nil {
-				err = ex
-			} else {
-				errs.Log(ex)
-			}
-		}
-	}()
-
-	// Reset the branch.
-	_, err = Run("reset", "--keep", ref)
-	return err
+func SetBranch(branch, targetRef string) error {
+	return Branch("-f", branch, targetRef)
 }
 
 func Hexsha(ref string) (hexsha string, err error) {
