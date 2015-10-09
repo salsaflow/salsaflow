@@ -95,12 +95,14 @@ func runMain() (err error) {
 	checkBranch := func(branchName string) error {
 		// Make sure the branch exists.
 		task := fmt.Sprintf("Make sure that branch '%v' exists and is up to date", branchName)
+		log.Run(task)
 		if err := git.CheckOrCreateTrackingBranch(branchName, remoteName); err != nil {
 			return errs.NewError(task, err)
 		}
 
 		// Make sure we are not on the branch.
 		task = fmt.Sprintf("Make sure that branch '%v' is not checked out", branchName)
+		log.Run(task)
 		currentBranch, err := gitutil.CurrentBranch()
 		if err != nil {
 			return errs.NewError(task, err)
