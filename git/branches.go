@@ -228,3 +228,32 @@ func branches(
 	}
 	return branches, nil
 }
+
+func UpstreamBranch(localBranch string) (*GitBranch, error) {
+	// Get the upstream branch shortname.
+	stdout, err := Run("for-each-ref", "--format=%(upstream:short)", localBranch)
+	if err != nil {
+		return "", err
+	}
+
+	// No upstream branch in case the output is empty.
+	remoteBranch = string(bytes.TrimSpace(stdout.Bytes()))
+	if remoteBranch == "" {
+		return nil, nil
+	}
+
+	// Parse the remote branch shortname and return the result.
+	re := regexp.MustCompile(`^([^/]+)/(.+)$`)
+	match := re.FindStringSubmatch(remoteBranch)
+	if len(match) != 3 {
+		err := fmt.Errorf("failed to parse remote branch: %v", remoteBranch)
+		return nil, errs.NewError("Parse remote branch shortname", err)
+	}
+	remote, remoteBranch := match[1], match[2]
+
+	return &GitBranch{
+		BranchName:       localBranch,
+		RemoteBranchName: remoteBranch,
+		Remote:           remote,
+	}, nil
+}
