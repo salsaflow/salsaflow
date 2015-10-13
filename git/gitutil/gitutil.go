@@ -81,7 +81,22 @@ func ShowFileByBranch(file, branch string) (content *bytes.Buffer, err error) {
 }
 
 func CurrentBranch() (branch string, err error) {
-	stdout, err := Run("rev-parse", "--abbrev-ref", "HEAD")
+	stdout, err := Run("symbolic-ref", "--short", "HEAD")
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytes.TrimSpace(stdout.Bytes())), nil
+}
+
+func CurrentUpstreamBranch() (upstreamBranch string, err error) {
+	stdout, err := Run("symbolic-ref", "-q", "HEAD")
+	if err != nil {
+		return "", err
+	}
+	branch = string(bytes.TrimSpace(stdout.Bytes()))
+
+	stdout, err = Run("for-each-ref", "--format=%(upstream:short)", branch)
 	if err != nil {
 		return "", err
 	}
