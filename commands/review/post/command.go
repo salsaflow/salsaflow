@@ -280,43 +280,10 @@ You are about to post some of the following commits for code review:
 
 	// Push the branch in case we are on a branch tip.
 	// We are on a branch tip when canAmend is true.
-	// Use force in case we are not on any SF core branch.
+	// Do all this only in case the current branch is a tracking branch.
 	if canAmend {
-		// Get the current branch name.
-		currentBranch, err := gitutil.CurrentBranch()
-		if err != nil {
+		if err := pushCurrentBranch(); err != nil {
 			return nil, err
-		}
-
-		// Push only if the branch is not in sync.
-		gitConfig, err := git.LoadConfig()
-		if err != nil {
-			return nil, err
-		}
-
-		remoteName := gitConfig.RemoteName
-		upToDate, err := git.IsBranchSynchronized(currentBranch, remoteName)
-		if err != nil {
-			return nil, err
-		}
-		if !upToDate {
-			args := make([]string, 0, 3)
-			msg := fmt.Sprintf("Pushing branch '%v' to synchronize", currentBranch)
-			isCore, err := git.IsCoreBranch(currentBranch)
-			if err != nil {
-				return nil, err
-			}
-			if !isCore {
-				args = append(args, "-f")
-				msg += " (using force)"
-			}
-
-			args = append(args, remoteName, currentBranch)
-
-			log.Log(msg)
-			if _, err = git.RunCommand("push", args...); err != nil {
-				return nil, errs.NewError("Push the current branch", err)
-			}
 		}
 	}
 
