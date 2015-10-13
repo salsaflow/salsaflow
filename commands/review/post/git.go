@@ -1,5 +1,7 @@
 package postCmd
 
+// pushCurrentBranch pushes the current branch in case
+// the branch is tracking a remote branch of the project upstream.
 func pushCurrentBranch() error {
 	task := "Check whether the current branch is to be pushed"
 
@@ -60,4 +62,31 @@ func pushCurrentBranch() error {
 	if _, err = git.RunCommand("push", args...); err != nil {
 		return errs.NewError(task, err)
 	}
+}
+
+// merge merges commit into branch.
+func merge(commit, branch string, flags ...string) error {
+	task := fmt.Sprintf("Merge '%v' into branch '%v'", commit, branch)
+	log.Run(task)
+
+	currentBranch, err := gitutil.CurrentBranch()
+	if err != nil {
+		return errs.NewError(task, err)
+	}
+
+	if err := git.Checkout(branch); err != nil {
+		return errs.NewError(task, err)
+	}
+
+	args := make([]string, 1, 1+len(flags))
+	args[0] = commit
+	args = append(args, flags...)
+	if _, err := git.RunCommand("merge", args...); err != nil {
+		return errs.NewError(task, err)
+	}
+
+	if err := git.Checkout(currentBranch); err != nil {
+		return errs.NewError(task, err)
+	}
+	return nil
 }
