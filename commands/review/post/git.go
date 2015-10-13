@@ -1,5 +1,16 @@
 package postCmd
 
+import (
+	// Stdlib
+	"fmt"
+
+	// Internal
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/git/gitutil"
+	"github.com/salsaflow/salsaflow/log"
+)
+
 // pushCurrentBranch pushes the current branch in case
 // the branch is tracking a remote branch of the project upstream.
 func pushCurrentBranch() error {
@@ -62,6 +73,7 @@ func pushCurrentBranch() error {
 	if _, err = git.RunCommand("push", args...); err != nil {
 		return errs.NewError(task, err)
 	}
+	return nil
 }
 
 // merge merges commit into branch.

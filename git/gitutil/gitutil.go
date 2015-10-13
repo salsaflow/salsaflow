@@ -88,18 +88,3 @@ func CurrentBranch() (branch string, err error) {
 
 	return string(bytes.TrimSpace(stdout.Bytes())), nil
 }
-
-func CurrentUpstreamBranch() (upstreamBranch string, err error) {
-	stdout, err := Run("symbolic-ref", "-q", "HEAD")
-	if err != nil {
-		return "", err
-	}
-	branch = string(bytes.TrimSpace(stdout.Bytes()))
-
-	stdout, err = Run("for-each-ref", "--format=%(upstream:short)", branch)
-	if err != nil {
-		return "", err
-	}
-
-	return string(bytes.TrimSpace(stdout.Bytes())), nil
-}

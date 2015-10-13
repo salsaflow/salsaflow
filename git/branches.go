@@ -3,6 +3,7 @@ package git
 import (
 	// Stdlib
 	"bufio"
+	"bytes"
 	"fmt"
 	"regexp"
 	"strings"
@@ -233,11 +234,11 @@ func UpstreamBranch(localBranch string) (*GitBranch, error) {
 	// Get the upstream branch shortname.
 	stdout, err := Run("for-each-ref", "--format=%(upstream:short)", localBranch)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// No upstream branch in case the output is empty.
-	remoteBranch = string(bytes.TrimSpace(stdout.Bytes()))
+	remoteBranch := string(bytes.TrimSpace(stdout.Bytes()))
 	if remoteBranch == "" {
 		return nil, nil
 	}
