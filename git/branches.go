@@ -117,7 +117,7 @@ LocalLoop:
 		// In case the remote branch is missing, clean up the record in .git/config.
 		branchName := localBranch.BranchName
 		log.Warn(fmt.Sprintf(
-			"Branch '%v/%v' not found", localBranch.FullRemoteBranchName()))
+			"Branch '%v' not found", localBranch.FullRemoteBranchName()))
 		log.NewLine(fmt.Sprintf("Unsetting upstream for local branch '%v'", branchName))
 
 		task := fmt.Sprintf("Unset upstream branch for branch '%v'", branchName)
