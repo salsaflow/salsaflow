@@ -70,16 +70,7 @@ func run(cmd *gocli.Command, args []string) {
 
 	app.InitOrDie()
 
-	// Exit cleanly when the panic is actually ErrCanceled.
-	defer func() {
-		if r := recover(); r != nil {
-			if r == prompt.ErrCanceled {
-				log.Println("\nOperation canceled. You are welcome to come back any time!")
-			} else {
-				panic(r)
-			}
-		}
-	}()
+	defer prompt.RecoverCancel()
 
 	if err := runMain(); err != nil {
 		errs.Fatal(err)
