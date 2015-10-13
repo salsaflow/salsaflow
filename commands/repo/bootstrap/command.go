@@ -104,7 +104,7 @@ func runMain(cmd *gocli.Command) (err error) {
 	if err != nil {
 		return err
 	}
-	action.RollbackOnError(&err, act)
+	defer action.RollbackOnError(&err, act)
 
 	// Set up the global and local configuration file unless -skeleton_only.
 	if !flagSkeletonOnly {
