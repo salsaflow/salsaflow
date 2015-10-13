@@ -20,12 +20,12 @@
 		},
 		{
 			"ImportPath": "github.com/fatih/color",
-			"Comment": "v0.1-6-g2f37699",
-			"Rev": "2f376994f3b3cae1602f63eb5bdfb58101a94a08"
+			"Comment": "v0.1-8-g76d4231",
+			"Rev": "76d423163af754ff6423d2d9be0057fbf03c57c2"
 		},
 		{
 			"ImportPath": "github.com/google/go-github/github",
-			"Rev": "0d67682ce830f252a1d56215f39b71199036361d"
+			"Rev": "2570a87f54b43ed0957cabd7a0819f0dab85217b"
 		},
 		{
 			"ImportPath": "github.com/google/go-querystring/query",
@@ -41,25 +41,17 @@
 		},
 		{
 			"ImportPath": "github.com/onsi/ginkgo",
-			"Comment": "v1.2.0-11-gd94e2f4",
-			"Rev": "d94e2f4000332f62b356ecb2840c98f4218f5358"
+			"Comment": "v1.2.0-22-g39d2c24",
+			"Rev": "39d2c24f8a92c88f7e7f4d8ec6c80d3cc8f5ac65"
 		},
 		{
 			"ImportPath": "github.com/onsi/gomega",
-			"Comment": "v1.0-52-ga2ab864",
-			"Rev": "a2ab8644e0b6a33df2cbe44673bd0f6ebba9abc3"
-		},
-		{
-			"ImportPath": "github.com/salsita/go-jira/v2/jira",
-			"Rev": "3565b0189c50f019c4419da570687a8073c3f5e3"
+			"Comment": "v1.0-71-g2152b45",
+			"Rev": "2152b45fa28a361beba9aab0885972323a444e28"
 		},
 		{
 			"ImportPath": "github.com/shiena/ansicolor",
-			"Rev": "a5e2b567a4dd6cc74545b8a4f27c9d63b9e7735b"
-		},
-		{
-			"ImportPath": "github.com/tchap/oauth",
-			"Rev": "d1214b4ac4b16fedaf83df0732fe80be9683bd96"
+			"Rev": "d445752f6f66f9cd987722f109149f6799cdf1de"
 		},
 		{
 			"ImportPath": "github.com/toqueteos/webbrowser",
@@ -68,33 +60,33 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "66f0418ca41253f8d1a024eb9754e9441a8e79b9"
+			"Rev": "d8f3c68ddd4bb686ca3bd70e49bbc64b80c78144"
 		},
 		{
 			"ImportPath": "golang.org/x/oauth2",
-			"Rev": "397fe7649477ff2e8ced8fc0b2696f781e53745a"
+			"Rev": "2fbf3d7329d847b125188ad64b68cfb1f548938a"
 		},
 		{
 			"ImportPath": "golang.org/x/text/transform",
-			"Rev": "723492b65e225eafcba054e76ba18bb9c5ac1ea2"
+			"Rev": "5722c1c97facbc41d1f9329ce722ed374db7d819"
 		},
 		{
 			"ImportPath": "golang.org/x/text/unicode/norm",
-			"Rev": "723492b65e225eafcba054e76ba18bb9c5ac1ea2"
+			"Rev": "5722c1c97facbc41d1f9329ce722ed374db7d819"
 		},
 		{
 			"ImportPath": "gopkg.in/salsita/go-pivotaltracker.v1/v5/pivotal",
-			"Comment": "v1.2.0-5-gc92b9c6",
-			"Rev": "c92b9c63b80a1d19189b0ba278c7a32d226f8346"
+			"Comment": "v1.3.0",
+			"Rev": "a79932cdbb6208c4b4818f4a3fc8707cd4921956"
 		},
 		{
 			"ImportPath": "gopkg.in/tchap/gocli.v2",
-			"Comment": "v2.0.0-1-gcef534f",
+			"Comment": "v2.0.0",
 			"Rev": "cef534fa45fb0c03312a58d09093db6e0e0753f5"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
-			"Rev": "7ad95dd0798a40da1ccdff6dff35fd177b5edf40"
+			"Rev": "53feefa2559fb8dfa8d81baad31be332c97d6c77"
 		}
 	]
 }
