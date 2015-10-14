@@ -11,7 +11,7 @@ Unless -no_branch is specified, the user is asked to insert
 the branch name to be used for the branch holding the story commits.
 The branch of the given name is created on top of the trunk branch
 and checked out. A custom base branch can be set by using -base.
-The story branch is then pushed in case `-push` is specified.
+The story branch is then pushed in case -push is specified.
 
 Steps
 
