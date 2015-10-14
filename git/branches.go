@@ -230,9 +230,19 @@ func branches(
 	return branches, nil
 }
 
+// UpstreamBranch returns a GitBranch representing the given local branch
+// with its remote counterpart filled in. In case there is no remote counterpart,
+// nil is returned.
+//
+// Example:
+//
+//   develop     -> origin/develop
+//   master      -> origin/master
+//   nonexisting -> nil
 func UpstreamBranch(localBranch string) (*GitBranch, error) {
 	// Get the upstream branch shortname.
-	stdout, err := Run("for-each-ref", "--format=%(upstream:short)", localBranch)
+	localRef := "refs/heads/" + localBranch
+	stdout, err := Run("for-each-ref", "--format=%(upstream:short)", localRef)
 	if err != nil {
 		return nil, err
 	}
