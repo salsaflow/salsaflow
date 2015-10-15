@@ -13,6 +13,9 @@ import (
 func Dialog(value interface{}, questionPrefix string) error {
 	fmt.Println("Just press Enter to use the default value (if available).")
 	fmt.Println()
+	fmt.Println("Console echo can be disabled for certain questions,")
+	fmt.Println("so don't be surprised in case the input is not echoed.")
+	fmt.Println()
 	return dialogStruct(value, questionPrefix)
 }
 
