@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -922,81 +921,67 @@ func promptForStory(
 ) (common.Story, error) {
 
 	var (
-		task         = "Prompt the user to select a story"
-		showReviewed = false
+		unassignedOpt *storyprompt.DialogOption
+		reviewedOpt   *storyprompt.DialogOption
 	)
 
-	msgFormat := `Choose a story by inserting its index. You can also:
-  - insert 'u' to not choose any story, or
-  - insert 'r' to select a story that is %v, or
-  - press Enter to abort.
-Your choice: `
-
-	// Print the header.
-	fmt.Println(header)
-
-	for {
-		// Set the context for this iteration.
-		var (
-			ss  []common.Story
-			msg string
-		)
-		if showReviewed {
-			ss = reviewedStories
-			msg = fmt.Sprintf(msgFormat, "being developed")
-		} else {
-			ss = stories
-			msg = fmt.Sprintf(msgFormat, "already reviewed")
-		}
-
-		// Present the stories to the user.
-		fmt.Println()
-		if err := storyprompt.ListStories(ss, os.Stdout); err != nil {
-			return nil, errs.NewError(task, err)
-		}
-		fmt.Println()
-
-		// Prompt the user to select a story to assign the commit with.
-		input, err := prompt.Prompt(msg)
-		if err != nil {
-			switch err {
-			case prompt.ErrNoStories:
-				hint := `
-There are no stories that the unassigned commits can be assigned to.
-In other words, there are no stories in the right state for that.
-
-`
-				return nil, errs.NewErrorWithHint(task, err, hint)
-			case prompt.ErrCanceled:
-				prompt.PanicCancel()
-			default:
-				return nil, errs.NewError(task, err)
-			}
-		}
-
-		// Check the valid letter values.
-		switch strings.ToLower(input) {
-		case "u":
-			return nil, nil
-		case "r":
-			showReviewed = !showReviewed
-			continue
-		}
-
-		// Parse the input as a number.
-		index, err := strconv.Atoi(input)
-		if err != nil {
-			// Print the list again on invalid input.
-			continue
-		}
-
-		// Make sure we are not out of bounds.
-		if index < 1 || index > len(ss) {
-			// Print the list again on invalid input.
-			continue
-		}
-
-		// Return the selected story.
-		return ss[index-1], nil
+	pushOptions := func(dialog *storyprompt.Dialog, opts ...*storyprompt.DialogOption) {
+		dialog.PushOptions(storyprompt.NewIndexOption())
+		dialog.PushOptions(opts...)
+		dialog.PushOptions(storyprompt.NewReturnOrAbortOptions()...)
+		dialog.PushOptions(storyprompt.NewFilterOption())
 	}
+
+	unassignedOpt = &storyprompt.DialogOption{
+		Description: []string{
+			"Insert 'u' to mark the commit(s) as unassigned",
+		},
+		IsActive: func(stories []common.Story, depth int) bool {
+			return true
+		},
+		MatchesInput: func(input string, stories []common.Story) bool {
+			return input == "u"
+		},
+		SelectStory: func(
+			input string,
+			stories []common.Story,
+			currentDialog *storyprompt.Dialog,
+		) (common.Story, error) {
+
+			return nil, nil
+		},
+	}
+
+	reviewedOpt = &storyprompt.DialogOption{
+		Description: []string{
+			"Insert 'r' to select a reviewed story",
+		},
+		IsActive: func(stories []common.Story, depth int) bool {
+			return depth == 1
+		},
+		MatchesInput: func(input string, stories []common.Story) bool {
+			return input == "r"
+		},
+		SelectStory: func(
+			input string,
+			stories []common.Story,
+			currentDialog *storyprompt.Dialog,
+		) (common.Story, error) {
+
+			fmt.Println()
+			fmt.Println("Showing the stories that are already reviewed ...")
+			fmt.Println()
+
+			subdialog := currentDialog.NewSubdialog()
+			pushOptions(subdialog, unassignedOpt)
+			return subdialog.Run(reviewedStories)
+		},
+	}
+
+	fmt.Println(header)
+	fmt.Println()
+
+	dialog := storyprompt.NewDialog()
+	pushOptions(dialog, unassignedOpt, reviewedOpt)
+	return dialog.Run(stories)
 }

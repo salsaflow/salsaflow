@@ -122,7 +122,7 @@ StoryLoop:
 	stories = filteredStories
 
 	// Prompt the user to select a story.
-	story, err := storyprompt.PromptStory(
+	story, err := dialog(
 		"\nYou can start working on one of the following stories:", stories)
 	if err != nil {
 		switch err {
@@ -311,4 +311,15 @@ Insert an empty string to skip the branch creation step: `)
 		// Return deleteErr to make sure it propagates up.
 		return deleteErr
 	}), nil
+}
+
+func dialog(msg string, stories []common.Story) (common.Story, error) {
+	fmt.Println(msg)
+	fmt.Println()
+
+	dialog := storyprompt.NewDialog()
+	dialog.PushOptions(storyprompt.NewIndexOption())
+	dialog.PushOptions(storyprompt.NewReturnOrAbortOptions()...)
+	dialog.PushOptions(storyprompt.NewFilterOption())
+	return dialog.Run(stories)
 }
