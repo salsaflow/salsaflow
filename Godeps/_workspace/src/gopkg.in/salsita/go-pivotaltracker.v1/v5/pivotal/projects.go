@@ -47,7 +47,7 @@ type Project struct {
 	BugsAndChoresAreEstimatable  bool           `json:"bugs_and_chores_are_estimatable"`
 	AutomaticPlanning            bool           `json:"automatic_planning"`
 	EnableTasks                  bool           `json:"enable_tasks"`
-	StartDate                    *time.Time     `json:"start_date"`
+	StartDate                    *Date          `json:"start_date"`
 	TimeZone                     *TimeZone      `json:"time_zone"`
 	VelocityAveragedOver         int            `json:"velocity_averaged_over"`
 	ShownIterationsStartTime     *time.Time     `json:"shown_iterations_start_time"`
