@@ -25,7 +25,7 @@
 		},
 		{
 			"ImportPath": "github.com/google/go-github/github",
-			"Rev": "2570a87f54b43ed0957cabd7a0819f0dab85217b"
+			"Rev": "9420d0f48acb838ccf8a7f8dde9eaee19af71132"
 		},
 		{
 			"ImportPath": "github.com/google/go-querystring/query",
@@ -60,19 +60,19 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "d8f3c68ddd4bb686ca3bd70e49bbc64b80c78144"
+			"Rev": "cd8c2701a5e10f044db915e65eac68f738399d22"
 		},
 		{
 			"ImportPath": "golang.org/x/oauth2",
-			"Rev": "2fbf3d7329d847b125188ad64b68cfb1f548938a"
+			"Rev": "ef4eca6b097fad7cec79afcc278d213a6de1c960"
 		},
 		{
 			"ImportPath": "golang.org/x/text/transform",
-			"Rev": "5722c1c97facbc41d1f9329ce722ed374db7d819"
+			"Rev": "f024ad8118c1182f0c9c976f0fa8e56b39ef821b"
 		},
 		{
 			"ImportPath": "golang.org/x/text/unicode/norm",
-			"Rev": "5722c1c97facbc41d1f9329ce722ed374db7d819"
+			"Rev": "f024ad8118c1182f0c9c976f0fa8e56b39ef821b"
 		},
 		{
 			"ImportPath": "gopkg.in/salsita/go-pivotaltracker.v1/v5/pivotal",
