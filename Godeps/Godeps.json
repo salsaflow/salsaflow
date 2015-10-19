@@ -84,8 +84,8 @@
 		},
 		{
 			"ImportPath": "gopkg.in/salsita/go-pivotaltracker.v1/v5/pivotal",
-			"Comment": "v1.2.0-5-gc92b9c6",
-			"Rev": "c92b9c63b80a1d19189b0ba278c7a32d226f8346"
+			"Comment": "v1.3.1",
+			"Rev": "6f9f6c14977fb57a1a8ad00c0a150c90bfc71a20"
 		},
 		{
 			"ImportPath": "gopkg.in/tchap/gocli.v2",
