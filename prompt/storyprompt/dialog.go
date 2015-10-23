@@ -71,7 +71,7 @@ func (dialog *Dialog) PushOptions(opts ...*DialogOption) {
 	dialog.opts = append(dialog.opts, opts...)
 }
 
-// NewDubdialog can be used to create a new dialog based on the current dialog.
+// NewSubdialog can be used to create a new dialog based on the current dialog.
 // The option list is empty again, just the dialog depth is inherited.
 func (dialog *Dialog) NewSubdialog() *Dialog {
 	return &Dialog{
