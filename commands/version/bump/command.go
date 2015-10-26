@@ -52,9 +52,15 @@ func run(cmd *gocli.Command, args []string) {
 
 func runMain(versionString string) error {
 	// Make sure the version string is correct.
+	task := "Parse the command line VERSION argument"
 	ver, err := version.Parse(versionString)
 	if err != nil {
-		return err
+		hint := `
+The version string must be in the form of Major.Minor.Patch
+and no part of the version string can be omitted.
+
+`
+		return errs.NewErrorWithHint(task, err, hint)
 	}
 
 	// In case -commit is set, set and commit the version string.
