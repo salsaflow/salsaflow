@@ -140,7 +140,7 @@ func runMain() error {
 	// Filter branches according to the story state.
 	task = "Filter branches according to the story state"
 	log.Run(task)
-	storyBranches, err = filterBranches(storyBranches, trunkName)
+	filteredBranches, err := filterBranches(storyBranches, trunkName)
 	if err != nil {
 		return errs.NewError(task, err)
 	}
@@ -151,7 +151,7 @@ func runMain() error {
 
 	// Prompt the user to choose what branches to delete.
 	task = "Prompt the user to choose what branches to delete"
-	localToDelete, remoteToDelete, err := promptUserToChooseBranches(storyBranches)
+	localToDelete, remoteToDelete, err := promptUserToChooseBranches(filteredBranches)
 	if err != nil {
 		return errs.NewError(task, err)
 	}
@@ -265,9 +265,13 @@ func splitBranchesNotInSync(storyBranches []*git.GitBranch) ([]*git.GitBranch, e
 type gitBranch struct {
 	tip     *git.GitBranch
 	commits []*git.Commit
+
+	// reason contains the reason the branch was included
+	// in the branch deletion candidate list.
+	reason string
 }
 
-func filterBranches(storyBranches []*git.GitBranch, trunkName string) ([]*git.GitBranch, error) {
+func filterBranches(storyBranches []*git.GitBranch, trunkName string) ([]*gitBranch, error) {
 	// Pair the branches with commit ranges specified by trunk..story
 	task := "Collected commits associated with the story branches"
 	branches := make([]*gitBranch, 0, len(storyBranches))
@@ -322,7 +326,7 @@ BranchLoop:
 	}
 
 	// Fetch the collected stories.
-	task = "Fetch affected stories from the issue tracker"
+	task = "Fetch associated stories from the issue tracker"
 	log.Run(task)
 	stories, err := tracker.ListStoriesByTag(tags)
 	if err != nil {
@@ -377,7 +381,7 @@ BranchLoop:
 
 	// Go through the branches and only return these that
 	// comply with the story state requirements.
-	bs := make([]*git.GitBranch, 0, len(branches))
+	bs := make([]*gitBranch, 0, len(branches))
 	for _, branch := range branches {
 		tip := branch.tip
 
@@ -392,7 +396,8 @@ BranchLoop:
 			if logger {
 				logger.Log("  Include the branch (reason: merged into trunk)")
 			}
-			bs = append(bs, tip)
+			branch.reason = "merged"
+			bs = append(bs, branch)
 			continue
 		}
 
@@ -402,7 +407,8 @@ BranchLoop:
 			if logger {
 				logger.Log("  Include the branch (reason: branch check passed)")
 			}
-			bs = append(bs, tip)
+			branch.reason = "check passed"
+			bs = append(bs, branch)
 			continue
 		}
 
@@ -421,33 +427,42 @@ BranchLoop:
 	return bs, nil
 }
 
-func promptUserToChooseBranches(branches []*git.GitBranch) (local, remote []string, err error) {
+func promptUserToChooseBranches(branches []*gitBranch) (local, remote []string, err error) {
 	// Go through the branches and ask the user for confirmation.
 	var (
 		localToDelete  = make([]string, 0, len(branches))
 		remoteToDelete = make([]string, 0, len(branches))
 	)
 
-	fmt.Println()
 	defer fmt.Println()
 
 	for _, branch := range branches {
-		isLocal := branch.BranchName != ""
-		isRemote := branch.RemoteBranchName != ""
+		tip := branch.tip
+		isLocal := tip.BranchName != ""
+		isRemote := tip.RemoteBranchName != ""
 
 		var msg string
 		switch {
 		case isLocal && isRemote:
-			msg = fmt.Sprintf("Delete local branch '%v' and its remote counterpart?", branch.BranchName)
+			msg = fmt.Sprintf(
+				"Processing local branch '%v' and its remote counterpart", tip.BranchName)
 		case isLocal:
-			msg = fmt.Sprintf("Delete local branch '%v'?", branch.BranchName)
+			msg = fmt.Sprintf(
+				"Processing local branch '%v'", tip.BranchName)
 		case isRemote:
-			msg = fmt.Sprintf("Delete remote branch '%v'?", branch.FullRemoteBranchName())
+			msg = fmt.Sprintf(
+				"Processing remote branch '%v'", tip.FullRemoteBranchName())
 		default:
 			panic("bullshit")
 		}
+		fmt.Println()
+		fmt.Println(msg)
 
-		confirmed, err := prompt.Confirm(msg, false)
+		if branch.reason != "merged" {
+			fmt.Println("Careful now, the branch has not been merged into trunk yet.")
+		}
+
+		confirmed, err := prompt.Confirm("Are you sure you want to delete the branch?", false)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -456,10 +471,10 @@ func promptUserToChooseBranches(branches []*git.GitBranch) (local, remote []stri
 		}
 
 		if isLocal {
-			localToDelete = append(localToDelete, branch.BranchName)
+			localToDelete = append(localToDelete, tip.BranchName)
 		}
 		if isRemote {
-			remoteToDelete = append(remoteToDelete, branch.RemoteBranchName)
+			remoteToDelete = append(remoteToDelete, tip.RemoteBranchName)
 		}
 	}
 	return localToDelete, remoteToDelete, nil
