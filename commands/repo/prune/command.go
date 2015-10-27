@@ -381,16 +381,41 @@ BranchLoop:
 	for _, branch := range branches {
 		tip := branch.tip
 
+		logger := log.V(log.Verbose)
+		if logger {
+			logger.Log(fmt.Sprintf("Processing branch %v", tip.CanonicalName()))
+		}
+
+		// The branch can be for sure deleted in case there are no commits
+		// contained in the commit range. That means the branch is merged into trunk.
+		if len(branch.commits) == 0 {
+			if logger {
+				logger.Log("  Include the branch (reason: merged into trunk)")
+			}
+			bs = append(bs, tip)
+			continue
+		}
+
 		// In case the commit check passed, we append the branch.
 		state, ok := checkCommits(branch.commits)
 		if ok {
+			if logger {
+				logger.Log("  Include the branch (reason: branch check passed)")
+			}
 			bs = append(bs, tip)
 			continue
 		}
 
 		// Otherwise we print the skip warning.
-		log.V(log.Debug).Log(fmt.Sprintf(
-			"Skipping branch '%v', story state is '%v'", tip.CanonicalName(), state))
+		if logger {
+			if state == common.StoryStateInvalid {
+				logger.Log(
+					"  Exclude the branch (reason: no story commits found on the branch)")
+			} else {
+				logger.Log(fmt.Sprintf(
+					"  Exclude the branch (reason: story state is '%v')", state))
+			}
+		}
 	}
 
 	return bs, nil
