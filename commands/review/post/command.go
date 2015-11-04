@@ -635,15 +635,21 @@ func commitsToReviewContexts(commits []*git.Commit) ([]*common.ReviewContext, er
 	}
 
 	// Fetch the stories from the issue tracker.
-	stories, err := tracker.ListStoriesByTag(storyTags(tracker, commits))
+	tags := storyTags(tracker, commits)
+	stories, err := tracker.ListStoriesByTag(tags)
 	if err != nil {
 		return nil, err
 	}
 
 	// Build the story map.
 	storiesByTag := make(map[string]common.Story, 1)
-	for _, story := range stories {
-		storiesByTag[story.Tag()] = story
+	for i, story := range stories {
+		tag := tags[i]
+		if story == nil {
+			log.Warn(fmt.Sprintf("Story for tag '%v' was not found in the issue tracker", tag))
+			continue
+		}
+		storiesByTag[tag] = story
 	}
 
 	// Build the final list of review contexts.
