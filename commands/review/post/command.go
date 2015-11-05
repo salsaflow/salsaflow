@@ -116,17 +116,14 @@ func run(cmd *gocli.Command, args []string) {
 	case flagParent != "":
 		err = postBranch(flagParent)
 	default:
-		err = postRevision("HEAD")
+		err = postTip()
 	}
 	if err != nil {
 		errs.Fatal(err)
 	}
 }
 
-func postRevision(revision string) error {
-	// "HEAD" is used to post the tip of the current branch.
-	headMode := revision == "HEAD"
-
+func postRevision(revision string) (err error) {
 	// Get the commit to be posted
 	task := "Get the commit to be posted for code review"
 	commits, err := git.ShowCommit(revision)
@@ -139,8 +136,19 @@ func postRevision(revision string) error {
 		panic(fmt.Sprintf("len(commits): expected 1, got %v", numCommits))
 	}
 
+	// Make sure the Story-Id tag is not missing.
+	task := "Make sure the chosen commit is valid"
+	if isStoryIdMissing(commits) {
+		return errs.NewError(task, errors.New("Story-Id tag is missing"))
+	}
+
+	// Prompt the user to confirm.
+	if err := confirmCommits(commits); err != nil {
+		return err
+	}
+
 	// Post the review requests, in this case it will be only one.
-	act, err := postReviewRequests(commits, headMode)
+	act, err := postReviewRequests(commits)
 	if err != nil {
 		return err
 	}
@@ -223,14 +231,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	}
 
 	// Post the review requests.
-	act, err := postReviewRequests(commits, true)
-	if err != nil {
-		return err
-	}
-	defer action.RollbackOnError(&err, act)
-
-	// Ask the user what to do next.
-	return parentFollowupDialog(currentBranch, remoteName, trunkBranch)
+	return postReviewRequests(commits, true)
 }
 
 func postReviewRequests(commits []*git.Commit, canAmend bool) (act action.Action, err error) {
@@ -286,6 +287,7 @@ You are about to post some of the following commits for code review:
 		}
 
 		remoteName := gitConfig.RemoteName
+		// IsBranchSynchronized returns true when there is no remote counterpart.
 		upToDate, err := git.IsBranchSynchronized(currentBranch, remoteName)
 		if err != nil {
 			return nil, err
@@ -310,6 +312,8 @@ You are about to post some of the following commits for code review:
 			}
 		}
 	}
+
+	// Merge and/or push if necessary.
 
 	// Pick the commits to be posted for review.
 	if flagPick {
