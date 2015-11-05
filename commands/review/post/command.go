@@ -230,6 +230,13 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 		return errs.NewError(task, err)
 	}
 
+	// Check the commits.
+	act, err := ensureCommitsAssigned(commits)
+	if err != nil {
+		return err
+	}
+	defer action.RollbackOnError(&err, act)
+
 	// Post the review requests.
 	return postReviewRequests(commits, true)
 }
