@@ -32,7 +32,7 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  post [-update=RRID] [-fixes=RRID] [-reviewer=REVIEWER] [-open] [REVISION]
+  post [-fixes=RRID] [-reviewer=REVIEWER] [-open] [REVISION]
 
   post [-fixes=RRID] [-no_fetch] [-no_rebase] [-ask_once]
        [-pick] [-reviewer=REVIEWER] [-open] [-no_merge] -parent=BRANCH`,
@@ -70,7 +70,6 @@ var (
 	flagParent   string
 	flagPick     bool
 	flagReviewer string
-	flagUpdate   uint
 )
 
 func init() {
@@ -93,8 +92,6 @@ func init() {
 		"pick only some of the selected commits for review")
 	Command.Flags.StringVar(&flagReviewer, "reviewer", flagReviewer,
 		"reviewer to assign to the newly created review requests")
-	Command.Flags.UintVar(&flagUpdate, "update", flagUpdate,
-		"update an existing review request with REVISION")
 
 	// Register global flags.
 	appflags.RegisterGlobalFlags(&Command.Flags)
@@ -117,9 +114,6 @@ func run(cmd *gocli.Command, args []string) {
 	case len(args) == 1:
 		err = postRevision(args[0])
 	case flagParent != "":
-		if flagUpdate != 0 {
-			log.Fatalln("\nError: cannot use -update together with -parent")
-		}
 		err = postBranch(flagParent)
 	default:
 		err = postRevision("HEAD")
@@ -704,9 +698,6 @@ func sendReviewRequests(ctxs []*common.ReviewContext, implemented bool) error {
 	var postOpts = make(map[string]interface{}, 2)
 	if flagFixes != 0 {
 		postOpts["fixes"] = flagFixes
-	}
-	if flagUpdate != 0 {
-		postOpts["update"] = flagUpdate
 	}
 	if flagReviewer != "" {
 		postOpts["reviewer"] = flagReviewer
