@@ -73,7 +73,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	}
 
 	// Check the commits.
-	act, err := ensureCommitsAssigned(commits)
+	act, err := ensureStoryId(commits)
 	if err != nil {
 		return err
 	}
