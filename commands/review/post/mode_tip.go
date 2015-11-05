@@ -1,9 +1,24 @@
 package postCmd
 
 func postTip() (err error) {
+	// Load Git-related config.
+	gitConfig, err := git.LoadConfig()
+	if err != nil {
+		return err
+	}
+	var (
+		remoteName = gitConfig.RemoteName
+	)
+
+	// Get the current branch.
+	currentBranch, err := git.CurrentBranch()
+	if err != nil {
+		return err
+	}
+
 	// Get the commit to be posted
 	task := "Get the commit to be posted for code review"
-	commits, err := git.ShowCommit("HEAD")
+	commits, err := git.ShowCommit(currentBranch)
 	if err != nil {
 		return errs.NewError(task, err)
 	}
@@ -25,16 +40,28 @@ func postTip() (err error) {
 	}
 	defer action.RollbackOnError(&err, act)
 
-	// Push the current branch in case the commit was modified.
-	if changed {
-		// In case the commit was changed, push in any case.
-	} else {
-		// Otherwise only push in case the branch is not up to date.
+	// Push the current branch in case it was modified
+	// or it is not up to date at all.
+	doPush := changed
+	if !doPush {
+		// In case the branch was not modified,
+		// check whether it is up to date.
+		upToDate, err := git.IsBranchSynchronized(currentBranch, remoteName)
+		if err != nil {
+			return err
+		}
+		doPush = upToDate
+	}
+	// Push the branch.
+	if doPush {
+		if err := push(currentBranch); err != nil {
+			return err
+		}
 	}
 
 	// In case the commit was changed, reload.
 	if changed {
-		commits, err = git.ShowCommit("HEAD")
+		commits, err = git.ShowCommit(currentBranch)
 		if err != nil {
 			return err
 		}
