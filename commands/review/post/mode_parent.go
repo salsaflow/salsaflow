@@ -72,13 +72,30 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 		return errs.NewError(task, err)
 	}
 
-	// Check the commits.
+	// Ensure the Story-Id tag is there.
 	act, err := ensureStoryId(commits)
 	if err != nil {
 		return err
 	}
 	defer action.RollbackOnError(&err, act)
 
+	// Merge the current branch into the parent branch unless -no_merge.
+	if flagNoMerge {
+		// In case the user doesn't want to merge,
+		// we need to push the current branch.
+		err = push(currentBranch)
+	} else {
+		// Otherwise we merge the branch into the parent branch
+		// and then we push the parent branch itself.
+		if err := mergeDialog(currentBranch, parentBranch); err != nil {
+			return err
+		}
+		err = push(parentBranch)
+	}
+	if err != nil {
+		return err
+	}
+
 	// Post the review requests.
-	return postReviewRequests(commits, true)
+	return postCommitsForReview(commits)
 }

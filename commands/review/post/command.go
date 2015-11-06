@@ -859,7 +859,7 @@ func implementedDialog(ctxs []*common.ReviewContext) (implemented bool, act acti
 }
 
 // merge merges commit into branch.
-func merge(commit, branch string, flags ...string) error {
+func merge(commit, branch string, flags ...string) (err error) {
 	task := fmt.Sprintf("Merge '%v' into branch '%v'", commit, branch)
 	log.Run(task)
 
@@ -872,14 +872,21 @@ func merge(commit, branch string, flags ...string) error {
 		return errs.NewError(task, err)
 	}
 
+	defer func() {
+		task := "Checkout the original branch"
+		if ex := git.Checkout(currentBranch); ex != nil {
+			if err == nil {
+				err = errs.NewError(task, ex)
+			} else {
+				errs.LogError(task, ex)
+			}
+		}
+	}()
+
 	args := make([]string, 1, 1+len(flags))
 	args[0] = commit
 	args = append(args, flags...)
 	if _, err := git.RunCommand("merge", args...); err != nil {
-		return errs.NewError(task, err)
-	}
-
-	if err := git.Checkout(currentBranch); err != nil {
 		return errs.NewError(task, err)
 	}
 	return nil
