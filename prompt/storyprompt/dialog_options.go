@@ -14,7 +14,7 @@ import (
 func NewIndexOption() *DialogOption {
 	return &DialogOption{
 		Description: []string{
-			"Choose a story by inserting the associated index",
+			"Choose a story by inserting the associated index.",
 		},
 		IsActive: func(stories []common.Story, depth int) bool {
 			return len(stories) != 0

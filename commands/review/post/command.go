@@ -940,7 +940,7 @@ func promptForStory(
 
 	unassignedOpt = &storyprompt.DialogOption{
 		Description: []string{
-			"Insert 'u' to mark the commit(s) as unassigned",
+			"Insert 'u' to mark the commit(s) as unassigned.",
 		},
 		IsActive: func(stories []common.Story, depth int) bool {
 			return true
@@ -960,7 +960,7 @@ func promptForStory(
 
 	reviewedOpt = &storyprompt.DialogOption{
 		Description: []string{
-			"Insert 'r' to select a reviewed story",
+			"Insert 'r' to select a reviewed story.",
 		},
 		IsActive: func(stories []common.Story, depth int) bool {
 			return depth == 1
