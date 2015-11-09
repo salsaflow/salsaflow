@@ -20,6 +20,7 @@ import (
 	"github.com/salsaflow/salsaflow/prompt"
 
 	// Other
+	"github.com/fatih/color"
 	"gopkg.in/tchap/gocli.v2"
 )
 
@@ -459,7 +460,7 @@ func promptUserToChooseBranches(branches []*gitBranch) (local, remote []string, 
 		fmt.Println(msg)
 
 		if branch.reason != "merged" {
-			fmt.Println("Careful now, the branch has not been merged into trunk yet.")
+			color.Yellow("Careful now, the branch has not been merged into trunk yet.")
 		}
 
 		confirmed, err := prompt.Confirm("Are you sure you want to delete the branch?", false)
