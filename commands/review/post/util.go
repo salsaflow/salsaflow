@@ -156,6 +156,13 @@ You are about to post some of the following commits for code review:
 	return act, nil
 }
 
+func ensureStoryId(commits []*git.Commit) error {
+	if isStoryIdMissing(commits) {
+		return rewriteCommits(commits)
+	}
+	return nil
+}
+
 func isStoryIdMissing(commits []*git.Commit) bool {
 	for _, commit := range commits {
 		if commit.Merge != "" {
@@ -169,46 +176,7 @@ func isStoryIdMissing(commits []*git.Commit) bool {
 	return false
 }
 
-func rewriteCommits(commits []*git.Commit, canAmend bool) ([]*git.Commit, error) {
-	// Make sure we are not posting any merge commits.
-	var noMergeCommits []*git.Commit
-	for _, commit := range commits {
-		if commit.Merge == "" {
-			noMergeCommits = append(noMergeCommits, commit)
-		}
-	}
-
-	// Again, make sure there are actually some commits to be posted.
-	if len(noMergeCommits) == 0 {
-		return nil, ErrNoCommits
-	}
-
-	// In case we cannot add Story-Id tag, we have to return an error.
-	if !canAmend {
-		hint := `
-The commit specified does not contain the Story-Id tag.
-We are, however, unable to amend the commit message when
-a revision is specified explicitly, because the revision
-can be anywhere in the git commit graph.
-
-Only the current branch tip (HEAD) or the current branch
-as a whole can be amended. That is what the other review post
-modes can do for you.
-
-TL;DR: Please amend the commit manually to add the Story-Id tag,
-or use some other mode of review post. To see what modes are
-available, execute
-
-  $ salsaflow review post -h
-
-and read the DESCRIPTION section.
-
-`
-		return nil, errs.NewErrorWithHint(
-			"Make sure the commits can be amended",
-			errors.New("Story-Id tag missing"), hint)
-	}
-
+func rewriteCommits(commits []*git.Commit) ([]*git.Commit, error) {
 	// Fetch the stories in progress from the issue tracker.
 	storiesTask := "Missing Story-Id detected, fetch stories from the issue tracker"
 	log.Run(storiesTask)

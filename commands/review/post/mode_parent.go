@@ -41,8 +41,24 @@ func postBranch(parentBranch string) (err error) {
 		return errs.NewError(task, err)
 	}
 
+	// Get the commits to be posted
+	task = "Get the commits to be posted for code review"
+	commits, err := git.ShowCommitRange(parentBranch + "..")
+	if err != nil {
+		return errs.NewError(task, err)
+	}
+
+	// Make sure there are no merge commits.
+	doRebase := !flagNoRebase
+	for _, commit := range commits {
+		if commit.Merge != "" {
+			log.Warn(fmt.Sprintf("Commit %v is a merge commit, disabling git rebase..."))
+			doRebase = false
+		}
+	}
+
 	// Rebase the current branch on top the parent branch.
-	if !flagNoRebase {
+	if doRebase {
 		task := fmt.Sprintf("Rebase branch '%v' onto '%v'", currentBranch, parentBranch)
 		log.Run(task)
 		if err := git.Rebase(parentBranch); err != nil {
@@ -63,13 +79,13 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 `, parentBranch, parentBranch)
 			return ex
 		}
-	}
 
-	// Get the commits to be posted
-	task = "Get the commits to be posted for code review"
-	commits, err := git.ShowCommitRange(parentBranch + "..")
-	if err != nil {
-		return errs.NewError(task, err)
+		// We need to get the commits again, the hash has changed.
+		task = "Get the commits to be posted for code review, again"
+		commits, err := git.ShowCommitRange(parentBranch + "..")
+		if err != nil {
+			return errs.NewError(task, err)
+		}
 	}
 
 	// Ensure the Story-Id tag is there.
@@ -87,9 +103,12 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	} else {
 		// Otherwise we merge the branch into the parent branch
 		// and then we push the parent branch itself.
-		if err := mergeDialog(currentBranch, parentBranch); err != nil {
+		act, err = mergeDialog(currentBranch, parentBranch)
+		if err != nil {
 			return err
 		}
+		defer action.RollbackOnError(&err, act)
+
 		err = push(parentBranch)
 	}
 	if err != nil {
