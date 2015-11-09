@@ -25,7 +25,7 @@ import (
 )
 
 var Command = &gocli.Command{
-	UsageLine: "start [-base=BASE] [-no_branch] [-push]",
+	UsageLine: "start [-base=BASE] [-no_branch] [-no_push]",
 	Short:     "start a new story",
 	Long: `
   Start a new issue tracker story.
@@ -38,7 +38,7 @@ var Command = &gocli.Command{
   the branch name to be used for the branch holding the story commits.
   The branch of the given name is created on top of the trunk branch
   and checked out. A custom base branch can be set by using -base.
-  The story branch is then pushed in case -push is specified.
+  The story branch is then pushed unless -no_push is specified.
 	`,
 	Action: run,
 }
@@ -46,7 +46,7 @@ var Command = &gocli.Command{
 var (
 	flagBase     string
 	flagNoBranch bool
-	flagPush     bool
+	flagNoPush   bool
 )
 
 func init() {
@@ -55,8 +55,8 @@ func init() {
 		"the branch to base the story branch on")
 	Command.Flags.BoolVar(&flagNoBranch, "no_branch", flagNoBranch,
 		"do not create a new story branch")
-	Command.Flags.BoolVar(&flagPush, "push", flagPush,
-		"push the newly created story branch")
+	Command.Flags.BoolVar(&flagNoPush, "no_push", flagNoPush,
+		"do not push the newly created story branch")
 
 	// Register global flags.
 	appflags.RegisterGlobalFlags(&Command.Flags)
@@ -269,7 +269,7 @@ Insert an empty string to skip the branch creation step: `)
 
 	// Push the newly created branch unless -no_push.
 	pushTask := fmt.Sprintf("Push branch '%v' to remote '%v'", branchName, remoteName)
-	if flagPush {
+	if !flagNoPush {
 		log.Run(pushTask)
 		if err := git.Push(remoteName, branchName); err != nil {
 			if err := deleteBranch(); err != nil {
@@ -291,7 +291,7 @@ Insert an empty string to skip the branch creation step: `)
 		deleteErr := deleteBranch()
 
 		// In case we haven't pushed anything, we are done.
-		if !flagPush {
+		if flagNoPush {
 			return deleteErr
 		}
 

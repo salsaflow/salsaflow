@@ -5,18 +5,18 @@ Start working on a new story.
 ## Usage ##
 
 ```
-story start [-base=BASE] [-no_branch] [-push]
+story start [-base=BASE] [-no_branch] [-no_push]
 ```
 
 ## Description ##
 
 This command shall be used when the developer wants to start working on a new story.
 
-Unless `-no_branch` is specified, the user is asked to insert
+Unless -no_branch is specified, the user is asked to insert
 the branch name to be used for the branch holding the story commits.
 The branch of the given name is created on top of the trunk branch
-and checked out. A custom base branch can be set by using `-base`.
-The story branch is then pushed in case `-push` is specified.
+and checked out. A custom base branch can be set by using -base.
+The story branch is then pushed unless -no_push is specified.
 
 ### Steps ###
 
@@ -31,4 +31,4 @@ The command goes through the following steps:
    before the story branch is created.
 5. Add the user among the story owners.
 6. Start the story in the issue tracker.
-7. Push the story branch in case `-push` is set.
+7. Push the story branch unless `-no_push`.
