@@ -32,7 +32,7 @@ import (
 
 var ErrNoCommits = errors.New("no commits selected for code review")
 
-func postReviewRequests(commits []*git.Commit, canAmend bool) (act action.Action, err error) {
+func promptUserToConfirmCommits(commits []*git.Commit) error {
 	// Make sure there are actually some commits to be posted.
 	task := "Make sure there are actually some commits to be posted"
 	if len(commits) == 0 {
@@ -56,7 +56,10 @@ You are about to post some of the following commits for code review:
 		prompt.PanicCancel()
 	}
 	fmt.Println()
+	return nil
+}
 
+func postReviewRequests(commits []*git.Commit, canAmend bool) (act action.Action, err error) {
 	// Check the commits.
 	task = "Make sure the commits comply with the rules"
 	if isStoryIdMissing(commits) {

@@ -34,7 +34,7 @@ func postTip() (err error) {
 	}
 
 	// Prompt the user to confirm.
-	if err := confirmCommits(commits); err != nil {
+	if err := promptUserToConfirmCommits(commits); err != nil {
 		return err
 	}
 
