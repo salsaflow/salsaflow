@@ -106,6 +106,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	} else {
 		// Merge the branch into the parent branch
 		mergeTask := fmt.Sprintf("Merge branch '%v' into branch '%v'", currentBranch, parentBranch)
+		log.Run(mergeTask)
 		act, err = merge(currentBranch, parentBranch)
 		if err != nil {
 			return errs.NewError(mergeTask, err)
@@ -140,6 +141,61 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	return printFollowup()
 }
 
-func merge(current, parent string) (action.Action, error) {
+func merge(mergeTask, current, parent string) (act action.Action, err error) {
+	currentSHA, err := git.Hexsha("refs/heads/" + current)
+	if err != nil {
+		return nil, err
+	}
 
+	if err := git.Checkout(parent); err != nil {
+		return nil, err
+	}
+	defer func() {
+		if ex := git.Checkout(current); ex != nil {
+			if err == nil {
+				err = ex
+			} else {
+				errs.Log(ex)
+			}
+		}
+	}()
+
+	if flagMergeNoFF {
+		err = git.Merge(current, "--no-ff")
+	} else {
+		err = git.Merge(current)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return action.ActionFunc(func() error {
+		log.Rollback(mergeTask)
+		task := fmt.Sprintf("Reset branch '%v' to the original position", current)
+
+		currentNow, err := git.CurrentBranch()
+		if err != nil {
+			return errs.NewError(task, err)
+		}
+
+		if currentNow != current {
+			if err := git.Checkout(current); err != nil {
+				return errs.NewError(task, err)
+			}
+			defer func() {
+				if ex := git.Checkout(currentNow); ex != nil {
+					if err == nil {
+						err = ex
+					} else {
+						errs.Log(ex)
+					}
+				}
+			}()
+		}
+
+		if err := git.Reset("--hard", currentSHA); err != nil {
+			return errs.NewError(task, err)
+		}
+		return nil
+	}), nil
 }
