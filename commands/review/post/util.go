@@ -79,6 +79,26 @@ You are about to post some of the following commits for code review:
 	return nil
 }
 
+func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
+	must := func(n int, err error) error {
+		if err != nil {
+			panic(err)
+		}
+		return err
+	}
+
+	tw := tabwriter.NewWriter(writer, 0, 8, 4, '\t', 0)
+
+	must(fmt.Fprintf(tw, "%vCommit SHA\tCommit Title\n", prefix))
+	must(fmt.Fprintf(tw, "%v==========\t============\n", prefix))
+	for _, commit := range commits {
+		commitMessageTitle := prompt.ShortenCommitTitle(commit.MessageTitle)
+		must(fmt.Fprintf(tw, "%v%v\t%v\n", prefix, commit.SHA, commitMessageTitle))
+	}
+
+	must(0, tw.Flush())
+}
+
 func ensureStoryId(commits []*git.Commit) error {
 	task = "Make sure the commits comply with the rules"
 	if isStoryIdMissing(commits) {
@@ -346,38 +366,6 @@ func postReviewRequests(commits []*git.Commit, canAmend bool) (act action.Action
 	return act, nil
 }
 
-func printFollowup() error {
-	task := "Print the followup message"
-	tool, err := modules.GetCodeReviewTool()
-	if err != nil {
-		return errs.NewError(task, err)
-	}
-
-	log.Println("\n----------")
-	log.Println(tool.PostReviewFollowupMessage())
-	return nil
-}
-
-func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
-	must := func(n int, err error) error {
-		if err != nil {
-			panic(err)
-		}
-		return err
-	}
-
-	tw := tabwriter.NewWriter(writer, 0, 8, 4, '\t', 0)
-
-	must(fmt.Fprintf(tw, "%vCommit SHA\tCommit Title\n", prefix))
-	must(fmt.Fprintf(tw, "%v==========\t============\n", prefix))
-	for _, commit := range commits {
-		commitMessageTitle := prompt.ShortenCommitTitle(commit.MessageTitle)
-		must(fmt.Fprintf(tw, "%v%v\t%v\n", prefix, commit.SHA, commitMessageTitle))
-	}
-
-	must(0, tw.Flush())
-}
-
 func selectCommitsForReview(commits []*git.Commit) ([]*git.Commit, error) {
 	cs := make([]*git.Commit, 0, len(commits))
 
@@ -516,64 +504,15 @@ func sendReviewRequests(ctxs []*common.ReviewContext, implemented bool) error {
 	return nil
 }
 
-func parentFollowupDialog(currentBranch, remoteName, trunkBranch string) error {
-	// Decide whether to merge the current branch into trunk or not.
-	var trunkModified bool
-	fmt.Printf(`
-You might want to merge the current branch (%v) into trunk, right?
-
-  1) do nothing
-  2) merge into '%v'
-  3) merge into '%v' (--no-ff)
-
-`, currentBranch, trunkBranch, trunkBranch)
-	index, err := prompt.PromptIndex("Choose [1-3]: ", 1, 3)
+func printFollowup() error {
+	task := "Print the followup message"
+	tool, err := modules.GetCodeReviewTool()
 	if err != nil {
-		return err
-	}
-	switch index {
-	case 1:
-	case 2:
-		fmt.Println()
-		if err := merge(currentBranch, trunkBranch); err != nil {
-			return err
-		}
-		trunkModified = true
-	case 3:
-		fmt.Println()
-		if err := merge(currentBranch, trunkBranch, "--no-ff"); err != nil {
-			return err
-		}
-		trunkModified = true
+		return errs.NewError(task, err)
 	}
 
-	// Decide whether to push trunk or not.
-	if !trunkModified {
-		return nil
-	}
-	fmt.Print(`
-Now that the trunk branch has been modified, you might want to push it, right?
-
-  1) do nothing
-  2) push
-
-`)
-	index, err = prompt.PromptIndex("Choose [1-2]: ", 1, 2)
-	if err != nil {
-		return err
-	}
-	switch index {
-	case 1:
-	case 2:
-		fmt.Println()
-		task := fmt.Sprintf("Push branch '%v'", trunkBranch)
-		log.Run(task)
-		err := git.Push(remoteName, fmt.Sprintf("%v:%v", trunkBranch, trunkBranch))
-		if err != nil {
-			return errs.NewError(task, err)
-		}
-	}
-
+	log.Println("\n----------")
+	log.Println(tool.PostReviewFollowupMessage())
 	return nil
 }
 
@@ -646,40 +585,6 @@ func implementedDialog(ctxs []*common.ReviewContext) (implemented bool, act acti
 	}
 
 	return true, chain, nil
-}
-
-// merge merges commit into branch.
-func merge(commit, branch string, flags ...string) (err error) {
-	task := fmt.Sprintf("Merge '%v' into branch '%v'", commit, branch)
-	log.Run(task)
-
-	currentBranch, err := gitutil.CurrentBranch()
-	if err != nil {
-		return errs.NewError(task, err)
-	}
-
-	if err := git.Checkout(branch); err != nil {
-		return errs.NewError(task, err)
-	}
-
-	defer func() {
-		task := "Checkout the original branch"
-		if ex := git.Checkout(currentBranch); ex != nil {
-			if err == nil {
-				err = errs.NewError(task, ex)
-			} else {
-				errs.LogError(task, ex)
-			}
-		}
-	}()
-
-	args := make([]string, 1, 1+len(flags))
-	args[0] = commit
-	args = append(args, flags...)
-	if _, err := git.RunCommand("merge", args...); err != nil {
-		return errs.NewError(task, err)
-	}
-	return nil
 }
 
 func promptForStory(
