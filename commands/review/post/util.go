@@ -32,6 +32,26 @@ import (
 
 var ErrNoCommits = errors.New("no commits selected for code review")
 
+func ensureNoMergeCommits(commits []*git.Commit) error {
+	var (
+		task = "Make sure there are no merge commits"
+		hint bytes.Buffer
+		err  error
+	)
+	fmt.Fprintln(&hint)
+	for _, commit := range commits {
+		if commit.Merge != "" {
+			fmt.Fprintf(&hint, "Commit %v is a merge commit\n", commit.SHA)
+			err = errors.New("merge commit detected")
+		}
+	}
+	fmt.Fprintln(&hint)
+	if err != nil {
+		return errs.NewError(task, err, hint.String())
+	}
+	return nil
+}
+
 func promptUserToConfirmCommits(commits []*git.Commit) error {
 	// Make sure there are actually some commits to be posted.
 	task := "Make sure there are actually some commits to be posted"
@@ -57,106 +77,6 @@ You are about to post some of the following commits for code review:
 	}
 	fmt.Println()
 	return nil
-}
-
-func postReviewRequests(commits []*git.Commit, canAmend bool) (act action.Action, err error) {
-	// Check the commits.
-	task = "Make sure the commits comply with the rules"
-	if isStoryIdMissing(commits) {
-		commits, err = rewriteCommits(commits, canAmend)
-		if err != nil {
-			return nil, errs.NewError(task, err)
-		}
-	} else {
-		log.Log("Commit check passed")
-	}
-
-	// Push the branch in case we are on a branch tip.
-	// We are on a branch tip when canAmend is true.
-	// Use force in case we are not on any SF core branch.
-	if canAmend {
-		// Get the current branch name.
-		currentBranch, err := gitutil.CurrentBranch()
-		if err != nil {
-			return nil, err
-		}
-
-		// Push only if the branch is not in sync.
-		gitConfig, err := git.LoadConfig()
-		if err != nil {
-			return nil, err
-		}
-
-		remoteName := gitConfig.RemoteName
-		// IsBranchSynchronized returns true when there is no remote counterpart.
-		upToDate, err := git.IsBranchSynchronized(currentBranch, remoteName)
-		if err != nil {
-			return nil, err
-		}
-		if !upToDate {
-			args := make([]string, 0, 3)
-			msg := fmt.Sprintf("Pushing branch '%v' to synchronize", currentBranch)
-			isCore, err := git.IsCoreBranch(currentBranch)
-			if err != nil {
-				return nil, err
-			}
-			if !isCore {
-				args = append(args, "-f")
-				msg += " (using force)"
-			}
-
-			args = append(args, remoteName, currentBranch)
-
-			log.Log(msg)
-			if _, err = git.RunCommand("push", args...); err != nil {
-				return nil, errs.NewError("Push the current branch", err)
-			}
-		}
-	}
-
-	// Merge and/or push if necessary.
-
-	// Pick the commits to be posted for review.
-	if flagPick {
-		task = "Select the commits to be posted for review"
-		commits, err = selectCommitsForReview(commits)
-		if err != nil {
-			return nil, errs.NewError(task, err)
-		}
-
-		if len(commits) == 0 {
-			log.NewLine("")
-			log.Log("No commits selected, aborting...")
-			prompt.PanicCancel()
-		}
-	}
-
-	// Print Snoopy.
-	asciiart.PrintSnoopy()
-
-	// Turn Commits into ReviewContexts.
-	task = "Fetch stories for the commits to be posted for review"
-	log.Run(task)
-	ctxs, err := commitsToReviewContexts(commits)
-	if err != nil {
-		return nil, errs.NewError(task, err)
-	}
-
-	// Mark the stories as implemented, potentially.
-	task = "Mark the stories as implemented, optionally"
-	implemented, act, err := implementedDialog(ctxs)
-	if err != nil {
-		return nil, errs.NewError(task, err)
-	}
-	defer action.RollbackTaskOnError(&err, task, act)
-
-	// Post the review requests.
-	task = "Post the review requests"
-	if err := sendReviewRequests(ctxs, implemented); err != nil {
-		return nil, errs.NewError(task, err)
-	}
-
-	return act, nil
 }
 
 func ensureStoryId(commits []*git.Commit) error {
@@ -353,6 +273,106 @@ Inserting 'u' will mark the commit as unassigned:`, commit.SHA, commitMessageTit
 	return newCommits, nil
 }
 
+func postReviewRequests(commits []*git.Commit, canAmend bool) (act action.Action, err error) {
+	// Check the commits.
+	task = "Make sure the commits comply with the rules"
+	if isStoryIdMissing(commits) {
+		commits, err = rewriteCommits(commits, canAmend)
+		if err != nil {
+			return nil, errs.NewError(task, err)
+		}
+	} else {
+		log.Log("Commit check passed")
+	}
+
+	// Push the branch in case we are on a branch tip.
+	// We are on a branch tip when canAmend is true.
+	// Use force in case we are not on any SF core branch.
+	if canAmend {
+		// Get the current branch name.
+		currentBranch, err := gitutil.CurrentBranch()
+		if err != nil {
+			return nil, err
+		}
+
+		// Push only if the branch is not in sync.
+		gitConfig, err := git.LoadConfig()
+		if err != nil {
+			return nil, err
+		}
+
+		remoteName := gitConfig.RemoteName
+		// IsBranchSynchronized returns true when there is no remote counterpart.
+		upToDate, err := git.IsBranchSynchronized(currentBranch, remoteName)
+		if err != nil {
+			return nil, err
+		}
+		if !upToDate {
+			args := make([]string, 0, 3)
+			msg := fmt.Sprintf("Pushing branch '%v' to synchronize", currentBranch)
+			isCore, err := git.IsCoreBranch(currentBranch)
+			if err != nil {
+				return nil, err
+			}
+			if !isCore {
+				args = append(args, "-f")
+				msg += " (using force)"
+			}
+
+			args = append(args, remoteName, currentBranch)
+
+			log.Log(msg)
+			if _, err = git.RunCommand("push", args...); err != nil {
+				return nil, errs.NewError("Push the current branch", err)
+			}
+		}
+	}
+
+	// Merge and/or push if necessary.
+
+	// Pick the commits to be posted for review.
+	if flagPick {
+		task = "Select the commits to be posted for review"
+		commits, err = selectCommitsForReview(commits)
+		if err != nil {
+			return nil, errs.NewError(task, err)
+		}
+
+		if len(commits) == 0 {
+			log.NewLine("")
+			log.Log("No commits selected, aborting...")
+			prompt.PanicCancel()
+		}
+	}
+
+	// Print Snoopy.
+	asciiart.PrintSnoopy()
+
+	// Turn Commits into ReviewContexts.
+	task = "Fetch stories for the commits to be posted for review"
+	log.Run(task)
+	ctxs, err := commitsToReviewContexts(commits)
+	if err != nil {
+		return nil, errs.NewError(task, err)
+	}
+
+	// Mark the stories as implemented, potentially.
+	task = "Mark the stories as implemented, optionally"
+	implemented, act, err := implementedDialog(ctxs)
+	if err != nil {
+		return nil, errs.NewError(task, err)
+	}
+	defer action.RollbackTaskOnError(&err, task, act)
+
+	// Post the review requests.
+	task = "Post the review requests"
+	if err := sendReviewRequests(ctxs, implemented); err != nil {
+		return nil, errs.NewError(task, err)
+	}
+
+	return act, nil
+}
+
 func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 	must := func(n int, err error) error {
 		if err != nil {
@@ -508,26 +528,6 @@ func sendReviewRequests(ctxs []*common.ReviewContext, implemented bool) error {
 		return errs.NewError(task, err)
 	}
 
-	return nil
-}
-
-func ensureNoMergeCommits(commits []*git.Commit) error {
-	var (
-		task = "Make sure there are no merge commits"
-		hint bytes.Buffer
-		err  error
-	)
-	fmt.Fprintln(&hint)
-	for _, commit := range commits {
-		if commit.Merge != "" {
-			fmt.Fprintf(&hint, "Commit %v is a merge commit\n", commit.SHA)
-			err = errors.New("merge commit detected")
-		}
-	}
-	fmt.Fprintln(&hint)
-	if err != nil {
-		return errs.NewError(task, err, hint.String())
-	}
 	return nil
 }
 
