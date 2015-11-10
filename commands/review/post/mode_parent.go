@@ -100,20 +100,33 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	if flagNoMerge {
 		// In case the user doesn't want to merge,
 		// we need to push the current branch.
-		err = push(remoteName, currentBranch)
-	} else {
-		// Otherwise we merge the branch into the parent branch
-		// and then we push the parent branch itself.
-		act, err = mergeDialog(currentBranch, parentBranch)
-		if err != nil {
+		if err := push(remoteName, currentBranch); err != nil {
 			return err
 		}
-		defer action.RollbackOnError(&err, act)
+	} else {
+		// Merge the branch into the parent branch
+		mergeTask := fmt.Sprintf("Merge branch '%v' into branch '%v'", currentBranch, parentBranch)
+		act, err = merge(currentBranch, parentBranch)
+		if err != nil {
+			return errs.NewError(mergeTask, err)
+		}
 
-		err = push(remoteName, parentBranch)
-	}
-	if err != nil {
-		return err
+		// Push the parent branch.
+		if err := push(remoteName, parentBranch); err != nil {
+			if err := act.Rollback(); err != nil {
+				errs.Log(err)
+			}
+			return errs.NewError(mergeTask, err)
+		}
+
+		// Register a rollback function that just says that
+		// a pushed merge cannot be reverted.
+		defer action.RollbackOnError(&err, action.ActionFunc(func() error {
+			log.Rollback(mergeTask)
+			hint := "\nCannot revert merge that has already been pushed.\n"
+			return errs.NewErrorWithHint(
+				"Revert the merge", errors.New("merge commit already pushed"), hint)
+		}))
 	}
 
 	// Post the review requests.
@@ -125,4 +138,8 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 
 	// In case there is no error, tell the user they can do next.
 	return printFollowup()
+}
+
+func merge(current, parent string) (action.Action, error) {
+
 }

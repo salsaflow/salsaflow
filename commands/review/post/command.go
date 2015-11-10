@@ -34,8 +34,10 @@ var Command = &gocli.Command{
 	UsageLine: `
   post [-fixes=RRID] [-reviewer=REVIEWER] [-open] [REVISION]
 
-  post [-fixes=RRID] [-no_fetch] [-no_rebase] [-ask_once]
-       [-pick] [-reviewer=REVIEWER] [-open] [-no_merge] -parent=BRANCH`,
+  post [-fixes=RRID] [-no_fetch]
+       [-no_rebase] [-no_merge] [-merge_no_ff]
+       [-ask_once] [-pick]
+	   [-reviewer=REVIEWER] [-open] -parent=BRANCH`,
 	Short: "post code review requests",
 	Long: `
   Post a code review request for each commit specified.
@@ -53,6 +55,8 @@ var Command = &gocli.Command{
 
   Specifying the parent branch implicitly means that the current branch
   is going to be merged into the parent branch. Use -no_merge to change this.
+  To make sure a merge commit is created, se -merge_no_ff, which ensures
+  that git merge is always run with --no-ff flag.
 
   When no parent branch nor the revision is specified, the last commit
   on the current branch is selected and posted alone into the code review tool.
@@ -61,15 +65,16 @@ var Command = &gocli.Command{
 }
 
 var (
-	flagAskOnce  bool
-	flagFixes    uint
-	flagNoFetch  bool
-	flagNoMerge  bool
-	flagNoRebase bool
-	flagOpen     bool
-	flagParent   string
-	flagPick     bool
-	flagReviewer string
+	flagAskOnce   bool
+	flagFixes     uint
+	flagMergeNoFF bool
+	flagNoFetch   bool
+	flagNoMerge   bool
+	flagNoRebase  bool
+	flagOpen      bool
+	flagParent    string
+	flagPick      bool
+	flagReviewer  string
 )
 
 func init() {
@@ -78,6 +83,8 @@ func init() {
 		"ask once and reuse the story ID for all commits")
 	Command.Flags.UintVar(&flagFixes, "fixes", flagFixes,
 		"mark the commits as fixing issues in the given review request")
+	Command.Flags.BoolVar(&flagMergeNoFF, "merge_no_ff", flagMergeNoFF,
+		"run git merge with --no-ff flag")
 	Command.Flags.BoolVar(&flagNoFetch, "no_fetch", flagNoFetch,
 		"do not fetch the upstream repository")
 	Command.Flags.BoolVar(&flagNoMerge, "no_merge", flagNoMerge,
