@@ -13,6 +13,11 @@ func postRevision(revision string) (err error) {
 		panic(fmt.Sprintf("len(commits): expected 1, got %v", numCommits))
 	}
 
+	// Make sure the commit is not a merge commit.
+	if err := ensureNoMergeCommits(commits); err != nil {
+		return err
+	}
+
 	// Make sure the Story-Id tag is not missing.
 	task := "Make sure the chosen commit is valid"
 	if isStoryIdMissing(commits) {

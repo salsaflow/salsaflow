@@ -49,12 +49,8 @@ func postBranch(parentBranch string) (err error) {
 	}
 
 	// Make sure there are no merge commits.
-	doRebase := !flagNoRebase
-	for _, commit := range commits {
-		if commit.Merge != "" {
-			log.Warn(fmt.Sprintf("Commit %v is a merge commit, disabling git rebase..."))
-			doRebase = false
-		}
+	if err := ensureNoMergeCommits(commits); err != nil {
+		return err
 	}
 
 	// Rebase the current branch on top the parent branch.

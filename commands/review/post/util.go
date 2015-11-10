@@ -508,6 +508,26 @@ func sendReviewRequests(ctxs []*common.ReviewContext, implemented bool) error {
 	return nil
 }
 
+func ensureNoMergeCommits(commits []*git.Commit) error {
+	var (
+		task = "Make sure there are no merge commits"
+		hint bytes.Buffer
+		err  error
+	)
+	fmt.Fprintln(&hint)
+	for _, commit := range commits {
+		if commit.Merge != "" {
+			fmt.Fprintf(&hint, "Commit %v is a merge commit\n", commit.SHA)
+			err = errors.New("merge commit detected")
+		}
+	}
+	fmt.Fprintln(&hint)
+	if err != nil {
+		return errs.NewError(task, err, hint.String())
+	}
+	return nil
+}
+
 func printFollowup() error {
 	task := "Print the followup message"
 	tool, err := modules.GetCodeReviewTool()

@@ -28,6 +28,11 @@ func postTip() (err error) {
 		panic(fmt.Sprintf("len(commits): expected 1, got %v", numCommits))
 	}
 
+	// Make sure the commit is not a merge commit.
+	if err := ensureNoMergeCommits(commits); err != nil {
+		return err
+	}
+
 	// Prompt the user to confirm.
 	if err := confirmCommits(commits); err != nil {
 		return err
