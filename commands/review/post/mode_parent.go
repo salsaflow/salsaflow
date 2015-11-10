@@ -53,8 +53,13 @@ func postBranch(parentBranch string) (err error) {
 		return err
 	}
 
+	// Prompt the user to confirm.
+	if err := confirmCommits(commits); err != nil {
+		return err
+	}
+
 	// Rebase the current branch on top the parent branch.
-	if doRebase {
+	if !flagNoRebase {
 		task := fmt.Sprintf("Rebase branch '%v' onto '%v'", currentBranch, parentBranch)
 		log.Run(task)
 		if err := git.Rebase(parentBranch); err != nil {
@@ -112,5 +117,12 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	}
 
 	// Post the review requests.
-	return postCommitsForReview(commits)
+	act, err := postCommitsForReview(commits)
+	if err != nil {
+		return err
+	}
+	defer action.RollbackOnError(&err, act)
+
+	// In case there is no error, tell the user they can do next.
+	return printFollowup()
 }
