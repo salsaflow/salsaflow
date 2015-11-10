@@ -59,7 +59,7 @@ func postTip() (err error) {
 	}
 	// Push the branch.
 	if doPush {
-		if err := push(currentBranch); err != nil {
+		if err := push(remoteName, currentBranch); err != nil {
 			return err
 		}
 	}

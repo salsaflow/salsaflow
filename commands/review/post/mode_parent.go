@@ -100,7 +100,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	if flagNoMerge {
 		// In case the user doesn't want to merge,
 		// we need to push the current branch.
-		err = push(currentBranch)
+		err = push(remoteName, currentBranch)
 	} else {
 		// Otherwise we merge the branch into the parent branch
 		// and then we push the parent branch itself.
@@ -110,7 +110,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 		}
 		defer action.RollbackOnError(&err, act)
 
-		err = push(parentBranch)
+		err = push(remoteName, parentBranch)
 	}
 	if err != nil {
 		return err
