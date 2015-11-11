@@ -1,5 +1,19 @@
 package postCmd
 
+import (
+	// Stdlib
+	"errors"
+	"fmt"
+
+	// Internal
+	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/asciiart"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/git/gitutil"
+	"github.com/salsaflow/salsaflow/log"
+)
+
 func postBranch(parentBranch string) (err error) {
 	// Load the git-related config.
 	gitConfig, err := git.LoadConfig()
@@ -107,7 +121,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 		// Merge the branch into the parent branch
 		mergeTask := fmt.Sprintf("Merge branch '%v' into branch '%v'", currentBranch, parentBranch)
 		log.Run(mergeTask)
-		act, err = merge(currentBranch, parentBranch)
+		act, err := merge(currentBranch, parentBranch)
 		if err != nil {
 			return errs.NewError(mergeTask, err)
 		}
@@ -131,7 +145,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	}
 
 	// Post the review requests.
-	act, err := postCommitsForReview(commits)
+	act, err = postCommitsForReview(commits)
 	if err != nil {
 		return err
 	}
@@ -173,7 +187,7 @@ func merge(mergeTask, current, parent string) (act action.Action, err error) {
 		log.Rollback(mergeTask)
 		task := fmt.Sprintf("Reset branch '%v' to the original position", current)
 
-		currentNow, err := git.CurrentBranch()
+		currentNow, err := gitutil.CurrentBranch()
 		if err != nil {
 			return errs.NewError(task, err)
 		}

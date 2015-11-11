@@ -43,6 +43,11 @@ func Log(args ...string) (stdout *bytes.Buffer, err error) {
 	return RunCommand("log", args...)
 }
 
+func Merge(args ...string) error {
+	_, err := RunCommand("merge", args...)
+	return err
+}
+
 func Rebase(args ...string) error {
 	_, err := RunCommand("rebase", args...)
 	return err

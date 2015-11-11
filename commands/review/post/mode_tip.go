@@ -1,5 +1,16 @@
 package postCmd
 
+import (
+	// Stdlib
+	"fmt"
+
+	// Internal
+	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/git/gitutil"
+)
+
 func postTip() (err error) {
 	// Load Git-related config.
 	gitConfig, err := git.LoadConfig()
@@ -11,7 +22,7 @@ func postTip() (err error) {
 	)
 
 	// Get the current branch.
-	currentBranch, err := git.CurrentBranch()
+	currentBranch, err := gitutil.CurrentBranch()
 	if err != nil {
 		return err
 	}

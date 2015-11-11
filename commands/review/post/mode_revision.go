@@ -1,5 +1,16 @@
 package postCmd
 
+import (
+	// Stdlib
+	"errors"
+	"fmt"
+
+	// Internal
+	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/git"
+)
+
 func postRevision(revision string) (err error) {
 	// Get the commit to be posted
 	task := "Get the commit to be posted for code review"
@@ -19,7 +30,7 @@ func postRevision(revision string) (err error) {
 	}
 
 	// Make sure the Story-Id tag is not missing.
-	task := "Make sure the chosen commit is valid"
+	task = "Make sure the chosen commit is valid"
 	if isStoryIdMissing(commits) {
 		return errs.NewError(task, errors.New("Story-Id tag is missing"))
 	}

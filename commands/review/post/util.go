@@ -13,8 +13,6 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
-	"github.com/salsaflow/salsaflow/app"
-	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/asciiart"
 	"github.com/salsaflow/salsaflow/commands/review/post/constants"
 	"github.com/salsaflow/salsaflow/errs"
@@ -25,9 +23,6 @@ import (
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/prompt"
 	"github.com/salsaflow/salsaflow/prompt/storyprompt"
-
-	// Other
-	"gopkg.in/tchap/gocli.v2"
 )
 
 var ErrNoCommits = errors.New("no commits selected for code review")
@@ -47,7 +42,7 @@ func ensureNoMergeCommits(commits []*git.Commit) error {
 	}
 	fmt.Fprintln(&hint)
 	if err != nil {
-		return errs.NewError(task, err, hint.String())
+		return errs.NewErrorWithHint(task, err, hint.String())
 	}
 	return nil
 }
@@ -56,7 +51,7 @@ func promptUserToConfirmCommits(commits []*git.Commit) error {
 	// Make sure there are actually some commits to be posted.
 	task := "Make sure there are actually some commits to be posted"
 	if len(commits) == 0 {
-		return nil, errs.NewError(task, ErrNoCommits)
+		return errs.NewError(task, ErrNoCommits)
 	}
 
 	// Tell the user what is going to happen.
@@ -70,7 +65,7 @@ You are about to post some of the following commits for code review:
 	task = "Prompt the user for confirmation"
 	confirmed, err := prompt.Confirm("\nYou cool with that?", true)
 	if err != nil {
-		return nil, errs.NewError(task, err)
+		return errs.NewError(task, err)
 	}
 	if !confirmed {
 		prompt.PanicCancel()
@@ -99,8 +94,9 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 	must(0, tw.Flush())
 }
 
-func ensureStoryId(commits []*git.Commit) error {
-	task = "Make sure the commits comply with the rules"
+func ensureStoryId(commits []*git.Commit) ([]*git.Commit, error) {
+	task := "Make sure the commits comply with the rules"
+	var err error
 	if isStoryIdMissing(commits) {
 		commits, err = rewriteCommits(commits)
 		if err != nil {
@@ -109,7 +105,7 @@ func ensureStoryId(commits []*git.Commit) error {
 	} else {
 		log.Log("Commit check passed")
 	}
-	return nil
+	return commits, nil
 }
 
 func isStoryIdMissing(commits []*git.Commit) bool {

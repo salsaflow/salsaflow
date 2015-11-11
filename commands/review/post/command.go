@@ -2,29 +2,13 @@ package postCmd
 
 import (
 	// Stdlib
-	"bytes"
-	"errors"
-	"fmt"
-	"io"
 	"os"
-	"os/exec"
-	"strings"
-	"text/tabwriter"
 
 	// Internal
-	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/app"
 	"github.com/salsaflow/salsaflow/app/appflags"
-	"github.com/salsaflow/salsaflow/asciiart"
-	"github.com/salsaflow/salsaflow/commands/review/post/constants"
 	"github.com/salsaflow/salsaflow/errs"
-	"github.com/salsaflow/salsaflow/git"
-	"github.com/salsaflow/salsaflow/git/gitutil"
-	"github.com/salsaflow/salsaflow/log"
-	"github.com/salsaflow/salsaflow/modules"
-	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/prompt"
-	"github.com/salsaflow/salsaflow/prompt/storyprompt"
 
 	// Other
 	"gopkg.in/tchap/gocli.v2"
