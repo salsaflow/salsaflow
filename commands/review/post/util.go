@@ -94,18 +94,18 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 	must(0, tw.Flush())
 }
 
-func ensureStoryId(commits []*git.Commit) ([]*git.Commit, error) {
+func ensureStoryId(commits []*git.Commit) ([]*git.Commit, bool, error) {
 	task := "Make sure the commits comply with the rules"
-	var err error
 	if isStoryIdMissing(commits) {
-		commits, err = rewriteCommits(commits)
+		commits, err := rewriteCommits(commits)
 		if err != nil {
-			return nil, errs.NewError(task, err)
+			return nil, false, errs.NewError(task, err)
 		}
+		return commits, true, nil
 	} else {
 		log.Log("Commit check passed")
+		return commits, false, nil
 	}
-	return commits, nil
 }
 
 func isStoryIdMissing(commits []*git.Commit) bool {
@@ -302,7 +302,7 @@ func push(remote, branch string) error {
 	msg := fmt.Sprintf("Pushing branch '%v' to synchronize", branch)
 	isCore, err := git.IsCoreBranch(branch)
 	if err != nil {
-		return nil, err
+		return errs.NewError(task, err)
 	}
 	if !isCore {
 		args = append(args, "-f")
@@ -313,18 +313,19 @@ func push(remote, branch string) error {
 
 	log.Log(msg)
 	if _, err = git.RunCommand("push", args...); err != nil {
-		return nil, errs.NewError(task, err)
+		return errs.NewError(task, err)
 	}
 	return nil
 }
 
-func postReviewRequests(commits []*git.Commit, canAmend bool) (act action.Action, err error) {
+func postCommitsForReview(commits []*git.Commit) error {
 	// Pick the commits to be posted for review.
 	if flagPick {
-		task = "Select the commits to be posted for review"
+		task := "Select the commits to be posted for review"
+		var err error
 		commits, err = selectCommitsForReview(commits)
 		if err != nil {
-			return nil, errs.NewError(task, err)
+			return errs.NewError(task, err)
 		}
 
 		if len(commits) == 0 {
@@ -338,28 +339,28 @@ func postReviewRequests(commits []*git.Commit, canAmend bool) (act action.Action
 	asciiart.PrintSnoopy()
 
 	// Turn Commits into ReviewContexts.
-	task = "Fetch stories for the commits to be posted for review"
+	task := "Fetch stories for the commits to be posted for review"
 	log.Run(task)
 	ctxs, err := commitsToReviewContexts(commits)
 	if err != nil {
-		return nil, errs.NewError(task, err)
+		return errs.NewError(task, err)
 	}
 
 	// Mark the stories as implemented, potentially.
 	task = "Mark the stories as implemented, optionally"
 	implemented, act, err := implementedDialog(ctxs)
 	if err != nil {
-		return nil, errs.NewError(task, err)
+		return errs.NewError(task, err)
 	}
 	defer action.RollbackTaskOnError(&err, task, act)
 
 	// Post the review requests.
 	task = "Post the review requests"
 	if err := sendReviewRequests(ctxs, implemented); err != nil {
-		return nil, errs.NewError(task, err)
+		return errs.NewError(task, err)
 	}
 
-	return act, nil
+	return nil
 }
 
 func selectCommitsForReview(commits []*git.Commit) ([]*git.Commit, error) {

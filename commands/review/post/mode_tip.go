@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	// Internal
-	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/git/gitutil"
@@ -50,11 +49,10 @@ func postTip() (err error) {
 	}
 
 	// Make sure the Story-Id tag is there.
-	act, changed, err := ensureStoryId(commits)
+	commits, changed, err := ensureStoryId(commits)
 	if err != nil {
 		return err
 	}
-	defer action.RollbackOnError(&err, act)
 
 	// Push the current branch in case it was modified
 	// or it is not up to date at all.
@@ -84,11 +82,9 @@ func postTip() (err error) {
 	}
 
 	// Post the commit for review.
-	act, err = postCommitsForReview(commits)
-	if err != nil {
+	if err := postCommitsForReview(commits); err != nil {
 		return err
 	}
-	defer action.Rollback(&err, act)
 
 	// Print the followup dialog.
 	return printFollowup()

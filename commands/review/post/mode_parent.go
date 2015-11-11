@@ -21,8 +21,7 @@ func postBranch(parentBranch string) (err error) {
 		return err
 	}
 	var (
-		remoteName  = gitConfig.RemoteName
-		trunkBranch = gitConfig.TrunkBranchName
+		remoteName = gitConfig.RemoteName
 	)
 
 	// Get the current branch name.
@@ -97,18 +96,17 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 
 		// We need to get the commits again, the hash has changed.
 		task = "Get the commits to be posted for code review, again"
-		commits, err := git.ShowCommitRange(parentBranch + "..")
+		commits, err = git.ShowCommitRange(parentBranch + "..")
 		if err != nil {
 			return errs.NewError(task, err)
 		}
 	}
 
 	// Ensure the Story-Id tag is there.
-	act, err := ensureStoryId(commits)
+	commits, _, err = ensureStoryId(commits)
 	if err != nil {
 		return err
 	}
-	defer action.RollbackOnError(&err, act)
 
 	// Merge the current branch into the parent branch unless -no_merge.
 	if flagNoMerge {
@@ -121,9 +119,9 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 		// Merge the branch into the parent branch
 		mergeTask := fmt.Sprintf("Merge branch '%v' into branch '%v'", currentBranch, parentBranch)
 		log.Run(mergeTask)
-		act, err := merge(currentBranch, parentBranch)
+		act, err := merge(mergeTask, currentBranch, parentBranch)
 		if err != nil {
-			return errs.NewError(mergeTask, err)
+			return err
 		}
 
 		// Push the parent branch.
@@ -145,18 +143,16 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 	}
 
 	// Post the review requests.
-	act, err = postCommitsForReview(commits)
-	if err != nil {
+	if err := postCommitsForReview(commits); err != nil {
 		return err
 	}
-	defer action.RollbackOnError(&err, act)
 
 	// In case there is no error, tell the user they can do next.
 	return printFollowup()
 }
 
 func merge(mergeTask, current, parent string) (act action.Action, err error) {
-	currentSHA, err := git.Hexsha("refs/heads/" + current)
+	currentSHA, err := git.BranchHexsha(current)
 	if err != nil {
 		return nil, err
 	}

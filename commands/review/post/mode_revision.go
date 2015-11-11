@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	// Internal
-	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 )
@@ -41,11 +40,9 @@ func postRevision(revision string) (err error) {
 	}
 
 	// Post the review requests, in this case it will be only one.
-	act, err := postCommitsForReview(commits)
-	if err != nil {
+	if err := postCommitsForReview(commits); err != nil {
 		return err
 	}
-	defer action.RollbackOnError(&err, act)
 
 	// In case there is no error, tell the user they can do next.
 	return printFollowup()
