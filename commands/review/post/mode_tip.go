@@ -54,8 +54,7 @@ func postTip() (err error) {
 		return err
 	}
 
-	// Push the current branch in case it was modified
-	// or it is not up to date at all.
+	// Push the current branch if necessary.
 	doPush := changed
 	if !doPush {
 		// Check whether the remote branch actually exists.
