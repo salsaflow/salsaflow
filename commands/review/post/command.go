@@ -21,7 +21,7 @@ var Command = &gocli.Command{
   post [-fixes=RRID] [-no_fetch]
        [-no_rebase] [-no_merge] [-merge_no_ff]
        [-ask_once] [-pick]
-	   [-reviewer=REVIEWER] [-open] -parent=BRANCH`,
+       [-reviewer=REVIEWER] [-open] -parent=BRANCH`,
 	Short: "post code review requests",
 	Long: `
   Post a code review request for each commit specified.
@@ -37,9 +37,10 @@ var Command = &gocli.Command{
   To prevent rebasing, use -no_rebase. To be asked to pick up the missing
   story ID only once and use it for all commits, set -ask_once.
 
-  Specifying the parent branch implicitly means that the current branch
-  is going to be merged into the parent branch. Use -no_merge to change this.
-  To make sure a merge commit is created, se -merge_no_ff, which ensures
+  Specifying the parent branch means automatically that the current branch
+  is going to be merged into the parent branch unless -no_merge is set.
+  In that case the current branch is pushed instead and mo merge occurs.
+  To make sure a merge commit is created, see -merge_no_ff, which ensures
   that git merge is always run with --no-ff flag.
 
   When no parent branch nor the revision is specified, the last commit
