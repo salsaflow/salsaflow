@@ -1,10 +1,11 @@
 /*
 Post review requests for the specified revisions.
 
-  salsaflow review post [-update=RRID] [-fixes=RRID] [-open] [REVISION]
+  salsaflow review post [-fixes=RRID] [-reviewer=REVIEWER] [-open] [REVISION]
 
-  salsaflow review post -parent=BRANCH [-no_fetch] [-no_rebase]
-                                       [-ask_once] [-open]
+  salsaflow review post -parent=BRANCH [-fixes=RRID] [-no_fetch]
+                       [-no_rebase] [-no_merge] [-merge_no_ff]
+                       [-ask_once] [-pick] [-reviewer=REVIEWER] [-open]
 
 See the command help page for more details in the flags and such.
 
@@ -40,12 +41,15 @@ Steps
 For the parent mode, the command goes through the following steps:
 
   1. Fetch the repository unless -no_fetch is specified.
-  2. Select the commits to be posted for review - TRUNK..BRANCH range.
-  3. Walk the commits to check the `Story-Id` tags. In case the tag is missing
+  2. Select the commits to be posted for review - PARENT.. range.
+  3. Walk the commits to check the Story-Id tags. In case the tag is missing
      for any of the selected commits, start constructing the revision range on
      a temporary branch, asking the user and amending the commit messages where
      necessary.
-  4. Reset BRANCH to point to the temporary branch.
+  4. Reset the current branch to point to the temporary branch.
+  5. Merge the current branch into the parent branch unless -no_merge is set.
+  6. Push the parent branch unless -no_merge is set.
+     In that case the current branch is pushed.
   5. Post a review request for every commit in the range.
 
 For the revision mode, the command goes through the following steps:
