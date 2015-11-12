@@ -126,6 +126,7 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 
 		// Push the parent branch.
 		if err := push(remoteName, parentBranch); err != nil {
+			// In case the push fails, we revert the merge as well.
 			if err := act.Rollback(); err != nil {
 				errs.Log(err)
 			}
@@ -152,14 +153,17 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 }
 
 func merge(mergeTask, current, parent string) (act action.Action, err error) {
+	// Remember the current branch hash.
 	currentSHA, err := git.BranchHexsha(current)
 	if err != nil {
 		return nil, err
 	}
 
+	// Checkout the parent branch so that we can perform the merge.
 	if err := git.Checkout(parent); err != nil {
 		return nil, err
 	}
+	// Checkout the current branch on return to be consistent.
 	defer func() {
 		if ex := git.Checkout(current); ex != nil {
 			if err == nil {
@@ -170,6 +174,8 @@ func merge(mergeTask, current, parent string) (act action.Action, err error) {
 		}
 	}()
 
+	// Perform the merge.
+	// Use --no-ff in case -merge_no_ff is set.
 	if flagMergeNoFF {
 		err = git.Merge(current, "--no-ff")
 	} else {
@@ -179,15 +185,18 @@ func merge(mergeTask, current, parent string) (act action.Action, err error) {
 		return nil, err
 	}
 
-	return action.ActionFunc(func() error {
+	// Return a rollback action.
+	return action.ActionFunc(func() (err error) {
 		log.Rollback(mergeTask)
 		task := fmt.Sprintf("Reset branch '%v' to the original position", current)
 
+		// Get the branch is the current branch now.
 		currentNow, err := gitutil.CurrentBranch()
 		if err != nil {
 			return errs.NewError(task, err)
 		}
 
+		// Checkout current in case it is not the same as the current branch now.
 		if currentNow != current {
 			if err := git.Checkout(current); err != nil {
 				return errs.NewError(task, err)
@@ -203,6 +212,7 @@ func merge(mergeTask, current, parent string) (act action.Action, err error) {
 			}()
 		}
 
+		// Reset the branch to the original position.
 		if err := git.Reset("--hard", currentSHA); err != nil {
 			return errs.NewError(task, err)
 		}
