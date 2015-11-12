@@ -110,13 +110,9 @@ func ensureStoryId(commits []*git.Commit) ([]*git.Commit, bool, error) {
 
 func isStoryIdMissing(commits []*git.Commit) bool {
 	for _, commit := range commits {
-		if commit.Merge != "" {
-			continue
+		if commit.StoryIdTag == "" {
+			return true
 		}
-		if commit.StoryIdTag != "" {
-			continue
-		}
-		return true
 	}
 	return false
 }
@@ -303,11 +299,12 @@ func push(remote, branch string) error {
 	if err != nil {
 		return errs.NewError(task, err)
 	}
+
 	if !isCore {
 		msg += " (using force)"
 	}
-
 	log.Log(msg)
+
 	if isCore {
 		err = git.Push(remote, branch)
 	} else {
