@@ -10,6 +10,7 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/prompt"
 )
@@ -60,6 +61,18 @@ func StoryChanges(stories []common.Story) ([]*StoryChangeGroup, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	okCommits := make([]*git.Commit, 0, len(commits))
+	for _, commit := range commits {
+		if commit.StoryIdTag == "" {
+			log.Warn(fmt.Sprintf(
+				"Found story commit %v, but failed to parse the Story-Id tag.", commit.SHA))
+			log.NewLine("Please check that commit manually.")
+			continue
+		}
+		okCommits = append(okCommits, commit)
+	}
+	commits = okCommits
 
 	// Return the change groups.
 	return StoryChangesFromCommits(commits)
