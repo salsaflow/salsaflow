@@ -73,33 +73,7 @@ func postBranch(parentBranch string) (err error) {
 
 	// Rebase the current branch on top the parent branch.
 	if !flagNoRebase {
-		task := fmt.Sprintf("Rebase branch '%v' onto '%v'", currentBranch, parentBranch)
-		log.Run(task)
-		if err := git.Rebase(parentBranch); err != nil {
-			ex := errs.Log(errs.NewError(task, err))
-			asciiart.PrintGrimReaper("GIT REBASE FAILED")
-			fmt.Printf(`Git failed to rebase your branch onto '%v'.
-
-The repository might have been left in the middle of the rebase process.
-In case you do not know how to handle this, just execute
-
-  $ git rebase --abort
-
-to make your repository clean again.
-
-In any case, you have to rebase your current branch onto '%v'
-if you want to continue and post a review request. In the edge cases
-you can as well use -no_rebase to skip this step, but try not to do it.
-`, parentBranch, parentBranch)
-			return ex
-		}
-
-		// We need to get the commits again, the hash has changed.
-		task = "Get the commits to be posted for code review, again"
-		commits, err = git.ShowCommitRange(parentBranch + "..")
-		if err != nil {
-			return errs.NewError(task, err)
-		}
+		commits, err = rebase(currentBranch, parentBranch)
 	}
 
 	// Ensure the Story-Id tag is there.
@@ -108,14 +82,35 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 		return err
 	}
 
+	// Get data on the current branch.
+	task = fmt.Sprintf("Get data on branch '%v'", currentBranch)
+	remoteCurrentExists, err := git.RemoteBranchExists(currentBranch, remoteName)
+	if err != nil {
+		return errs.NewError(task, err)
+	}
+	currentUpToDate, err := git.IsBranchSynchronized(currentBranch, remoteName)
+	if err != nil {
+		return errs.NewError(task, err)
+	}
+
 	// Merge the current branch into the parent branch unless -no_merge.
+	pushTask := "Push the current branch"
 	if flagNoMerge {
 		// In case the user doesn't want to merge,
 		// we need to push the current branch.
-		if err := push(remoteName, currentBranch); err != nil {
-			return err
+		if !remoteCurrentExists || !currentUpToDate {
+			if err := push(remoteName, currentBranch); err != nil {
+				return errs.NewError(pushTask, err)
+			}
 		}
 	} else {
+		// Still push the current branch if necessary.
+		if remoteCurrentExists && !currentUpToDate {
+			if err := push(remoteName, currentBranch); err != nil {
+				return errs.NewError(pushTask, err)
+			}
+		}
+
 		// Merge the branch into the parent branch
 		mergeTask := fmt.Sprintf("Merge branch '%v' into branch '%v'", currentBranch, parentBranch)
 		log.Run(mergeTask)
@@ -150,6 +145,42 @@ you can as well use -no_rebase to skip this step, but try not to do it.
 
 	// In case there is no error, tell the user they can do next.
 	return printFollowup()
+}
+
+func rebase(currentBranch, parentBranch string) ([]*git.Commit, error) {
+	// Tell the user what is happening.
+	task := fmt.Sprintf("Rebase branch '%v' onto '%v'", currentBranch, parentBranch)
+	log.Run(task)
+
+	// Do the rebase.
+	if err := git.Rebase(parentBranch); err != nil {
+		ex := errs.Log(errs.NewError(task, err))
+		asciiart.PrintGrimReaper("GIT REBASE FAILED")
+		fmt.Printf(`Git failed to rebase your branch onto '%v'.
+
+The repository might have been left in the middle of the rebase process.
+In case you do not know how to handle this, just execute
+
+  $ git rebase --abort
+
+to make your repository clean again.
+
+In any case, you have to rebase your current branch onto '%v'
+if you want to continue and post a review request. In the edge cases
+you can as well use -no_rebase to skip this step, but try not to do it.
+`, parentBranch, parentBranch)
+		return nil, ex
+	}
+
+	// Reload the commits.
+	task = "Get the commits to be posted for code review, again"
+	commits, err := git.ShowCommitRange(parentBranch + "..")
+	if err != nil {
+		return nil, errs.NewError(task, err)
+	}
+
+	// Return new commits.
+	return commits, nil
 }
 
 func merge(mergeTask, current, parent string) (act action.Action, err error) {
