@@ -58,11 +58,22 @@ func postTip() (err error) {
 	// or it is not up to date at all.
 	doPush := changed
 	if !doPush {
-		// In case the branch was not modified,
+		// Check whether the remote branch actually exists.
+		task := fmt.Sprintf(
+			"Make sure branch '%v' exists in remote '%v'", currentBranch, remoteName)
+		exists, err := git.RemoteBranchExists(currentBranch, remoteName)
+		if err != nil {
+			return errs.NewError(task, err)
+		}
+		doPush = !exists
+	}
+	if !doPush {
+		// In case the branch was not modified and it exists remotely,
 		// check whether it is up to date.
+		task := fmt.Sprintf("Check whether branch '%v' is up to date", currentBranch)
 		upToDate, err := git.IsBranchSynchronized(currentBranch, remoteName)
 		if err != nil {
-			return err
+			return errs.NewError(task, err)
 		}
 		doPush = upToDate
 	}

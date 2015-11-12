@@ -80,8 +80,8 @@ func Push(remote string, args ...string) error {
 }
 
 func PushForce(remote string, args ...string) error {
-	argsList := make([]string, 3, 3+len(args))
-	argsList[0], argsList[1], argsList[2] = "push", "-f", remote
+	argsList := make([]string, 4, 4+len(args))
+	argsList[0], argsList[1], argsList[2], argsList[3] = "push", "-u", "-f", remote
 	argsList = append(argsList, args...)
 	_, err := Run(argsList...)
 	return err

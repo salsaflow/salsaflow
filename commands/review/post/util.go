@@ -298,21 +298,22 @@ Inserting 'u' will mark the commit as unassigned:`, commit.SHA, commitMessageTit
 func push(remote, branch string) error {
 	task := fmt.Sprintf("Push branch '%v' to remote '%v'", branch, remote)
 
-	args := make([]string, 0, 3)
 	msg := fmt.Sprintf("Pushing branch '%v' to synchronize", branch)
 	isCore, err := git.IsCoreBranch(branch)
 	if err != nil {
 		return errs.NewError(task, err)
 	}
 	if !isCore {
-		args = append(args, "-f")
 		msg += " (using force)"
 	}
 
-	args = append(args, remote, branch)
-
 	log.Log(msg)
-	if _, err = git.RunCommand("push", args...); err != nil {
+	if isCore {
+		err = git.Push(remote, branch)
+	} else {
+		err = git.PushForce(remote, branch)
+	}
+	if err != nil {
 		return errs.NewError(task, err)
 	}
 	return nil
