@@ -213,7 +213,7 @@ func merge(mergeTask, current, parent string) (act action.Action, err error) {
 		}
 
 		// Reset the branch to the original position.
-		if err := git.Reset("--hard", currentSHA); err != nil {
+		if err := git.Reset("--keep", currentSHA); err != nil {
 			return errs.NewError(task, err)
 		}
 		return nil
