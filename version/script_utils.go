@@ -101,7 +101,7 @@ func SetForBranch(ver *Version, branch string) (act action.Action, err error) {
 		"-m", fmt.Sprintf("Story-Id: %v", git.StoryIdUnassignedTagValue))
 	if err != nil {
 		task := "Reset the working tree to the original state"
-		if err := git.Reset("--keep"); err != nil {
+		if err := git.Reset("--hard"); err != nil {
 			errs.LogError(task, err)
 		}
 		return nil, err
