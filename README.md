@@ -167,7 +167,7 @@ configuration. The user is prompted for all necessary data, no need to edit
 config files manually.
 
 `repo bootstrap` can be also told to use certain GitHub repository to bootstrap the local
-configuration directory. When this bootstrapping skeleton is supplied, the content of the given
+configuration directory. When this bootstrapping skeleton is supplied, `scripts` directory of the given
 repository is simply poured into the local configuration directory. This can be easily used to
 share custom scripts for certain project type so that the scripts are implemented once and then
 just copied around. You can check the [repository](https://github.com/salsaflow/skeleton-golang)

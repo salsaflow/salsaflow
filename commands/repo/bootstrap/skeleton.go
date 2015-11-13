@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/log"
@@ -78,71 +79,89 @@ func getOrUpdateSkeleton(skeleton string) error {
 
 // pourSkeleton counts on the fact that skeleton is a valid skeleton
 // that is available in the local cache directory.
-func pourSkeleton(skeletonName string, localConfigDir string) error {
+func pourSkeleton(skeletonName string, localConfigDir string) (err error) {
 	// Get the skeleton src path.
 	cacheDir, err := cacheDirectoryAbsolutePath()
 	if err != nil {
 		return err
 	}
-	src := filepath.Join(cacheDir, "github.com", skeletonName)
+	skeletonDir := filepath.Join(cacheDir, "github.com", skeletonName)
 
 	// Make sure src is a directory, just to be sure.
-	srcInfo, err := os.Stat(src)
+	skeletonInfo, err := os.Stat(skeletonDir)
 	if err != nil {
 		return err
 	}
-	if !srcInfo.IsDir() {
-		return fmt.Errorf("skeleton source path not a directory: %v", src)
+	if !skeletonInfo.IsDir() {
+		return fmt.Errorf("skeleton source path not a directory: %v", skeletonDir)
 	}
 
-	// Walk src and copy the files.
-	return filepath.Walk(src, func(srcPath string, srcPathInfo os.FileInfo, err error) error {
-		// Stop on error.
-		if err != nil {
-			return err
-		}
-
-		suffix := srcPath[len(src):]
-		if strings.HasPrefix(suffix, "/") {
-			suffix = suffix[1:]
-		}
-
-		// Skip hidden files.
-		if strings.HasPrefix(suffix, ".") {
-			return nil
-		}
-
-		// Skip README and LICENSE.
-		if suffix == "LICENSE" || strings.HasPrefix(suffix, "README") {
-			return nil
-		}
-
-		dstPath := filepath.Join(localConfigDir, suffix)
-
-		// In case we are visiting a directory, create it in the dst.
-		if srcPathInfo.IsDir() {
-			return os.MkdirAll(dstPath, srcPathInfo.Mode())
-		}
-
-		fmt.Println("---> Copy", suffix)
-
-		// Otherwise just copy the file.
-		srcFd, err := os.Open(srcPath)
-		if err != nil {
-			return err
-		}
-		defer srcFd.Close()
-
-		dstFd, err := os.OpenFile(
-			dstPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, srcPathInfo.Mode())
-		if err != nil {
-			return err
-		}
-		defer dstFd.Close()
-
-		_, err = io.Copy(dstFd, srcFd)
+	// Get the list of script files.
+	srcScriptsDir := filepath.Join(skeletonDir, "scripts")
+	scripts, err := filepath.Glob(srcScriptsDir + "/*")
+	if err != nil {
 		return err
-	})
+	}
+	if len(scripts) == 0 {
+		log.Warn("No script files found in the skeleton repository")
+		return nil
+	}
+
+	// Create the destination directory.
+	dstScriptsDir := filepath.Join(localConfigDir, "scripts")
+	if err := os.MkdirAll(dstScriptsDir, 0755); err != nil {
+		return err
+	}
+	// Delete the directory on error.
+	defer action.RollbackOnError(&err, action.ActionFunc(func() error {
+		log.Rollback("Create the local scripts directory")
+		if err := os.RemoveAll(dstScriptsDir); err != nil {
+			return errs.NewError("Remove the local scripts directory", err)
+		}
+		return nil
+	}))
+
+	for _, script := range scripts {
+		err := func(script string) error {
+			// Skip directories.
+			scriptInfo, err := os.Stat(script)
+			if err != nil {
+				return err
+			}
+			if scriptInfo.IsDir() {
+				return nil
+			}
+
+			// Copy the file.
+			filename := script[len(srcScriptsDir)+1:]
+			fmt.Println("---> Copy", filepath.Join("scripts", filename))
+			return nil
+
+			// Otherwise just copy the file.
+			srcFd, err := os.Open(script)
+			if err != nil {
+				return err
+			}
+			defer srcFd.Close()
+
+			dstPath := filepath.Join(dstScriptsDir, filename)
+			dstFd, err := os.OpenFile(
+				dstPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, scriptInfo.Mode())
+			if err != nil {
+				return err
+			}
+			defer dstFd.Close()
+
+			_, err = io.Copy(dstFd, srcFd)
+			return err
+		}(script)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	return nil
 }
 
 func cacheDirectoryAbsolutePath() (path string, err error) {
