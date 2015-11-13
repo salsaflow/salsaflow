@@ -241,7 +241,7 @@ have not been cherry-picked onto the release branch yet.
 		return errs.NewError(task, err)
 	}
 	if !confirmed {
-		return prompt.ErrCanceled
+		prompt.PanicCancel()
 	}
 	fmt.Println()
 
