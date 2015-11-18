@@ -18,7 +18,7 @@ The user is prompted for all necessary data.
 The -skeleton flag can be used to specify the repository to be used
 for custom scripts. It expects a string of `$OWNER/$REPO` and then uses
 the repository located at `github.com/$OWNER/$REPO`. It clones the repository
-and copies the content into the local configuration directory.
+and copies `scripts` directory into the local configuration directory.
 
 In case no skeleton is to be used to bootstrap the repository,
 -no_skeleton must be specified explicitly.
