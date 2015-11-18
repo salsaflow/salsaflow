@@ -151,6 +151,7 @@ func (tool *codeReviewTool) PostReviewRequests(
 	}
 
 	// Post the assigned commits.
+	_, open := opts["open"]
 	for _, ctxs := range ctxsByStoryId {
 		var (
 			story   = ctxs[0].Story
@@ -159,17 +160,61 @@ func (tool *codeReviewTool) PostReviewRequests(
 		for _, ctx := range ctxs {
 			commits = append(commits, ctx.Commit)
 		}
-		if ex := postAssignedReviewRequest(tool.config, owner, repo, story, commits, opts); ex != nil {
+		// Create/update the review issue.
+		issue, postedCommits, ex := postAssignedReviewRequest(
+			tool.config, owner, repo, story, commits, opts)
+		if ex != nil {
 			errs.Log(ex)
 			err = errPostReviewRequest
+			continue
+		}
+
+		// Add comments to the commits posted for review.
+		linkCommitsToReviewIssue(tool.config, owner, repo, *issue.Number, postedCommits)
+
+		// Open the review issue in the browser if requested.
+		if open {
+			openIssue(issue)
+		}
+	}
+
+	// Get the value of -fixes.
+	var fixes int
+	flagFixes, ok := opts["fixes"]
+	if ok {
+		if v, ok := flagFixes.(uint); ok && v != 0 {
+			fixes = int(v)
 		}
 	}
 
 	// Post the unassigned commits.
 	for _, commit := range unassignedCommits {
-		if ex := postUnassignedReviewRequest(tool.config, owner, repo, commit, opts); ex != nil {
+		var (
+			issue         *github.Issue
+			postedCommits []*git.Commit
+			ex            error
+		)
+		if fixes != 0 {
+			// Extend the specified review issue.
+			issue, postedCommits, ex = extendUnassignedReviewRequest(
+				tool.config, owner, repo, fixes, commit, opts)
+		} else {
+			// Create/update the review issue.
+			issue, postedCommits, ex = postUnassignedReviewRequest(
+				tool.config, owner, repo, commit, opts)
+		}
+		if ex != nil {
 			errs.Log(ex)
 			err = errPostReviewRequest
+			continue
+		}
+
+		// Add comments to the commits posted for review.
+		linkCommitsToReviewIssue(tool.config, owner, repo, *issue.Number, postedCommits)
+
+		// Open the review issue in the browser if requested.
+		if open {
+			openIssue(issue)
 		}
 	}
 
@@ -205,7 +250,7 @@ func postAssignedReviewRequest(
 	story common.Story,
 	commits []*git.Commit,
 	opts map[string]interface{},
-) error {
+) (*github.Issue, []*git.Commit, error) {
 
 	// Search for an existing review issue for the given story.
 	task := fmt.Sprintf("Search for an existing review issue for story %v", story.ReadableId())
@@ -214,23 +259,21 @@ func postAssignedReviewRequest(
 	client := ghutil.NewClient(config.Token)
 	issue, err := ghissues.FindReviewIssueForStory(client, owner, repo, story.ReadableId())
 	if err != nil {
-		return errs.NewError(task, err)
+		return nil, nil, errs.NewError(task, err)
 	}
 
 	// Decide what to do next based on the search results.
 	if issue == nil {
 		// No review issue found for the given story, create a new issue.
-		issue, err = createAssignedReviewRequest(config, owner, repo, story, commits, opts)
-	} else {
-		// An existing review issue found, extend it.
-		err = extendReviewRequest(config, owner, repo, issue, commits, opts)
-	}
-	if err != nil {
-		return err
+		issue, err := createAssignedReviewRequest(config, owner, repo, story, commits, opts)
+		if err != nil {
+			return nil, nil, err
+		}
+		return issue, commits, nil
 	}
 
-	// Link commits to the review issue.
-	return linkCommitToReviewIssue(config, owner, repo, *issue.Number, commits)
+	// An existing review issue found, extend it.
+	return extendReviewRequest(config, owner, repo, issue, commits, opts)
 }
 
 // createAssignedReviewRequest can be used to create a new review issue
@@ -247,7 +290,7 @@ func createAssignedReviewRequest(
 	task := fmt.Sprintf("Create review issue for story %v", story.ReadableId())
 
 	// Prepare the issue object.
-	issue := ghissues.NewStoryReviewIssue(
+	reviewIssue := ghissues.NewStoryReviewIssue(
 		story.ReadableId(),
 		story.URL(),
 		story.Title(),
@@ -255,7 +298,7 @@ func createAssignedReviewRequest(
 		story.Tag())
 
 	for _, commit := range commits {
-		issue.AddCommit(false, commit.SHA, commit.MessageTitle)
+		reviewIssue.AddCommit(false, commit.SHA, commit.MessageTitle)
 	}
 
 	// Get the right review milestone to add the issue into.
@@ -272,22 +315,14 @@ func createAssignedReviewRequest(
 		implemented = implementedOpt.(bool)
 	}
 
-	issueResource, err := createIssue(
+	issue, err := createIssue(
 		task, config, owner, repo,
-		issue.FormatTitle(), issue.FormatBody(),
+		reviewIssue.FormatTitle(), reviewIssue.FormatBody(),
 		optValueString(opts["reviewer"]), milestone, implemented)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
-
-	// Open the issue if requested.
-	if _, open := opts["open"]; open {
-		if err := openIssue(issueResource); err != nil {
-			return nil, err
-		}
-	}
-
-	return issueResource, nil
+	return issue, nil
 }
 
 // postUnassignedReviewRequest can be used to post the given commit for review.
@@ -298,24 +333,7 @@ func postUnassignedReviewRequest(
 	repo string,
 	commit *git.Commit,
 	opts map[string]interface{},
-) error {
-
-	// Extend the specified review issue in case -fixes is specified.
-	flagFixes, ok := opts["fixes"]
-	if ok {
-		if fixes, ok := flagFixes.(uint); ok && fixes != 0 {
-			issueNum := int(fixes)
-
-			// Extend the specified review issue.
-			err := extendUnassignedReviewRequest(config, owner, repo, issueNum, commit, opts)
-			if err != nil {
-				return err
-			}
-
-			// Link the commit to the review issue.
-			return linkCommitToReviewIssue(config, owner, repo, issueNum, []*git.Commit{commit})
-		}
-	}
+) (*github.Issue, []*git.Commit, error) {
 
 	// Search for an existing issue.
 	task := fmt.Sprintf("Search for an existing review issue for commit %v", commit.SHA)
@@ -324,25 +342,22 @@ func postUnassignedReviewRequest(
 	client := ghutil.NewClient(config.Token)
 	issue, err := ghissues.FindReviewIssueForCommit(client, owner, repo, commit.SHA)
 	if err != nil {
-		return errs.NewError(task, err)
+		return nil, nil, errs.NewError(task, err)
 	}
 
-	// Decide what to do next based on the search results.
-	if issue == nil {
-		// Create a new unassigned review request.
-		issue, err = createUnassignedReviewRequest(config, owner, repo, commit, opts)
-		if err != nil {
-			return err
-		}
-
-		// Link the commit to the review issue.
-		return linkCommitToReviewIssue(config, owner, repo, *issue.Number, []*git.Commit{commit})
-	} else {
-		// The issues already exists, return an error.
+	// Return an error in case the issue for the given commit already exists.
+	if issue != nil {
 		issueNum := *issue.Number
-		err := fmt.Errorf("existing review issue found for commit %v: %v", commit.SHA, issueNum)
-		return errs.NewError("Make sure the review issue can be created", err)
+		err = fmt.Errorf("existing review issue found for commit %v: %v", commit.SHA, issueNum)
+		return nil, nil, errs.NewError("Make sure the review issue can be created", err)
 	}
+
+	// Create a new unassigned review request.
+	issue, err = createUnassignedReviewRequest(config, owner, repo, commit, opts)
+	if err != nil {
+		return nil, nil, err
+	}
+	return issue, []*git.Commit{commit}, nil
 }
 
 // createUnassignedReviewRequest created a new review issue
@@ -358,7 +373,7 @@ func createUnassignedReviewRequest(
 	task := fmt.Sprintf("Create review issue for commit %v", commit.SHA)
 
 	// Prepare the issue object.
-	issue := ghissues.NewCommitReviewIssue(commit.SHA, commit.MessageTitle)
+	reviewIssue := ghissues.NewCommitReviewIssue(commit.SHA, commit.MessageTitle)
 
 	// Get the right review milestone to add the issue into.
 	milestone, err := getOrCreateMilestoneForCommit(config, owner, repo, commit.SHA)
@@ -367,22 +382,14 @@ func createUnassignedReviewRequest(
 	}
 
 	// Create a new review issue.
-	issueResource, err := createIssue(
+	issue, err := createIssue(
 		task, config, owner, repo,
-		issue.FormatTitle(), issue.FormatBody(),
+		reviewIssue.FormatTitle(), reviewIssue.FormatBody(),
 		optValueString(opts["reviewer"]), milestone, true)
 	if err != nil {
 		return nil, errs.NewError(task, err)
 	}
-
-	// Open the issue if requested.
-	if _, open := opts["open"]; open {
-		if err := openIssue(issueResource); err != nil {
-			return nil, err
-		}
-	}
-
-	return issueResource, nil
+	return issue, nil
 }
 
 // extendUnassignedReviewRequest can be used to upload fixes for
@@ -394,7 +401,7 @@ func extendUnassignedReviewRequest(
 	issueNum int,
 	commit *git.Commit,
 	opts map[string]interface{},
-) error {
+) (*github.Issue, []*git.Commit, error) {
 
 	// Fetch the issue.
 	task := fmt.Sprintf("Fetch GitHub issue #%v", issueNum)
@@ -402,7 +409,7 @@ func extendUnassignedReviewRequest(
 	client := ghutil.NewClient(config.Token)
 	issue, _, err := client.Issues.Get(owner, repo, issueNum)
 	if err != nil {
-		return errs.NewError(task, err)
+		return nil, nil, errs.NewError(task, err)
 	}
 
 	// Extend the given review issue.
@@ -418,7 +425,7 @@ func extendReviewRequest(
 	issue *github.Issue,
 	commits []*git.Commit,
 	opts map[string]interface{},
-) error {
+) (*github.Issue, []*git.Commit, error) {
 
 	issueNum := *issue.Number
 
@@ -426,7 +433,7 @@ func extendReviewRequest(
 	task := fmt.Sprintf("Parse review issue #%v", issueNum)
 	reviewIssue, err := ghissues.ParseReviewIssue(issue)
 	if err != nil {
-		return errs.NewError(task, err)
+		return nil, nil, errs.NewError(task, err)
 	}
 
 	// Add the commits.
@@ -438,7 +445,7 @@ func extendReviewRequest(
 	}
 	if len(newCommits) == 0 {
 		log.Log(fmt.Sprintf("All commits already listed in issue #%v", issueNum))
-		return nil
+		return issue, nil, nil
 	}
 
 	// Add the implemented label if necessary.
@@ -474,25 +481,21 @@ func extendReviewRequest(
 	log.Run(task)
 
 	client := ghutil.NewClient(config.Token)
-	newIssue, _, err := client.Issues.Edit(owner, repo, issueNum, &github.IssueRequest{
+	updatedIssue, _, err := client.Issues.Edit(owner, repo, issueNum, &github.IssueRequest{
 		Body:   github.String(reviewIssue.FormatBody()),
 		State:  github.String("open"),
 		Labels: labelsPtr,
 	})
 	if err != nil {
-		return errs.NewError(task, err)
+		return nil, nil, errs.NewError(task, err)
 	}
 
 	// Add the review comment.
 	if err := addReviewComment(config, owner, repo, issueNum, newCommits); err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	// Open the issue if requested.
-	if _, open := opts["open"]; open {
-		return openIssue(newIssue)
-	}
-	return nil
+	return updatedIssue, newCommits, nil
 }
 
 func addReviewComment(
@@ -521,14 +524,13 @@ func addReviewComment(
 	return nil
 }
 
-func linkCommitToReviewIssue(
+func linkCommitsToReviewIssue(
 	config *moduleConfig,
 	owner string,
 	repo string,
 	issueNum int,
 	commits []*git.Commit,
-) error {
-
+) {
 	// Instantiate an API client.
 	client := ghutil.NewClient(config.Token)
 
@@ -548,18 +550,13 @@ func linkCommitToReviewIssue(
 			errs.LogError(task, err)
 		}
 	}
-
-	// We actually never return an error, but let's keep this open.
-	// It's much harder to switch from returning nothing to returning an error.
-	return nil
 }
 
-func openIssue(issue *github.Issue) error {
+func openIssue(issue *github.Issue) {
 	task := fmt.Sprintf("Open issue #%v in the browser", *issue.Number)
 	if err := webbrowser.Open(*issue.HTMLURL); err != nil {
-		return errs.NewError(task, err)
+		errs.LogError(task, err)
 	}
-	return nil
 }
 
 func createIssue(

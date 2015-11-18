@@ -69,7 +69,7 @@ func findReviewIssue(
 ) (*github.Issue, error) {
 
 	query := fmt.Sprintf(
-		`"%v" repo:"%v/%v" label:review type:issue state:open state:closed %v`,
+		`"%v" repo:"%v/%v" label:review type:issue %v`,
 		substring, owner, repo, queryOpts)
 
 	searchOpts := &github.SearchOptions{}
