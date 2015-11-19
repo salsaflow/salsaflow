@@ -135,7 +135,6 @@ func pourSkeleton(skeletonName string, localConfigDir string) (err error) {
 			// Copy the file.
 			filename := script[len(srcScriptsDir)+1:]
 			fmt.Println("---> Copy", filepath.Join("scripts", filename))
-			return nil
 
 			// Otherwise just copy the file.
 			srcFd, err := os.Open(script)
