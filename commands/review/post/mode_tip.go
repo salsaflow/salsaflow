@@ -74,7 +74,7 @@ func postTip() (err error) {
 		if err != nil {
 			return errs.NewError(task, err)
 		}
-		doPush = upToDate
+		doPush = !upToDate
 	}
 	// Push the branch.
 	if doPush {
