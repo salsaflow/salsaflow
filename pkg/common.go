@@ -12,7 +12,9 @@ import (
 	"runtime"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/fileutil"
 	"github.com/salsaflow/salsaflow/log"
 
 	// Other
@@ -41,7 +43,7 @@ func doInstall(
 	assets []github.ReleaseAsset,
 	version string,
 	dstDir string,
-) error {
+) (err error) {
 
 	// Choose the asset to be downloaded.
 	task := "Pick the most suitable release asset"
@@ -58,12 +60,36 @@ func doInstall(
 		return errs.NewError(task, errors.New("no suitable release asset found"))
 	}
 
+	// Make sure the destination folder exists.
+	task = "Make sure the destination directory exists"
+	dstDir, act, err := ensureDstDirExists(dstDir)
+	if err != nil {
+		return errs.NewError(task, err)
+	}
+	defer action.RollbackOnError(&err, act)
+
 	// Download the selected release asset.
 	return downloadAndInstallAsset(assetName, assetURL, dstDir)
 }
 
 func getAssetName(version string) string {
 	return fmt.Sprintf("salsaflow-%v-%v-%v.zip", version, runtime.GOOS, runtime.GOARCH)
+}
+
+func ensureDstDirExists(dstDir string) (string, action.Action, error) {
+	// In case dst is empty, use the location of the current executable.
+	// In that case the directory obviously already exists.
+	if dstDir == "" {
+		dstDir, err := osext.ExecutableFolder()
+		return dstDir, action.Noop, err
+	}
+
+	// Make sure the path exists and is a directory.
+	act, err := fileutil.EnsureDirectoryExists(dstDir)
+	if err != nil {
+		return "", nil, err
+	}
+	return dstDir, act, nil
 }
 
 func downloadAndInstallAsset(assetName, assetURL, dstDir string) error {
@@ -93,13 +119,6 @@ func downloadAndInstallAsset(assetName, assetURL, dstDir string) error {
 	archive, err := zip.NewReader(bytes.NewReader(bodyBuffer.Bytes()), int64(bodyBuffer.Len()))
 	if err != nil {
 		return errs.NewError(task, err)
-	}
-
-	if dstDir == "" {
-		dstDir, err = osext.ExecutableFolder()
-		if err != nil {
-			return errs.NewError(task, err)
-		}
 	}
 
 	var numThreads int
