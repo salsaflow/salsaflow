@@ -2,9 +2,13 @@
 package fileutil
 
 import (
+	// Stdlib
 	"fmt"
 	"io"
 	"os"
+
+	// Internal
+	"github.com/salsaflow/salsaflow/log"
 )
 
 // CopyFile copies a file from src to dst. If src and dst files exist, and are
@@ -33,9 +37,6 @@ func CopyFile(src, dst string) (err error) {
 			return
 		}
 	}
-	if err = os.Link(src, dst); err == nil {
-		return
-	}
 	err = copyFileContents(src, dst)
 	return
 }
@@ -58,6 +59,8 @@ func copyFileContents(src, dst string) (err error) {
 		cerr := out.Close()
 		if err == nil {
 			err = cerr
+		} else {
+			log.Warn(cerr.Error())
 		}
 	}()
 	if _, err = io.Copy(out, in); err != nil {
