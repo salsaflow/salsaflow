@@ -20,6 +20,18 @@ import (
 // BootstrapConfig can be used to bootstrap SalsaFlow configuration
 // according to the given configuration specification.
 func BootstrapConfig(spec ConfigSpec) error {
+	if spec == nil {
+		return errs.NewErrorWithHint(
+			"Bootstrap configuration according to the specification",
+			errors.New("nil configuration specification provided"),
+			`
+Nil configuration specification provided,
+please contact the module author to have it fixed.
+
+`,
+		)
+	}
+
 	if err := bootstrapGlobalConfig(spec); err != nil {
 		return err
 	}
@@ -35,6 +47,18 @@ func BootstrapConfig(spec ConfigSpec) error {
 // and commands should be using LoadConfig. The local configuration file
 // is only supposed to be generated once during `repo bootstrap`.
 func LoadConfig(spec ConfigSpec) (err error) {
+	if spec == nil {
+		return errs.NewErrorWithHint(
+			"Load configuration according to the specification",
+			errors.New("nil configuration specification provided"),
+			`
+Nil configuration specification provided,
+please contact the module author to have it fixed.
+
+`,
+		)
+	}
+
 	if err := bootstrapGlobalConfig(spec); err != nil {
 		return err
 	}
