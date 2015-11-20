@@ -73,7 +73,7 @@ func (spec *configSpec) ConfigKey() string {
 
 // ModuleKind is a part of loader.ModuleConfigSpec
 func (spec *configSpec) ModuleKind() loader.ModuleKind {
-	return loader.ModuleKindIssueTracking
+	return ModuleKind
 }
 
 // GlobalConfig is a part of loader.ConfigSpec
