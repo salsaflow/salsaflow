@@ -89,10 +89,16 @@ func ListStoryIdsToBeAssigned(tracker common.IssueTracker) ([]string, error) {
 	}
 
 	// Collect the story IDs.
+	currentModuleId := tracker.Module().Id()
 	idSet := make(map[string]struct{}, len(commits))
 	for _, commit := range commits {
 		// Skip empty tags.
 		if commit.StoryIdTag == "" {
+			continue
+		}
+
+		// Skip commits not associated with the current issue tracking module.
+		if commit.IssueTrackerTag != currentModuleId {
 			continue
 		}
 
