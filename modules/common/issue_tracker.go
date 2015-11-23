@@ -18,8 +18,8 @@ type IssueTrackingModule interface {
 
 type IssueTracker interface {
 
-	// ServiceName returns the name of the service this interface represents.
-	ServiceName() string
+	// Module returns the module that was used to instantiate this IssueTracker.
+	Module() loader.Module
 
 	// CurrentUser returns the issue tracker account details of the current user.
 	// The account ID is taken from the global SalsaFlow configuration file.

@@ -23,10 +23,75 @@ const (
 
 const dateLayout = "Mon Jan 2 15:04:05 2006 -0700"
 
-var (
-	ChangeIdTagPattern = regexp.MustCompile("^(?i)[ \t]*Change-Id:[ \t]+([^ \t]+)")
-	StoryIdTagPattern  = regexp.MustCompile("^(?i)[ \t]*Story-Id:[ \t]+([^ \t]+)")
-)
+type TagPattern struct {
+	*regexp.Regexp
+
+	key    string
+	setter func(*Commit, string) error
+}
+
+var ChangeIdTagPattern = newTagPattern(
+	"SF-Change-Id", func(commit *Commit, value string) error {
+		if commit.ChangeIdTag != "" {
+			return fmt.Errorf("git log [commit %v]: duplicate SF-Change-Id tag", commit.SHA)
+		}
+		commit.ChangeIdTag = value
+		return nil
+	})
+
+var DeprecatedChangeIdTagPattern = newTagPattern(
+	"Change-Id", func(commit *Commit, value string) error {
+		if commit.ChangeIdTag != "" {
+			return fmt.Errorf(
+				"git log [commit %v]: duplicate SF-Change-Id tag (Change-Id tag found)", commit.SHA)
+		}
+		commit.ChangeIdTag = value
+		return nil
+	})
+
+var IssueTrackerTagPattern = newTagPattern(
+	"SF-Issue-Tracker", func(commit *Commit, value string) error {
+		if commit.IssueTrackerTag != "" {
+			return fmt.Errorf("git log [commit %v]: duplicate SF-Issue-Tracker tag", commit.SHA)
+		}
+		commit.IssueTrackerTag = value
+		return nil
+	})
+
+var StoryKeyTagPattern = newTagPattern(
+	"SF-Story-Key", func(commit *Commit, value string) error {
+		if commit.StoryIdTag != "" {
+			return fmt.Errorf("git log [commit %v]: duplicate SF-Story-Key tag", commit.SHA)
+		}
+		commit.StoryIdTag = value
+		return nil
+	})
+
+var DeprecatedStoryKeyTagPattern = newTagPattern(
+	"Story-Id", func(commit *Commit, value string) error {
+		if commit.StoryIdTag != "" {
+			return fmt.Errorf(
+				"git log [commit %v]: duplicate SF-Story-Key tag (Story-Id tag found)", commit.SHA)
+		}
+		commit.StoryIdTag = value
+		return nil
+	})
+
+var tagPatterns = []*TagPattern{
+	ChangeIdTagPattern,
+	DeprecatedChangeIdTagPattern,
+	IssueTrackerTagPattern,
+	StoryKeyTagPattern,
+	DeprecatedStoryKeyTagPattern,
+}
+
+func newTagPattern(key string, setter func(*Commit, string) error) *TagPattern {
+	return &TagPattern{
+		Regexp: regexp.MustCompile("^(?i)[ \t]*" + key + ":[ \t]+([^ \t]+)"),
+		key:    key,
+		setter: setter,
+	}
+}
 
 // Parse git log output, which is a sequence of Git commits looking like
 //
@@ -158,35 +223,24 @@ func ParseCommits(input []byte) (commits []*Commit, err error) {
 
 		case logScanMsgBody:
 			trimmedLine := strings.TrimSpace(line)
-			switch {
 			// In case we are parsing the output of git show,
 			// we have to handle the diff section as well.
-			case strings.HasPrefix(line, "diff --git"):
+			if strings.HasPrefix(line, "diff --git") {
 				nextState = logScanDiff
 				continue
-			case ChangeIdTagPattern.MatchString(trimmedLine):
-				if commit.ChangeIdTag != "" {
-					err = fmt.Errorf("git log [commit %v]: duplicate Change-Id tag", commit.SHA)
-					return
-				}
-				parts := ChangeIdTagPattern.FindStringSubmatch(trimmedLine)
-				if len(parts) != 2 {
-					err = fmt.Errorf("git log [commit %v]: invalid Change-Id tag", commit.SHA)
-					return
-				}
-				commit.ChangeIdTag = parts[1]
-			case StoryIdTagPattern.MatchString(trimmedLine):
-				if commit.StoryIdTag != "" {
-					err = fmt.Errorf("git log [commit %v]: duplicate Story-Id tag", commit.SHA)
-					return
-				}
-				parts := StoryIdTagPattern.FindStringSubmatch(trimmedLine)
-				if len(parts) != 2 {
-					err = fmt.Errorf("git log [commit %v]: invalid Story-Id tag", commit.SHA)
-					return
-				}
-				commit.StoryIdTag = parts[1]
 			}
+
+			// Try to match the known commit message tags.
+			for _, pattern := range tagPatterns {
+				parts := pattern.FindStringSubmatch(trimmedLine)
+				if len(parts) == 2 {
+					if err := pattern.setter(commit, parts[1]); err != nil {
+						return nil, err
+					}
+				}
+			}
+
+			// Append to the message body.
 			if len(line) >= numSpaces {
 				line = line[numSpaces:]
 			}

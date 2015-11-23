@@ -11,17 +11,18 @@ import (
 )
 
 type Commit struct {
-	SHA          string
-	Source       string
-	Merge        string
-	Author       string
-	AuthorDate   time.Time
-	Committer    string
-	CommitDate   time.Time
-	MessageTitle string
-	Message      string
-	ChangeIdTag  string
-	StoryIdTag   string
+	SHA             string
+	Source          string
+	Merge           string
+	Author          string
+	AuthorDate      time.Time
+	Committer       string
+	CommitDate      time.Time
+	MessageTitle    string
+	Message         string
+	ChangeIdTag     string
+	IssueTrackerTag string
+	StoryIdTag      string
 }
 
 var commitTemplate = `commit {{.SHA}} {{.Source}}{{with .Merge}}Merge: {{.}}{{"\n"}}{{end}}

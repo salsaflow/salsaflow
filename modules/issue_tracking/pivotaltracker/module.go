@@ -30,5 +30,5 @@ func (mod *module) ConfigSpec() loader.ModuleConfigSpec {
 }
 
 func (mod *module) NewIssueTracker() (common.IssueTracker, error) {
-	return newIssueTracker()
+	return newIssueTracker(mod)
 }

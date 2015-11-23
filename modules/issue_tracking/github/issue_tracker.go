@@ -8,6 +8,7 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/action"
+	"github.com/salsaflow/salsaflow/config/loader"
 	"github.com/salsaflow/salsaflow/errs"
 	ghutil "github.com/salsaflow/salsaflow/github"
 	ghissues "github.com/salsaflow/salsaflow/github/issues"
@@ -22,21 +23,22 @@ import (
 const ServiceName = "GitHub Issues"
 
 type issueTracker struct {
+	module loader.Module
 	config *moduleConfig
 }
 
-func newIssueTracker() (common.IssueTracker, error) {
+func newIssueTracker(module loader.Module) (common.IssueTracker, error) {
 	config, err := loadConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	return &issueTracker{config}, nil
+	return &issueTracker{module, config}, nil
 }
 
-// ServiceName is a part of common.IssueTracker interface.
-func (tracker *issueTracker) ServiceName() string {
-	return ServiceName
+// Module is a part of common.IssueTracker interface.
+func (tracker *issueTracker) Module() loader.Module {
+	return tracker.module
 }
 
 // CurrentUser is a part of common.IssueTracker interface.

@@ -82,9 +82,17 @@ func run(messagePath string) error {
 		}
 
 		// Check for the Change-Id tag.
-		if git.ChangeIdTagPattern.MatchString(trimmedLine) {
+		switch {
+		case git.ChangeIdTagPattern.MatchString(trimmedLine):
 			if changeIdSeen {
-				return errors.New("multiple Change-Id tags detected")
+				return errors.New("multiple SF-Change-Id tags detected")
+			}
+			changeIdSeen = true
+
+		case git.DeprecatedChangeIdTagPattern.MatchString(trimmedLine):
+			if changeIdSeen {
+				return errors.New(
+					"multiple SF-Change-Id tags detected (deprecated Change-Id tag found)")
 			}
 			changeIdSeen = true
 		}
@@ -111,7 +119,7 @@ func run(messagePath string) error {
 	for lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
-	if line := strings.ToLower(lines[len(lines)-1]); !strings.HasPrefix(line, "story-id") {
+	if line := strings.ToLower(lines[len(lines)-1]); !strings.HasPrefix(line, "SF-") {
 		lines = append(lines, "")
 	}
 
@@ -120,7 +128,7 @@ func run(messagePath string) error {
 	if err != nil {
 		return err
 	}
-	lines = append(lines, fmt.Sprintf("Change-Id: %v", changeId))
+	lines = append(lines, fmt.Sprintf("SF-Change-Id: %v", changeId))
 
 	// Write the content back to the disk (truncate the file first).
 	_, err = file.Seek(0, os.SEEK_SET)

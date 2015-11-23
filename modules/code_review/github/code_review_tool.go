@@ -294,7 +294,7 @@ func createAssignedReviewRequest(
 		story.ReadableId(),
 		story.URL(),
 		story.Title(),
-		story.IssueTracker().ServiceName(),
+		story.IssueTracker().Module().Id(),
 		story.Tag())
 
 	for _, commit := range commits {

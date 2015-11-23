@@ -258,7 +258,8 @@ Inserting 'u' will mark the commit as unassigned:`, commit.SHA, commitMessageTit
 			}
 
 			// Extend the commit message to include Story-Id.
-			commitMessage := fmt.Sprintf("%v\nStory-Id: %v\n", commit.Message, storyTag)
+			commitMessage := fmt.Sprintf("%v\nSF-Issue-Tracker: %v\nSF-Story-Key: %v\n",
+				commit.Message, tracker.Module().Id(), storyTag)
 
 			// Amend the cherry-picked commit to include the new commit message.
 			task = "Amend the commit message for " + commit.SHA

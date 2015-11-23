@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	// Internal
+	"github.com/salsaflow/salsaflow/config/loader"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/version"
 
@@ -16,23 +17,22 @@ import (
 	"gopkg.in/salsita/go-pivotaltracker.v1/v5/pivotal"
 )
 
-const ServiceName = "Pivotal Tracker"
-
 type issueTracker struct {
+	module loader.Module
 	config *moduleConfig
 }
 
-func newIssueTracker() (common.IssueTracker, error) {
+func newIssueTracker(module loader.Module) (common.IssueTracker, error) {
 	config, err := loadConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	return &issueTracker{config}, nil
+	return &issueTracker{module, config}, nil
 }
 
-func (tracker *issueTracker) ServiceName() string {
-	return ServiceName
+func (tracker *issueTracker) Module() loader.Module {
+	return tracker.module
 }
 
 func (tracker *issueTracker) CurrentUser() (common.User, error) {
