@@ -15,6 +15,7 @@ import (
 
 	// Internal
 	"github.com/salsaflow/salsaflow/git/gitutil"
+	"github.com/salsaflow/salsaflow/prompt"
 )
 
 const ZeroHash = "0000000000000000000000000000000000000000"
@@ -258,15 +259,96 @@ func IsBranchSynchronized(branch, remote string) (bool, error) {
 
 // EnsureBranchSynchronized makes sure the given branch is up to date.
 // If that is not the case, *ErrRefNoInSync is returned.
-func EnsureBranchSynchronized(branch, remote string) error {
-	// Make sure the branch is up to date.
-	upToDate, err := IsBranchSynchronized(branch, remote)
+func EnsureBranchSynchronized(branch, remote string) (err error) {
+	// Check whether the remote counterpart actually exists.
+	exists, err := RemoteBranchExists(branch, remote)
 	if err != nil {
 		return err
 	}
-	if !upToDate {
+	if !exists {
+		return nil
+	}
+
+	// Get the data needed.
+	var (
+		localRef  = fmt.Sprintf("refs/heads/%v", branch)
+		remoteRef = fmt.Sprintf("refs/remotes/%v/%v", remote, branch)
+	)
+	localHexsha, err := Hexsha(localRef)
+	if err != nil {
+		return err
+	}
+	remoteHexsha, err := Hexsha(remoteRef)
+	if err != nil {
+		return err
+	}
+	if localHexsha == remoteHexsha {
+		// The branch is up to date, we are done here.
+		return nil
+	}
+
+	// Check whether the local branch can be fast-forwarded.
+	remoteBranch := fmt.Sprintf("%v/%v", remote, branch)
+	_, err = Run("merge-base", "--is-ancestor", branch, remoteBranch)
+	if err != nil {
+		// --is-ancestor returns exit status 0 on true, 1 on false, some other on error.
+		// We cannot check the value in a platform-independent way, but we count on the fact that
+		// stderr will be non-empty on error.
+		ex, ok := err.(errs.Err)
+		if !ok || len(ex.Hint()) != 0 {
+			// In case err is not implementing errs.Err or len(stderr) != 0, we return the error.
+			return err
+		}
+		// Otherwise the error means that --is-ancestor returned false,
+		// so we cannot fast-forward and we have to return an error.
 		return &ErrRefNotInSync{branch}
 	}
+
+	// Perform a fast-forward merge.
+	// Ask the user before doing so.
+	fmt.Println()
+	fmt.Printf("Branch '%v' is behind '%v', and can be fast-forwarded.\n", branch, remoteBranch)
+	proceed, err := prompt.Confirm("Shall we perform the merge? It's all safe!", false)
+	fmt.Println()
+	if err != nil {
+		return err
+	}
+	if !proceed {
+		return &ErrRefNotInSync{branch}
+	}
+
+	// Make sure the right branch is checked out.
+	currentBranch, err := gitutil.CurrentBranch()
+	if err != nil {
+		return err
+	}
+	if branch != currentBranch {
+		// Checkout the branch to be merged.
+		task := fmt.Sprintf("Checkout branch '%v'", branch)
+		if err := Checkout(branch); err != nil {
+			return errs.NewError(task, err)
+		}
+		defer func() {
+			// Checkout the original branch on return.
+			task := fmt.Sprintf("Checkout branch '%v'", currentBranch)
+			if ex := Checkout(currentBranch); ex != nil {
+				if err == nil {
+					err = ex
+				} else {
+					errs.LogError(task, err)
+				}
+			}
+		}()
+	}
+
+	// Merge. Use --ff-only, just to be sure.
+	// But we have already checked that this will be a fast-forward merge.
+	_, err = Run("merge", "--ff-only")
+	if err != nil {
+		return err
+	}
+
+	log.Log(fmt.Sprintf("Branch '%v' fast-forwarded onto '%v'", branch, remoteBranch))
 	return nil
 }
 
