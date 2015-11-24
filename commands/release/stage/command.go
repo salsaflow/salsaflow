@@ -8,6 +8,7 @@ import (
 	"github.com/salsaflow/salsaflow/app"
 	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/errs"
+	"github.com/salsaflow/salsaflow/prompt"
 	"github.com/salsaflow/salsaflow/releases/commands"
 
 	// Other
@@ -42,6 +43,8 @@ func run(cmd *gocli.Command, args []string) {
 	}
 
 	app.InitOrDie()
+
+	defer prompt.RecoverCancel()
 
 	if _, err := commands.Stage(nil); err != nil {
 		errs.Fatal(err)
