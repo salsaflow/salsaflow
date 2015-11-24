@@ -96,8 +96,8 @@ func mustListCommits(writer io.Writer, commits []*git.Commit, prefix string) {
 
 func ensureStoryId(commits []*git.Commit) ([]*git.Commit, bool, error) {
 	task := "Make sure the commits comply with the rules"
-	if isStoryIdMissing(commits) {
-		commits, err := rewriteCommits(commits)
+	if i, missing := isStoryIdMissing(commits); missing {
+		commits, err := rewriteCommits(commits, i)
 		if err != nil {
 			return nil, false, errs.NewError(task, err)
 		}
@@ -108,16 +108,16 @@ func ensureStoryId(commits []*git.Commit) ([]*git.Commit, bool, error) {
 	}
 }
 
-func isStoryIdMissing(commits []*git.Commit) bool {
-	for _, commit := range commits {
+func isStoryIdMissing(commits []*git.Commit) (firstMissing int, missing bool) {
+	for i, commit := range commits {
 		if commit.StoryIdTag == "" {
-			return true
+			return i, true
 		}
 	}
-	return false
+	return 0, false
 }
 
-func rewriteCommits(commits []*git.Commit) ([]*git.Commit, error) {
+func rewriteCommits(commits []*git.Commit, firstMissingOffset int) ([]*git.Commit, error) {
 	// Fetch the stories in progress from the issue tracker.
 	storiesTask := "Missing Story-Id detected, fetch stories from the issue tracker"
 	log.Run(storiesTask)
@@ -178,11 +178,20 @@ func rewriteCommits(commits []*git.Commit) ([]*git.Commit, error) {
 
 	// Get the parent of the first commit in the chain.
 	task = "Get the parent commit of the commit chain to be posted"
-	stdout, err := git.Log("--pretty=%P", "-n", "1", commits[0].SHA)
-	if err != nil {
-		return nil, errs.NewError(task, err)
+	var parentSHA string
+	if firstMissingOffset != 0 {
+		// In case there are multiple commits being posted
+		// and the first missing offset is not pointing to the first commit,
+		// we can easily get the parent SHA by just accessing the commit list.
+		parentSHA = commits[firstMissingOffset-1].SHA
+	} else {
+		// Otherwise we have to ask git for help.
+		stdout, err := git.Log("--pretty=%P", "-n", "1", commits[firstMissingOffset].SHA)
+		if err != nil {
+			return nil, errs.NewError(task, err)
+		}
+		parentSHA = strings.Fields(stdout.String())[0]
 	}
-	parentSHA := strings.Fields(stdout.String())[0]
 
 	// Prepare a temporary branch that will be used to amend commit messages.
 	task = "Create a temporary branch to rewrite commit messages"
@@ -224,7 +233,11 @@ You can also insert 'u' to mark the commits as unassigned:`
 		story = selectedStory
 	}
 
-	for _, commit := range commits {
+	// The temp branch is pointing to the parent of the first commit missing
+	// the Story-Id tag. So we only need to cherry-pick the commits that
+	// follow the first commit missing the Story-Id tag.
+	commitsToCherryPick := commits[firstMissingOffset:]
+	for _, commit := range commitsToCherryPick {
 		// Cherry-pick the commit.
 		task := fmt.Sprintf("Move commit %v onto the temporary branch", commit.SHA)
 		if err := git.CherryPick(commit.SHA); err != nil {
