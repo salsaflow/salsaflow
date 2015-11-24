@@ -77,6 +77,7 @@ func runMain() (err error) {
 		remote        = gitConfig.RemoteName
 		trunkBranch   = gitConfig.TrunkBranchName
 		releaseBranch = gitConfig.ReleaseBranchName
+		stagingBranch = gitConfig.StagingBranchName
 	)
 
 	// Fetch the remote repository.
@@ -88,14 +89,19 @@ func runMain() (err error) {
 		}
 	}
 
-	// Make sure that the trunk branch is up to date.
-	task := fmt.Sprintf("Make sure that branch '%v' is up to date", trunkBranch)
-	if err := git.CheckOrCreateTrackingBranch(trunkBranch, remote); err != nil {
-		return errs.NewError(task, err)
+	// Make sure trunk and stage are up to date.
+	// We check stage here as well since it is otherwise checked later
+	// in releases.ListNewTrunkCommits(), which is usually called in
+	// release.PromptUserToConfirmStart().
+	for _, branch := range [...]string{trunkBranch, stagingBranch} {
+		task := fmt.Sprintf("Make sure that branch '%v' is up to date", branch)
+		if err := git.CheckOrCreateTrackingBranch(branch, remote); err != nil {
+			return errs.NewError(task, err)
+		}
 	}
 
 	// Make sure that the release branch does not exist.
-	task = fmt.Sprintf("Make sure that branch '%v' does not exist", releaseBranch)
+	task := fmt.Sprintf("Make sure that branch '%v' does not exist", releaseBranch)
 	if err := git.EnsureBranchNotExist(releaseBranch, remote); err != nil {
 		return errs.NewError(task, err)
 	}
