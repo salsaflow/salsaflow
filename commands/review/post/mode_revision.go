@@ -30,7 +30,7 @@ func postRevision(revision string) (err error) {
 
 	// Make sure the Story-Id tag is not missing.
 	task = "Make sure the chosen commit is valid"
-	if isStoryIdMissing(commits) {
+	if _, missing := isStoryIdMissing(commits); missing {
 		return errs.NewError(task, errors.New("Story-Id tag is missing"))
 	}
 
