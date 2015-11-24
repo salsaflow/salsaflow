@@ -308,7 +308,7 @@ func EnsureBranchSynchronized(branch, remote string) (err error) {
 	// Ask the user before doing so.
 	fmt.Println()
 	fmt.Printf("Branch '%v' is behind '%v', and can be fast-forwarded.\n", branch, remoteBranch)
-	proceed, err := prompt.Confirm("Shall we perform the merge? It's all safe!", false)
+	proceed, err := prompt.Confirm("Shall we perform the merge? It's all safe!", true)
 	fmt.Println()
 	if err != nil {
 		return err
