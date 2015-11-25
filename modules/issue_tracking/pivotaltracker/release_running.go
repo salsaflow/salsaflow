@@ -24,11 +24,11 @@ type runningRelease struct {
 	tracker *issueTracker
 }
 
-func newRunningRelease(releaseVersion *version.Version, tracker *issueTracker) (*runningRelease, error) {
+func newRunningRelease(releaseVersion *version.Version, tracker *issueTracker) *runningRelease {
 	return &runningRelease{
 		version: releaseVersion,
 		tracker: tracker,
-	}, nil
+	}
 }
 
 func (release *runningRelease) Version() *version.Version {
@@ -161,7 +161,7 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	}), nil
 }
 
-func (release *runningRelease) EnsureReleasable() error {
+func (release *runningRelease) EnsureClosable() error {
 	versionString := release.version.BaseString()
 
 	task := fmt.Sprintf(
@@ -200,10 +200,10 @@ func (release *runningRelease) EnsureReleasable() error {
 	fmt.Fprintf(tw, "\n")
 	tw.Flush()
 
-	return errs.NewErrorWithHint(task, common.ErrNotReleasable, hint.String())
+	return errs.NewErrorWithHint(task, common.ErrNotClosable, hint.String())
 }
 
-func (release *runningRelease) Release() (action.Action, error) {
+func (release *runningRelease) Close() (action.Action, error) {
 	// There is no release step in the Pivotal Tracker really.
 	// All the stories are accepted, nothing to be done here.
 	return action.Noop, nil

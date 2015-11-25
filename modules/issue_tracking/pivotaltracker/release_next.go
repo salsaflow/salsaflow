@@ -33,13 +33,13 @@ func newNextRelease(
 	tracker *issueTracker,
 	trunkVersion *version.Version,
 	nextTrunkVersion *version.Version,
-) (*nextRelease, error) {
+) *nextRelease {
 
 	return &nextRelease{
 		tracker:          tracker,
 		trunkVersion:     trunkVersion,
 		nextTrunkVersion: nextTrunkVersion,
-	}, nil
+	}
 }
 
 func (release *nextRelease) PromptUserToConfirmStart() (bool, error) {

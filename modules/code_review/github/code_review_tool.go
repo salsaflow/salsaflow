@@ -16,7 +16,7 @@ import (
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/version"
 
-	// Other
+	// Vendor
 	"github.com/google/go-github/github"
 	"github.com/toqueteos/webbrowser"
 )
@@ -36,83 +36,8 @@ type codeReviewTool struct {
 	config *moduleConfig
 }
 
-func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action, error) {
-	// Get necessary config.
-	owner, repo, err := ghutil.ParseUpstreamURL()
-	if err != nil {
-		return nil, err
-	}
-
-	// Get a GitHub client.
-	client := ghutil.NewClient(tool.config.Token)
-
-	// Check whether the review milestone exists or not.
-	// People can create milestones manually, so this makes the thing more robust.
-	title := milestoneTitle(v)
-	task := fmt.Sprintf("Check whether GitHub review milestone exists for release %v", v.BaseString())
-	log.Run(task)
-	_, act, err := ghissues.GetOrCreateMilestoneForTitle(client, owner, repo, title)
-	if err != nil {
-		return nil, errs.NewError(task, err)
-	}
-	return act, nil
-}
-
-func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, error) {
-	// Get a GitHub client.
-	client := ghutil.NewClient(tool.config.Token)
-
-	owner, repo, err := ghutil.ParseUpstreamURL()
-	if err != nil {
-		return nil, err
-	}
-
-	// Get the relevant review milestone.
-	releaseString := v.BaseString()
-	task := fmt.Sprintf("Get GitHub review milestone for release %v", releaseString)
-	log.Run(task)
-	milestone, err := milestoneForVersion(tool.config, owner, repo, v)
-	if err != nil {
-		return nil, errs.NewError(task, err)
-	}
-	if milestone == nil {
-		log.Warn(fmt.Sprintf(
-			"Weird, GitHub review milestone for release %v not found", releaseString))
-		return nil, nil
-	}
-
-	// Close the milestone unless there are some issues open.
-	task = fmt.Sprintf(
-		"Make sure the review milestone for release %v can be closed", releaseString)
-	if num := *milestone.OpenIssues; num != 0 {
-		return nil, errs.NewError(
-			task,
-			fmt.Errorf(
-				"review milestone for release %v cannot be closed: %v issue(s) open",
-				releaseString, num))
-	}
-
-	milestoneTask := fmt.Sprintf("Close GitHub review milestone for release %v", releaseString)
-	log.Run(milestoneTask)
-	milestone, _, err = client.Issues.EditMilestone(owner, repo, *milestone.Number, &github.Milestone{
-		State: github.String("closed"),
-	})
-	if err != nil {
-		return nil, errs.NewError(milestoneTask, err)
-	}
-
-	// Return a rollback function.
-	return action.ActionFunc(func() error {
-		log.Rollback(milestoneTask)
-		task := fmt.Sprintf("Reopen GitHub review milestone for release %v", releaseString)
-		_, _, err := client.Issues.EditMilestone(owner, repo, *milestone.Number, &github.Milestone{
-			State: github.String("open"),
-		})
-		if err != nil {
-			return errs.NewError(task, err)
-		}
-		return nil
-	}), nil
+func (tool *codeReviewTool) NewRelease(v *version.Version) common.Release {
+	return newRelease(tool, v)
 }
 
 func (tool *codeReviewTool) PostReviewRequests(

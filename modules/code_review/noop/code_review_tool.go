@@ -2,7 +2,6 @@ package noop
 
 import (
 	// Internal
-	"github.com/salsaflow/salsaflow/action"
 	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/version"
@@ -14,12 +13,8 @@ func newCodeReviewTool() (common.CodeReviewTool, error) {
 
 type codeReviewTool struct{}
 
-func (tool *codeReviewTool) InitialiseRelease(v *version.Version) (action.Action, error) {
-	return action.Noop, nil
-}
-
-func (tool *codeReviewTool) FinaliseRelease(v *version.Version) (action.Action, error) {
-	return action.Noop, nil
+func (tool *codeReviewTool) NewRelease(v *version.Version) common.Release {
+	return &release{}
 }
 
 func (tool *codeReviewTool) PostReviewRequests(

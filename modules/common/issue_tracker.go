@@ -49,11 +49,11 @@ type IssueTracker interface {
 	// The current version is the version on the trunk branch,
 	// the next version is the next trunk version, i.e. the version that is bumped
 	// to the trunk branch once the release branch is created.
-	NextRelease(current *version.Version, next *version.Version) (NextRelease, error)
+	NextRelease(current *version.Version, next *version.Version) NextRelease
 
 	// RunningRelease is a factory method for creating release objects
 	// representing the releases that have been started.
-	RunningRelease(*version.Version) (RunningRelease, error)
+	RunningRelease(*version.Version) RunningRelease
 
 	// OpenStory opens the given story in the web browser.
 	OpenStory(storyId string) error
@@ -159,13 +159,13 @@ type RunningRelease interface {
 	Version() *version.Version
 	Stories() ([]Story, error)
 
-	// EnsureStageable shall return *ErrNotStageable in case
-	// it is not possible to stage the given release.
+	// EnsureStageable shall return ErrNotStageable as the root cause
+	// in case it is not possible to stage the given release.
 	EnsureStageable() error
 	Stage() (action.Action, error)
 
-	// EnsureReleasable shall return *ErrNotReleasable in case
-	// it is not possible to release the given release.
-	EnsureReleasable() error
-	Release() (action.Action, error)
+	// EnsureClosable shall return ErrNotClosable as the root cause
+	// in case it is not possible to release the given release.
+	EnsureClosable() error
+	Close() (action.Action, error)
 }

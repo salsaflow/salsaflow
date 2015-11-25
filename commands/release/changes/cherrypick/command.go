@@ -139,10 +139,7 @@ func runMain() error {
 	if err != nil {
 		return errs.NewError(task, err)
 	}
-	release, err := tracker.RunningRelease(releaseVersion)
-	if err != nil {
-		return errs.NewError(task, err)
-	}
+	release := tracker.RunningRelease(releaseVersion)
 	stories, err := release.Stories()
 	if err != nil {
 		return errs.NewError(task, err)

@@ -13,9 +13,9 @@ import (
 // when the given release cannot be staged yet.
 var ErrNotStageable = errors.New("release cannot be staged")
 
-// ErrNotReleasable shall be returned from EnsureReleasable()
+// ErrNotClosable shall be returned from EnsureReleasable()
 // when the given release cannot be released yet.
-var ErrNotReleasable = errors.New("release cannot be released")
+var ErrNotClosable = errors.New("release cannot be closed")
 
 // ErrReleaseNotFound shall be returned from GenerateReleaseNotes
 // or perhaps any other function when the given release was not found.

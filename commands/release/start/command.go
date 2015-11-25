@@ -154,10 +154,7 @@ func runMain() (err error) {
 	if err != nil {
 		return errs.NewError(task, err)
 	}
-	release, err := tracker.NextRelease(trunkVersion, nextTrunkVersion)
-	if err != nil {
-		return errs.NewError(task, err)
-	}
+	release := tracker.NextRelease(trunkVersion, nextTrunkVersion)
 
 	// Prompt the user to confirm the release.
 	fmt.Printf(`
@@ -221,7 +218,7 @@ The relevant version strings are:
 	if err != nil {
 		return err
 	}
-	act, err = codeReviewTool.InitialiseRelease(nextTrunkVersion)
+	act, err = codeReviewTool.NewRelease(nextTrunkVersion).Initialise()
 	if err != nil {
 		return err
 	}

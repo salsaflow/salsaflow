@@ -27,12 +27,12 @@ type runningRelease struct {
 func newRunningRelease(
 	tracker *issueTracker,
 	releaseVersion *version.Version,
-) (*runningRelease, error) {
+) *runningRelease {
 
 	return &runningRelease{
 		tracker: tracker,
 		version: releaseVersion,
-	}, nil
+	}
 }
 
 // Version is a part of common.RunningRelease interface.
@@ -218,8 +218,8 @@ func (release *runningRelease) Stage() (action.Action, error) {
 	}), nil
 }
 
-// EnsureReleasable is a part of common.RunningRelease interface.
-func (release *runningRelease) EnsureReleasable() error {
+// EnsureClosable is a part of common.RunningRelease interface.
+func (release *runningRelease) EnsureClosable() error {
 	var (
 		config  = release.tracker.config
 		vString = release.version.BaseString()
@@ -258,11 +258,11 @@ func (release *runningRelease) EnsureReleasable() error {
 	fmt.Fprintf(tw, "\n")
 	tw.Flush()
 
-	return errs.NewErrorWithHint(task, common.ErrNotReleasable, hint.String())
+	return errs.NewErrorWithHint(task, common.ErrNotClosable, hint.String())
 }
 
-// Release is a part of common.RunningRelease interface.
-func (release *runningRelease) Release() (action.Action, error) {
+// Close is a part of common.RunningRelease interface.
+func (release *runningRelease) Close() (action.Action, error) {
 	_, act, err := release.tracker.closeMilestone(release.version)
 	return act, err
 }

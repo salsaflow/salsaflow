@@ -127,18 +127,25 @@ func runMain() (err error) {
 	if err != nil {
 		return errs.NewError(task, err)
 	}
+	codeReviewTool, err := modules.GetCodeReviewTool()
+	if err != nil {
+		return errs.NewError(task, err)
+	}
 
 	stagingVersion, err := version.GetByBranch(stagingBranch)
 	if err != nil {
 		return errs.NewError(task, err)
 	}
 
-	release, err := tracker.RunningRelease(stagingVersion)
-	if err != nil {
+	// Make sure the release can be closed in the issue tracker.
+	issueTrackerRelease := tracker.RunningRelease(stagingVersion)
+	if err := issueTrackerRelease.EnsureClosable(); err != nil {
 		return err
 	}
 
-	if err := release.EnsureReleasable(); err != nil {
+	// Make sure the release can be closed in the code review tool.
+	codeReviewRelease := codeReviewTool.NewRelease(stagingVersion)
+	if err := codeReviewRelease.EnsureClosable(); err != nil {
 		return err
 	}
 
@@ -205,7 +212,14 @@ func runMain() (err error) {
 	}
 
 	// Close the release in the issue tracker.
-	act, err = release.Release()
+	act, err = issueTrackerRelease.Close()
+	if err != nil {
+		return err
+	}
+	defer action.RollbackOnError(&err, act)
+
+	// Close the release in the code review tool.
+	act, err = codeReviewRelease.Close()
 	if err != nil {
 		return err
 	}

@@ -32,13 +32,13 @@ func newNextRelease(
 	tracker *issueTracker,
 	trunkVersion *version.Version,
 	nextTrunkVersion *version.Version,
-) (*nextRelease, error) {
+) *nextRelease {
 
 	return &nextRelease{
 		tracker:          tracker,
 		trunkVersion:     trunkVersion,
 		nextTrunkVersion: nextTrunkVersion,
-	}, nil
+	}
 }
 
 // PromptUserToConfirm is a part of common.NextRelease interface.

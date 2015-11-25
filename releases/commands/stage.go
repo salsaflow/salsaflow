@@ -92,10 +92,7 @@ func Stage(options *StageOptions) (act action.Action, err error) {
 	}
 
 	// Make sure the release is stageable.
-	release, err := tracker.RunningRelease(releaseVersion)
-	if err != nil {
-		return nil, err
-	}
+	release := tracker.RunningRelease(releaseVersion)
 	if err := release.EnsureStageable(); err != nil {
 		return nil, err
 	}
@@ -158,19 +155,6 @@ func Stage(options *StageOptions) (act action.Action, err error) {
 		return nil, errs.NewError(task, err)
 	}
 	chain.PushTask(task, act)
-
-	// Finalise the release in the code review tool.
-	codeReviewTool, err := modules.GetCodeReviewTool()
-	if err != nil {
-		return nil, err
-	}
-	act, err = codeReviewTool.FinaliseRelease(releaseVersion)
-	if err != nil {
-		return nil, err
-	}
-	// No need to pass any task string, the module rollback functions
-	// are expected to take care of printing messages on their own.
-	chain.Push(act)
 
 	// Stage the release in the issue tracker.
 	act, err = release.Stage()

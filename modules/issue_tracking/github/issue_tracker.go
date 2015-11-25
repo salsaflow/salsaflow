@@ -134,7 +134,7 @@ func (tracker *issueTracker) ListStoriesByRelease(v *version.Version) ([]common.
 func (tracker *issueTracker) NextRelease(
 	trunkVersion *version.Version,
 	nextTrunkVersion *version.Version,
-) (common.NextRelease, error) {
+) common.NextRelease {
 
 	return newNextRelease(tracker, trunkVersion, nextTrunkVersion)
 }
@@ -142,7 +142,7 @@ func (tracker *issueTracker) NextRelease(
 // RunningRelease is a part of common.IssueTracker interface.
 func (tracker *issueTracker) RunningRelease(
 	releaseVersion *version.Version,
-) (common.RunningRelease, error) {
+) common.RunningRelease {
 
 	return newRunningRelease(tracker, releaseVersion)
 }
