@@ -68,6 +68,7 @@ More in-depth SalsaFlow principes are explained on the [wiki](https://github.com
 
 The complete list of SalsaFlow commands follows (links pointing to the `develop` docs):
 
+* [cherry-pick](https://github.com/salsaflow/salsaflow/blob/develop/commands/cherrypick/README.md)
 * [pkg install](https://github.com/salsaflow/salsaflow/blob/develop/commands/pkg/install/README.md)
 * [pkg upgrade](https://github.com/salsaflow/salsaflow/blob/develop/commands/pkg/upgrade/README.md)
 * [release changes](https://github.com/salsaflow/salsaflow/blob/develop/commands/release/changes/README.md)

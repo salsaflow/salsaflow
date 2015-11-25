@@ -9,6 +9,7 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/app/appflags"
 	"github.com/salsaflow/salsaflow/app/metadata"
+	"github.com/salsaflow/salsaflow/commands/cherrypick"
 	"github.com/salsaflow/salsaflow/commands/pkg"
 	"github.com/salsaflow/salsaflow/commands/release"
 	"github.com/salsaflow/salsaflow/commands/repo"
@@ -45,6 +46,7 @@ func main() {
 	appflags.RegisterGlobalFlags(&trunk.Flags)
 
 	// Register subcommands.
+	trunk.MustRegisterSubcommand(cherrypickCmd.Command)
 	trunk.MustRegisterSubcommand(pkgCmd.Command)
 	trunk.MustRegisterSubcommand(releaseCmd.Command)
 	trunk.MustRegisterSubcommand(repoCmd.Command)

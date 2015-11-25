@@ -28,9 +28,9 @@ var Command = &gocli.Command{
 	UsageLine: "cherry-pick [-no_fetch]",
 	Short:     "cherry-pick the missing commits into the release branch",
 	Long: `
-Take all the commits as listed by 'release changes -to_cherrypick'
-and apply them to the release branch, thus synchronizing the release
-branch with the trunk branch considering the release in progress.
+  Take all the commits as listed by 'release changes -to_cherrypick'
+  and apply them to the release branch, thus synchronizing the release
+  branch with the trunk branch considering the release in progress.
 	`,
 	Action: run,
 }
