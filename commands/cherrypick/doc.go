@@ -1,7 +1,7 @@
 /*
 Cherry-pick commits into selected target branch.
 
-  cherry-pick [-fetch] [-target=TARGET] COMMIT...
+  salsaflow cherry-pick [-fetch] [-target=TARGET] COMMIT...
 
 Description
 

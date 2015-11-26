@@ -5,7 +5,7 @@ Cherry-pick commits into selected target branch.
 ## Usage ##
 
 ```
-cherry-pick [-fetch] [-target=TARGET] COMMIT...
+salsaflow cherry-pick [-fetch] [-target=TARGET] COMMIT...
 ```
 
 ## Description ##
