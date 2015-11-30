@@ -25,4 +25,4 @@ The command goes through the following steps:
   5. Run git cherry-pick with the given list of hashes.
   6. Checkout the original branch.
 */
-package startCmd
+package cherrypickCmd
