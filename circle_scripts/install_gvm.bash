@@ -19,5 +19,8 @@ fi
 
 #--- Install and use go 1.4.3
 
+set +e
 source "$scripts/common_gvm"
+set -e
+
 gvm install "$GO"
