@@ -6,6 +6,7 @@ set -x
 # Source common stuff.
 scripts="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "$scripts/common"
+source "$scripts/common_gvm"
 
 PREFIX="$HOME/cache"
 
@@ -15,11 +16,41 @@ if [ -d "$PREFIX/gonative" ]; then
 	exit 0
 fi
 
-# ---> Install the tools
-go get github.com/inconshreveable/gonative
+# ---> Print Go version
+
+goVersion=$(go version | awk '{ print $3 }')
+echo "GO VERSION: $goVersion"
+
+# ---> Install gonative
+
+GONATIVE_SRC="$WORKSPACE/src/github.com/inconshreveable/gonative"
+
+# Clone the source.
+git clone https://github.com/inconshreveable/gonative "$GONATIVE_SRC"
+cd "$GONATIVE_SRC"
+
+# Restore the dependencies. We try 3 times since it somehow fails occasionally.
+ok=0
+set +e
+for i in $(seq 5); do
+	echo "TRYING TO RESTORE GONATIVE DEPS (RUN $i)"
+	GOPATH="$GONATIVE_SRC/Godeps/_workspace" godep restore -v
+	if [ "$?" -eq 0 ]; then
+		ok=1
+		break
+	fi
+done
+#if [ $ok -ne 1 ]; then
+#	echo "FAILED TO RESTORE GONATIVE DEPS" 2>&1
+#	exit 1
+#fi
+set -e
+
+# Install gonative, at last.
+GOPATH="$WORKSPACE" godep go install
+export PATH="$WORKSPACE/bin:$PATH"
 
 # ---> Clone Go sources
-goVersion=$(go version | awk '{ print $3 }')
 
 if [ ! -d "$PREFIX/go" ]; then
 	[ ! -d "$PREFIX" ] && mkdir -p "$PREFIX"

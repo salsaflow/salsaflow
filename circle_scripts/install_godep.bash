@@ -3,11 +3,12 @@
 set -e
 set -x
 
-# Source common stuff
+#--- Make sure we are running on CircleCI
+
 scripts="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "$scripts/common"
 source "$scripts/common_gvm"
 
-# Run tests
-export GOPATH="$WORKSPACE:$(godep path):$GOPATH"
-make test
+#--- Install godep
+
+go get github.com/tools/godep

@@ -1,7 +1,10 @@
 dependencies:
   cache_directories:
     - "../cache/gonative"
+    - "../.gvm"
   pre:
+    - "./circle_scripts/install_gvm.bash"
+    - "./circle_scripts/install_godep.bash"
     - "./circle_scripts/install_gonative.bash"
   override:
     - "./circle_scripts/install.bash"

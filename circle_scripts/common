@@ -2,3 +2,5 @@ if  [ -z "$CIRCLECI" ]; then
 	echo "This script can only be executed on CircleCI."
 	exit 1
 fi
+
+WORKSPACE="$HOME/workspace"
