@@ -32,7 +32,7 @@ cd "$GONATIVE_SRC"
 # Restore the dependencies. We try 3 times since it somehow fails occasionally.
 ok=0
 set +e
-for i in $(seq 5); do
+for i in $(seq 3); do
 	echo "TRYING TO RESTORE GONATIVE DEPS (RUN $i)"
 	GOPATH="$GONATIVE_SRC/Godeps/_workspace" godep restore -v
 	if [ "$?" -eq 0 ]; then
@@ -40,10 +40,10 @@ for i in $(seq 5); do
 		break
 	fi
 done
-#if [ $ok -ne 1 ]; then
-#	echo "FAILED TO RESTORE GONATIVE DEPS" 2>&1
-#	exit 1
-#fi
+if [ $ok -ne 1 ]; then
+	echo "FAILED TO RESTORE GONATIVE DEPS" 2>&1
+	exit 1
+fi
 set -e
 
 # Install gonative, at last.
