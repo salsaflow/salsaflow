@@ -1,13 +1,11 @@
 dependencies:
   cache_directories:
     - "../cache/gonative"
-    - "../.gvm"
   pre:
-    - "./circle_scripts/install_gvm.bash"
-    - "./circle_scripts/install_godep.bash"
-    - "./circle_scripts/install_gonative.bash"
+    - "go get github.com/tools/godep"
+    - "./circle_scripts/cross_compile_bootstrap.bash"
   override:
-    - "./circle_scripts/install.bash"
+    - "./circle_scripts/cross_compile.bash"
 test:
   override:
     - "./circle_scripts/test.bash"

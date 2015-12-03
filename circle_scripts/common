@@ -4,3 +4,4 @@ if  [ -z "$CIRCLECI" ]; then
 fi
 
 WORKSPACE="$HOME/workspace"
+CACHE="$HOME/cache"

@@ -7,12 +7,11 @@ set -x
 
 scripts="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "$scripts/common"
-source "$scripts/common_gvm"
 
 #--- Set up the environment
 
-export GOROOT="$HOME/cache/gonative/go"
-export PATH="$HOME/cache/gonative/go/bin:$PATH"
+export GOROOT="$CACHE/gonative/go"
+export PATH="$CACHE/gonative/go/bin:$PATH"
 
 #--- Install dependencies
 
