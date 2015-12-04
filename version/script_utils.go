@@ -110,6 +110,20 @@ func SetForBranch(ver *Version, branch string) (act action.Action, err error) {
 	return action.ActionFunc(func() (err error) {
 		// On rollback, reset the target branch to the original position.
 		log.Rollback(mainTask)
-		return git.SetBranch(branch, originalPosition)
+		task := fmt.Sprintf("Reset branch '%v' to the original position", branch)
+
+		// Get the current branch name.
+		currentBranch, err := gitutil.CurrentBranch()
+		if err != nil {
+			return errs.NewError(task, err)
+		}
+
+		// Use SetBranch in case we are not on the branch to be modified.
+		if branch != currentBranch {
+			return errs.Wrap(task, git.SetBranch(branch, originalPosition))
+		}
+
+		// Otherwise use git reset --hard since currentBranch == branch.
+		return errs.Wrap(task, git.Reset("--hard", originalPosition))
 	}), nil
 }

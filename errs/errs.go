@@ -42,6 +42,20 @@ func NewErrorWithHint(task string, err error, hint string) Err {
 	}
 }
 
+// Wrap is equal to
+//
+//   if err == nil { return nil } else { return NewError(task, err) }
+//
+// It is particularly handy to get rid of all these if statements
+// when you want to wrap and error in Err in case the error is not nil.
+func Wrap(task string, err error) Err {
+	if err == nil {
+		return nil
+	}
+
+	return NewError(task, err)
+}
+
 func (err *errImpl) Error() string {
 	return err.err.Error()
 }
