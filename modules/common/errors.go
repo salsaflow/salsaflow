@@ -13,7 +13,7 @@ import (
 // when the given release cannot be staged yet.
 var ErrNotStageable = errors.New("release cannot be staged")
 
-// ErrNotClosable shall be returned from EnsureReleasable()
+// ErrNotClosable shall be returned from EnsureClosable()
 // when the given release cannot be released yet.
 var ErrNotClosable = errors.New("release cannot be closed")
 
