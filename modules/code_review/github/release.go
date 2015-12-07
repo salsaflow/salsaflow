@@ -10,6 +10,7 @@ import (
 	ghutil "github.com/salsaflow/salsaflow/github"
 	ghissues "github.com/salsaflow/salsaflow/github/issues"
 	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/version"
 
 	// Vendor
@@ -79,11 +80,10 @@ func (r *release) EnsureClosable() error {
 	task = fmt.Sprintf(
 		"Make sure the review milestone for release %v can be closed", releaseString)
 	if num := *milestone.OpenIssues; num != 0 {
-		return errs.NewError(
-			task,
-			fmt.Errorf(
-				"review milestone for release %v cannot be closed: %v issue(s) open",
-				releaseString, num))
+		hint := fmt.Sprintf(
+			"\nreview milestone for release %v cannot be closed: %v issue(s) open\n\n",
+			releaseString, num)
+		return errs.NewErrorWithHint(task, common.ErrNotClosable, hint)
 	}
 	r.closingMilestone = milestone
 	return nil
