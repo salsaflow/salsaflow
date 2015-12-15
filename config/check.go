@@ -24,7 +24,7 @@ func EnsureValueFilled(value interface{}, path string) error {
 	logger.Log(fmt.Sprintf(`config.EnsureValueFilled: Checking "%v" ... `, path))
 
 	// Handle pointers in a special way.
-	if v.Kind() == reflect.Ptr {
+	if kind := v.Kind(); kind == reflect.Ptr || kind == reflect.Slice {
 		if v.IsNil() {
 			logger.NewLine("  ---> Nil")
 			return &ErrKeyNotSet{path}
