@@ -29,6 +29,11 @@ func (story *story) ReadableId() string {
 }
 
 func (story *story) Type() string {
+	for _, label := range story.tracker.config.StoryLabels {
+		if story.isLabeled(label) {
+			return label
+		}
+	}
 	return "issue"
 }
 
