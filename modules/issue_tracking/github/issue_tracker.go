@@ -11,6 +11,7 @@ import (
 	"github.com/salsaflow/salsaflow/errs"
 	ghutil "github.com/salsaflow/salsaflow/github"
 	ghissues "github.com/salsaflow/salsaflow/github/issues"
+	"github.com/salsaflow/salsaflow/log"
 	"github.com/salsaflow/salsaflow/modules/common"
 	"github.com/salsaflow/salsaflow/version"
 
@@ -172,6 +173,11 @@ func (tracker *issueTracker) newClient() *github.Client {
 	return ghutil.NewClient(tracker.config.UserToken)
 }
 
+type searchResult struct {
+	issues []*github.Issue
+	err    error
+}
+
 // searchIssues can be used to query GitHub for issues matching the given filter.
 // It handles pagination internally, it fetches all matching issues automatically.
 func (tracker *issueTracker) searchIssues(
@@ -179,58 +185,81 @@ func (tracker *issueTracker) searchIssues(
 	v ...interface{},
 ) ([]*github.Issue, error) {
 
+	logger := log.V(log.Debug)
+
 	// Format the query.
 	query := fmt.Sprintf(queryFormat, v...)
 
-	// We are only interested in issues for the given repository.
-	query = fmt.Sprintf(`%v type:issue repo:%v/%v label:"%v"`,
-		query, tracker.config.GitHubOwner, tracker.config.GitHubRepository, tracker.config.StoryLabel)
+	// Since GH API does not allow OR queries, we need to send a concurrent request
+	// for every item in tracker.config.StoryLabels label list.
+	ch := make(chan *searchResult, len(tracker.config.StoryLabels))
+	for _, label := range tracker.config.StoryLabels {
+		go func(label string) {
+			// We are only interested in issues for the given repository.
+			innerQuery := fmt.Sprintf(`%v type:issue repo:%v/%v label:"%v"`,
+				query, tracker.config.GitHubOwner, tracker.config.GitHubRepository, label)
 
-	task := "Search GitHub: " + query
+			task := "Search GitHub: " + innerQuery
 
-	searchOpts := &github.SearchOptions{}
-	searchOpts.Page = 1
-	searchOpts.PerPage = 50
+			if logger {
+				logger.Go(task)
+			}
 
-	var (
-		acc      []*github.Issue
-		searched int
-	)
+			searchOpts := &github.SearchOptions{}
+			searchOpts.Page = 1
+			searchOpts.PerPage = 50
 
-	client := tracker.newClient()
+			var (
+				acc      []*github.Issue
+				searched int
+			)
 
-	for {
-		// Fetch another page.
-		var (
-			result *github.IssuesSearchResult
-			err    error
-		)
-		withRequestAllocated(func() {
-			result, _, err = client.Search.Issues(query, searchOpts)
-		})
-		if err != nil {
-			return nil, errs.NewError(task, err)
-		}
+			client := tracker.newClient()
 
-		// Check the issues for exact string match.
-		for i := range result.Issues {
-			acc = append(acc, &result.Issues[i])
-		}
+			for {
+				// Fetch another page.
+				var (
+					result *github.IssuesSearchResult
+					err    error
+				)
+				withRequestAllocated(func() {
+					result, _, err = client.Search.Issues(innerQuery, searchOpts)
+				})
+				if err != nil {
+					ch <- &searchResult{nil, errs.NewError(task, err)}
+					return
+				}
 
-		// Check whether we have reached the end or not.
-		searched += len(result.Issues)
-		if searched == *result.Total {
-			return acc, nil
-		}
+				// Check the issues for exact string match.
+				for i := range result.Issues {
+					acc = append(acc, &result.Issues[i])
+				}
 
-		// Check the next page in the next iteration.
-		searchOpts.Page += 1
+				// Check whether we have reached the end or not.
+				searched += len(result.Issues)
+				if searched == *result.Total {
+					ch <- &searchResult{acc, nil}
+					return
+				}
+
+				// Check the next page in the next iteration.
+				searchOpts.Page += 1
+			}
+		}(label)
 	}
-}
 
-type searchResult struct {
-	issues []*github.Issue
-	err    error
+	// Collect the results.
+	var issues []*github.Issue
+	for i := 0; i < cap(ch); i++ {
+		res := <-ch
+		if err := res.err; err != nil {
+			return nil, err
+		}
+		issues = append(issues, res.issues...)
+	}
+
+	// Make sure there are no duplicates in the list.
+	return dedupeIssues(issues), nil
 }
 
 // goSearchIssues simply executes searchIssues, but in a background goroutine,

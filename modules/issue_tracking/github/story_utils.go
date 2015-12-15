@@ -135,3 +135,16 @@ func filterIssues(issues []*github.Issue, filter func(*github.Issue) bool) []*gi
 	}
 	return iss
 }
+
+// dedupeIssues makes sure the list contains only 1 issue object for every issue number.
+func dedupeIssues(issues []*github.Issue) []*github.Issue {
+	set := make(map[int]struct{}, len(issues))
+	return filterIssues(issues, func(issue *github.Issue) bool {
+		num := *issue.Number
+		if _, seen := set[num]; seen {
+			return false
+		}
+		set[num] = struct{}{}
+		return true
+	})
+}

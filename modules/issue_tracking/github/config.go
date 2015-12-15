@@ -22,8 +22,8 @@ type moduleConfig struct {
 	// GitHub API authentication.
 	UserToken string
 
-	// Story label.
-	StoryLabel string
+	// Story labels.
+	StoryLabels []string
 
 	// State labels.
 	ApprovedLabel         string
@@ -63,7 +63,7 @@ func loadConfig() (*moduleConfig, error) {
 		GitHubOwner:           owner,
 		GitHubRepository:      repo,
 		UserToken:             global.UserToken,
-		StoryLabel:            local.StoryLabel,
+		StoryLabels:           local.StoryLabels,
 		ApprovedLabel:         local.StateLabels.ApprovedLabel,
 		BeingImplementedLabel: local.StateLabels.BeingImplementedLabel,
 		ImplementedLabel:      local.StateLabels.ImplementedLabel,
@@ -131,8 +131,9 @@ func (global *GlobalConfig) PromptUserForConfig() error {
 
 // Local configuration ---------------------------------------------------------
 
+var DefaultStoryLabels = []string{"enhancement", "bug"}
+
 const (
-	DefaultStoryLabel            = "story"
 	DefaultApprovedLabel         = "approved"
 	DefaultBeingImplementedLabel = "being implemented"
 	DefaultImplementedLabel      = "implemented"
@@ -142,16 +143,16 @@ const (
 	DefaultFailedTestingLabel    = "qa-"
 	DefaultSkipTestingLabel      = "no qa"
 	DefaultStagedLabel           = "staged"
-	DefaultRejectedLabel         = "client rejected"
+	DefaultRejectedLabel         = "rejected"
 )
 
-var DefaultSkipCheckLabels = []string{"dupe", "wontfix"}
+var ImplicitSkipCheckLabels = []string{"duplicate", "invalid"}
 
 // LocalConfig implements loader.ConfigContainer interface.
 type LocalConfig struct {
 	spec *configSpec
 
-	StoryLabel string `prompt:"label to use to to distinguish story issues" default:"story" json:"story_label"`
+	StoryLabels []string `json:"story_labels"`
 
 	StateLabels struct {
 		ApprovedLabel         string `prompt:"'approved' label" default:"approved" json:"approved"`
@@ -173,32 +174,65 @@ type LocalConfig struct {
 func (local *LocalConfig) PromptUserForConfig() error {
 	c := LocalConfig{spec: local.spec}
 
-	// Prompt for the labels.
+	// Prompt for the state labels.
 	if err := prompt.Dialog(&c, "Insert the"); err != nil {
 		return err
 	}
 
-	// Prompt for the release skip check labels.
-	skipCheckLabelsString, err := prompt.Prompt(fmt.Sprintf(
-		"Insert the release skip check labels, comma-separated (%v always included): ",
-		strings.Join(DefaultSkipCheckLabels, ", ")))
+	// Prompt for the story labels.
+	storyLabels, err := promptForLabelList("Insert the story labels", DefaultStoryLabels, nil)
+	fmt.Println()
 	if err != nil {
-		if err != prompt.ErrCanceled {
-			return err
+		return err
+	}
+	c.StoryLabels = storyLabels
+
+	// Prompt for the release skip check labels.
+	skipCheckLabels, err := promptForLabelList(
+		"Insert the skip release check labels", nil, ImplicitSkipCheckLabels)
+	if err != nil {
+		return err
+	}
+	c.SkipCheckLabels = skipCheckLabels
+
+	// Success!
+	*local = c
+	return nil
+}
+
+func promptForLabelList(msg string, defaultItems, implicitItems []string) ([]string, error) {
+	var (
+		lenDefault  = len(defaultItems)
+		lenImplicit = len(implicitItems)
+	)
+
+	// Prompt for the value.
+	fmt.Printf("%v, comma-separated.\n", msg)
+	if lenDefault != 0 {
+		fmt.Printf("  (default values: %v)\n", strings.Join(defaultItems, ", "))
+	}
+	if lenImplicit != 0 {
+		fmt.Printf("  (always included: %v)\n", strings.Join(implicitItems, ", "))
+	}
+	fmt.Println()
+	input, err := prompt.Prompt("Your choice: ")
+	if err != nil {
+		if err == prompt.ErrCanceled {
+			return append(defaultItems, implicitItems...), nil
 		}
+		return nil, err
 	}
 
 	// Append the new labels to the default ones.
 	// Make sure there are no duplicates and empty strings.
 	var (
-		insertedLabels = strings.Split(skipCheckLabelsString, ",")
-		lenDefault     = len(DefaultSkipCheckLabels)
+		insertedLabels = strings.Split(input, ",")
 		lenInserted    = len(insertedLabels)
 	)
 
 	// Save a few allocations.
-	skipCheckLabels := make([]string, lenDefault, lenDefault+lenInserted)
-	copy(skipCheckLabels, DefaultSkipCheckLabels)
+	labels := make([]string, lenImplicit, lenImplicit+lenInserted)
+	copy(labels, implicitItems)
 
 LabelLoop:
 	for _, insertedLabel := range insertedLabels {
@@ -211,18 +245,15 @@ LabelLoop:
 		}
 
 		// Make sure there are no duplicates.
-		for _, existingLabel := range skipCheckLabels {
+		for _, existingLabel := range labels {
 			if insertedLabel == existingLabel {
 				continue LabelLoop
 			}
 		}
 
 		// Append the label.
-		skipCheckLabels = append(skipCheckLabels, insertedLabel)
+		labels = append(labels, insertedLabel)
 	}
-	c.SkipCheckLabels = skipCheckLabels
 
-	// Success!
-	*local = c
-	return nil
+	return labels, nil
 }
