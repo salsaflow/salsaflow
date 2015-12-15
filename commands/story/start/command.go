@@ -77,7 +77,7 @@ func run(cmd *gocli.Command, args []string) {
 	}
 }
 
-func runMain() error {
+func runMain() (err error) {
 	tracker, err := modules.GetIssueTracker()
 	if err != nil {
 		return err
@@ -167,11 +167,7 @@ StoryLoop:
 	// Start the selected story. No need to roll back.
 	task = "Start the selected story"
 	log.Run(task)
-	if err := story.Start(); err != nil {
-		return errs.NewError(task, err)
-	}
-
-	return nil
+	return errs.Wrap(task, story.Start())
 }
 
 func createBranch() (action.Action, error) {
