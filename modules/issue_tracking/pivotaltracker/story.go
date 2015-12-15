@@ -2,6 +2,7 @@ package pivotaltracker
 
 import (
 	// Stdlib
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -146,6 +147,10 @@ func (story *story) SetAssignees(users []common.User) error {
 
 func (story *story) Start() error {
 	task := fmt.Sprintf("Start Pivotal Tracker story %v", story.Story.Id)
+
+	if story.Story.Estimate == nil {
+		panic(errors.New("story not estimated"))
+	}
 
 	var (
 		config    = story.tracker.config

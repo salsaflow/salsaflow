@@ -44,17 +44,17 @@ func (tracker *issueTracker) CurrentUser() (common.User, error) {
 	return &user{me}, nil
 }
 
-func (tracker *issueTracker) StartableStories() (stories []common.Story, err error) {
+func (tracker *issueTracker) StartableStories() ([]common.Story, error) {
 	// Fetch the stories with the right story type.
-	ptStories, err := tracker.searchStories(
+	stories, err := tracker.searchStories(
 		"state:%v,%v", pivotal.StoryStateUnstarted, pivotal.StoryStatePlanned)
 	if err != nil {
 		return nil, err
 	}
 
 	// Make sure that only estimated stories are included.
-	ss := make([]*pivotal.Story, 0, len(ptStories))
-	for _, story := range ptStories {
+	ss := make([]*pivotal.Story, 0, len(stories))
+	for _, story := range stories {
 		switch {
 		case story.Type == pivotal.StoryTypeFeature && story.Estimate != nil:
 			fallthrough
@@ -64,7 +64,7 @@ func (tracker *issueTracker) StartableStories() (stories []common.Story, err err
 	}
 
 	// Return what is left.
-	return toCommonStories(ptStories, tracker), nil
+	return toCommonStories(ss, tracker), nil
 }
 
 func (tracker *issueTracker) ReviewableStories() (stories []common.Story, err error) {
