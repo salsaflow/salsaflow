@@ -343,7 +343,7 @@ func EnsureBranchSynchronized(branch, remote string) (err error) {
 
 	// Merge. Use --ff-only, just to be sure.
 	// But we have already checked that this will be a fast-forward merge.
-	_, err = Run("merge", "--ff-only")
+	_, err = Run("merge", "--ff-only", remoteBranch)
 	if err != nil {
 		return err
 	}
