@@ -187,9 +187,7 @@ func ensureTargetBranchExists(branch, remote string) error {
 		return errs.NewError(task, err)
 	}
 	if remoteExists {
-		if err := git.CreateTrackingBranch(branch, remote); err != nil {
-			return errs.NewError(task, err)
-		}
+		return errs.Wrap(task, git.CreateTrackingBranch(branch, remote))
 	}
 
 	// We have failed!
