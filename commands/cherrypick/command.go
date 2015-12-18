@@ -99,7 +99,7 @@ func runMain(args []string) (err error) {
 
 	// Make sure the target branch is up to date.
 	task := fmt.Sprintf("Make sure branch '%v' is up to date", targetBranch)
-	if err := git.EnsureBranchSynchronized(targetBranch, remoteName); err != nil {
+	if err := git.CheckOrCreateTrackingBranch(targetBranch, remoteName); err != nil {
 		return errs.NewError(task, err)
 	}
 
