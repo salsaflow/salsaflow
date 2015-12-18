@@ -2,6 +2,7 @@ package github
 
 import (
 	// Stdlib
+	"errors"
 	"fmt"
 
 	// Internal
@@ -71,9 +72,8 @@ func (r *release) EnsureClosable() error {
 		return errs.NewError(task, err)
 	}
 	if milestone == nil {
-		log.Warn(fmt.Sprintf(
-			"Weird, GitHub review milestone for release %v not found", releaseString))
-		return nil
+		return errs.NewErrorWithHint(task, errors.New("milestone not found"),
+			fmt.Sprintf("\nMake sure the review milestone for release %v exists\n\n", r.v))
 	}
 
 	// Close the milestone unless there are some issues open.

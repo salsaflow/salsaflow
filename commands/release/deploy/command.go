@@ -86,8 +86,10 @@ func runMain() (err error) {
 
 	// Fetch the repository.
 	if !flagNoFetch {
+		task := "Fetch the remote repository"
+		log.Run(task)
 		if err := git.UpdateRemotes(remoteName); err != nil {
-			return err
+			return errs.NewError(task, err)
 		}
 	}
 
