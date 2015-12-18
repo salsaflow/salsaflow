@@ -385,15 +385,19 @@ func CheckOrCreateTrackingBranch(branch, remote string) error {
 
 	// Check whether the local branch exists.
 	if !localExists {
-		if err := Branch(branch, remote+"/"+branch); err != nil {
-			return err
-		}
-		log.Log(fmt.Sprintf("Local branch '%v' created (tracking %v/%v)", branch, remote, branch))
-		return nil
+		return CreateTrackingBranch(branch, remote)
 	}
 
 	// In case it exists, make sure that it is up to date.
 	return EnsureBranchSynchronized(branch, remote)
+}
+
+func CreateTrackingBranch(branch, remote string) error {
+	if err := Branch(branch, remote+"/"+branch); err != nil {
+		return err
+	}
+	log.Log(fmt.Sprintf("Local branch '%v' created (tracking %v/%v)", branch, remote, branch))
+	return nil
 }
 
 func EnsureCleanWorkingTree(includeUntracked bool) error {

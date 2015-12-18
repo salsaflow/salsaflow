@@ -103,7 +103,7 @@ You need Git version 1.9.0 or newer.
 	if err != nil {
 		if ex, ok := err.(*git.ErrRefNotFound); ok {
 			hint := fmt.Sprintf(
-				"Make sure that branch '%v' exists and run init again.\n", ex.Ref())
+				"Make sure that branch '%v' exists and run init again.\n", ex.Ref)
 			return errs.NewErrorWithHint(task, err, hint)
 		} else if _, ok := err.(*git.ErrRefNotInSync); !ok {
 			// We ignore ErrRefNotInSync here, so return the error

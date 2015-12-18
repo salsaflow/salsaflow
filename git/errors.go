@@ -8,36 +8,28 @@ import (
 var ErrDirtyRepository = errors.New("the repository is dirty")
 
 type ErrDirtyFile struct {
-	relativePath string
+	RelativePath string
 }
 
 func (err *ErrDirtyFile) Error() string {
-	if err.relativePath == "" {
+	if err.RelativePath == "" {
 		panic("ErrDirtyFile.relativePath is not set")
 	}
-	return "file modified but not committed: " + err.relativePath
+	return "file modified but not committed: " + err.RelativePath
 }
 
 type ErrRefNotFound struct {
-	ref string
+	Ref string
 }
 
 func (err *ErrRefNotFound) Error() string {
-	return fmt.Sprintf("ref '%v' not found", err.ref)
-}
-
-func (err *ErrRefNotFound) Ref() string {
-	return err.ref
+	return fmt.Sprintf("ref '%v' not found", err.Ref)
 }
 
 type ErrRefNotInSync struct {
-	ref string
+	Ref string
 }
 
 func (err *ErrRefNotInSync) Error() string {
-	return fmt.Sprintf("ref '%v' is not up to date", err.ref)
-}
-
-func (err *ErrRefNotInSync) Ref() string {
-	return err.ref
+	return fmt.Sprintf("ref '%v' is not up to date", err.Ref)
 }

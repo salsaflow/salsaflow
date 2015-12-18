@@ -269,7 +269,7 @@ func tryToStageRunningRelease() {
 		// in the issue tracker.
 		rootCause := errs.RootCause(err)
 		if ex, ok := rootCause.(*git.ErrRefNotFound); ok {
-			log.Log(fmt.Sprintf("Git reference '%v' not found, not staging any release", ex.Ref()))
+			log.Log(fmt.Sprintf("Git reference '%v' not found, not staging any release", ex.Ref))
 		} else if rootCause == common.ErrNotStageable {
 			log.Log("The next release cannot be staged yet, staging canceled")
 		} else {

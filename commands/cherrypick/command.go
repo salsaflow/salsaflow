@@ -13,6 +13,7 @@ import (
 	"github.com/salsaflow/salsaflow/git"
 	"github.com/salsaflow/salsaflow/git/gitutil"
 	"github.com/salsaflow/salsaflow/log"
+	"github.com/salsaflow/salsaflow/prompt"
 
 	// Other
 	"gopkg.in/tchap/gocli.v2"
@@ -58,6 +59,8 @@ func run(cmd *gocli.Command, args []string) {
 
 	app.InitOrDie()
 
+	defer prompt.RecoverCancel()
+
 	if err := runMain(args); err != nil {
 		errs.Fatal(err)
 	}
@@ -98,9 +101,8 @@ func runMain(args []string) (err error) {
 	}
 
 	// Make sure the target branch is up to date.
-	task := fmt.Sprintf("Make sure branch '%v' is up to date", targetBranch)
-	if err := git.CheckOrCreateTrackingBranch(targetBranch, remoteName); err != nil {
-		return errs.NewError(task, err)
+	if err := ensureTargetBranchExists(targetBranch, remoteName); err != nil {
+		return err
 	}
 
 	// Get the current branch name.
@@ -132,11 +134,13 @@ func runMain(args []string) (err error) {
 	}
 
 	// Run git cherry-pick.
-	task = fmt.Sprintf("Cherry-pick the chosen commits into '%v'", targetBranch)
+	task := fmt.Sprintf("Cherry-pick the chosen commits into '%v'", targetBranch)
 	log.Run(task)
 	if err := git.CherryPick(hashes...); err != nil {
 		return errs.NewError(task, err)
 	}
+
+	log.Warn(fmt.Sprintf("Make sure to push branch '%v' to publish the changes", targetBranch))
 	return nil
 }
 
@@ -163,4 +167,31 @@ func parseRevisions(args []string) ([]string, error) {
 
 	// Return the hashes.
 	return hashes, nil
+}
+
+func ensureTargetBranchExists(branch, remote string) error {
+	task := fmt.Sprintf("Check whether branch '%v' exists", branch)
+
+	// In case the branch exists locally, we are done.
+	localExists, err := git.LocalBranchExists(branch)
+	if err != nil {
+		return errs.NewError(task, err)
+	}
+	if localExists {
+		return nil
+	}
+
+	// Otherwise try to create a tracking branch.
+	remoteExists, err := git.RemoteBranchExists(branch, remote)
+	if err != nil {
+		return errs.NewError(task, err)
+	}
+	if remoteExists {
+		if err := git.CreateTrackingBranch(branch, remote); err != nil {
+			return errs.NewError(task, err)
+		}
+	}
+
+	// We have failed!
+	return &git.ErrRefNotFound{branch}
 }
