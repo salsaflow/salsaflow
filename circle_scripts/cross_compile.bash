@@ -38,4 +38,4 @@ github.com/salsaflow/salsaflow/bin/hooks/salsaflow-pre-push
 EOF
 )"
 
-echo "$pkgs" | xargs gox -osarch="windows/amd64 linux/amd64 darwin/amd64"
+echo "$pkgs" | xargs gox -verbose -osarch="windows/amd64 linux/amd64 darwin/amd64"
