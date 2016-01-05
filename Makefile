@@ -9,6 +9,8 @@ LINT=golint
 VET=go tool vet
 GODEP_VET=godep ${VET}
 
+.PHONY: install test lint vet godep-install godep-test godep-vet deps.fetch deps.save deps.restore format
+
 install:
 	${INSTALL} github.com/salsaflow/salsaflow
 	${INSTALL} github.com/salsaflow/salsaflow/bin/hooks/salsaflow-commit-msg
@@ -32,12 +34,6 @@ vet:
 		xargs go list -f '{{.Dir}}' | \
 		xargs $(VET)
 
-godep-vet:
-	@go list -f '{{join .Deps "\n"}}' | \
-		grep 'salsaflow/salsaflow/' | \
-		xargs go list -f '{{.Dir}}' | \
-		xargs $(GODEP_VET)
-
 godep-install:
 	${GODEP_INSTALL} github.com/salsaflow/salsaflow
 	${GODEP_INSTALL} github.com/salsaflow/salsaflow/bin/hooks/salsaflow-commit-msg
@@ -48,6 +44,12 @@ godep-test:
 	${GODEP_TEST} github.com/salsaflow/salsaflow/github \
 	              github.com/salsaflow/salsaflow/github/issues \
 	              github.com/salsaflow/salsaflow/modules/issue_tracking/github
+
+godep-vet:
+	@go list -f '{{join .Deps "\n"}}' | \
+		grep 'salsaflow/salsaflow/' | \
+		xargs go list -f '{{.Dir}}' | \
+		xargs $(GODEP_VET)
 
 deps.fetch:
 	@cat Godeps/Godeps.json | \

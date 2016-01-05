@@ -1,8 +1,7 @@
 dependencies:
   cache_directories:
-    - "../cache/gonative"
+    - "../SalsaFlow_CC/cache/gonative"
   pre:
-    - "go get github.com/tools/godep"
     - "./circle_scripts/cross_compile_bootstrap.bash"
   override:
     - "./circle_scripts/cross_compile.bash"

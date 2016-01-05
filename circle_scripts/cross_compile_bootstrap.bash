@@ -1,49 +1,58 @@
 #!/bin/bash
 
-set -e
-set -x
+#--- Source common variables
 
-# Source common stuff.
 scripts="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-source "$scripts/common"
+source "$scripts/common.bash"
 
-# Exit in case the gonative directory exists already.
-if [ -d "$CACHE/gonative" ]; then
-	echo "gonative installed already, skipping..."
+#--- Exit in case gonative cache exists already
+
+gonativeCache="$CACHE/gonative"
+
+if [ -d "$gonativeCache" ]; then
+	echo "gonative cached, skipping..."
 	exit 0
 fi
 
-# ---> Print Go version
+#--- Print Go version
 
-goVersion=$(go version | awk '{ print $3 }')
-echo "GO VERSION: $goVersion"
+#goVersion=$(go version | awk '{ print $3 }')
+#goVersion=${goVersion#go}
+goVersion='1.4.3'
 
-# ---> Install gonative executable
+echo "Go version: $goVersion"
 
-GONATIVE_SRC="$WORKSPACE/src/github.com/inconshreveable/gonative"
-git clone https://github.com/inconshreveable/gonative "$GONATIVE_SRC"
-make -C "$GONATIVE_SRC"
-GONATIVE_EXE="$GONATIVE_SRC/gonative"
+#--- Install gonative executable
 
-# ---> Download Go 1.4.3 to bootstrap the compiler for gonative
+gonativeSrc="$WORKSPACE/src/github.com/inconshreveable/gonative"
+git clone 'https://github.com/inconshreveable/gonative' "$gonativeSrc"
+make -C "$gonativeSrc"
 
-pkgUrl='https://storage.googleapis.com/golang/go1.4.3.linux-amd64.tar.gz'
-pkgPath="$HOME/go1.4.3.tag.gz"
-pkgDst="$HOME/go1.4.3"
-curl -o "$pkgPath" "$pkgUrl"
-[ ! -d "$pkgDst" ] && mkdir -p "$pkgDst"
-tar -C "$pkgDst" -xzf "$pkgPath"
-export GOROOT_BOOTSTRAP="$pkgDst/go"
+gonativeExe="$gonativeSrc/gonative"
 
-# ---> Build gonative
-mkdir -p "$CACHE/gonative" && cd "$CACHE/gonative"
+#--- Download Go 1.4.3 to bootstrap the compiler for gonative
+
+#pkgUrl="https://storage.googleapis.com/golang/go1.4.3.${GOLANG_GOOS}-${GOLANG_GOARCH}.tar.gz"
+#pkgPath="$GARBAGE/go1.4.3.tag.gz"
+#pkgDst="$GARBAGE/go1.4.3"
+#
+#curl -o "$pkgPath" "$pkgUrl"
+#
+#[ ! -d "$pkgDst" ] && mkdir -p "$pkgDst"
+#tar -C "$pkgDst" -xzf "$pkgPath"
+#
+#export GOROOT_BOOTSTRAP="$pkgDst/go"
+
+#--- Build gonative
+
+mkdir -p "$gonativeCache" && cd "$gonativeCache"
 set +e
 
-"$GONATIVE_EXE" build \
+"$gonativeExe" build \
 	-platforms="windows_amd64 darwin_amd64 linux_amd64" \
-	-version="${goVersion#go}"
+	-version="$goVersion"
 
 if [ "$?" -ne 0 ]; then
-	rm -Rf "$CACHE/gonative"
+	rm -Rf "$gonativeCache"
 	exit 1
 fi
