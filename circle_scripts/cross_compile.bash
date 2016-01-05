@@ -1,34 +1,34 @@
 #!/bin/bash
 
-set -e
-set -x
-
-#--- Make sure we are running on CircleCI
+#--- Source common variables
 
 scripts="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-source "$scripts/common"
-
-#--- Set up the environment
-
-export GOROOT="$CACHE/gonative/go"
-export PATH="$CACHE/gonative/go/bin:$PATH"
+source "$scripts/common.bash"
 
 #--- Install dependencies
 
+go get github.com/tools/godep
 go get github.com/mitchellh/gox
+
+#--- Set up the environment
+
+gonativeCache="$CACHE/gonative"
+
+export PATH="$gonativeCache/go/bin:$PATH"
+
+export GOROOT="$gonativeCache/go"
+export GOPATH="$WORKSPACE:$(godep path)"
 
 #--- Prepare the Go workspace and move the sources into it
 
-dst="$WORKSPACE/src/github.com/$CIRCLE_PROJECT_USERNAME"
-mkdir -p "$dst"
-ln -s "$HOME/$CIRCLE_PROJECT_REPONAME" "$dst/$CIRCLE_PROJECT_REPONAME"
+base="$WORKSPACE/src/github.com/$PROJECT_USERNAME"
+workspaceSources="$base/$PROJECT_REPONAME"
 
-export GOPATH="$WORKSPACE:$(godep path):$GOPATH"
+mkdir -p "$base" && ln -s "$SOURCES" "$workspaceSources"
 
 #--- Build the project
 
-sources="$dst/$CIRCLE_PROJECT_REPONAME"
-cd "$sources"
+cd "$workspaceSources"
 
 pkgs="$(cat <<-EOF
 github.com/salsaflow/salsaflow
