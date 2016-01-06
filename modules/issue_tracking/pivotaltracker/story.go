@@ -148,7 +148,7 @@ func (story *story) SetAssignees(users []common.User) error {
 func (story *story) Start() error {
 	task := fmt.Sprintf("Start Pivotal Tracker story %v", story.Story.Id)
 
-	if story.Story.Estimate == nil {
+	if s := story.Story; s.Type == pivotal.StoryTypeFeature && s.Estimate == nil {
 		panic(errors.New("story not estimated"))
 	}
 
