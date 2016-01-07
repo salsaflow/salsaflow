@@ -1,9 +1,6 @@
 package postCmd
 
 import (
-	// Stdlib
-	"os"
-
 	// Internal
 	"github.com/salsaflow/salsaflow/app"
 	"github.com/salsaflow/salsaflow/app/appflags"
@@ -16,7 +13,7 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  post [-fixes=RRID] [-reviewer=REVIEWER] [-open] [REVISION]
+  post [-fixes=RRID] [-reviewer=REVIEWER] [-open] [REVISION...]
 
   post [-fixes=RRID] [-no_fetch]
        [-no_rebase] [-no_merge] [-merge_no_ff]
@@ -26,9 +23,12 @@ var Command = &gocli.Command{
 	Long: `
   Post a code review request for each commit specified.
 
-  In case REVISION is specified, the selected revision is posted for review.
-  Make sure the Story-Id tag is in the commit message, salsaflow will not try
-  to rewrite the commit message for you in case it is not there.
+  In case one or more revision ranges are specified, the commits included
+  in the ranges are posted for review. SalsaFlow uses git show, so check
+  the relevant docs to understand what commits will be selected.
+
+  Also make sure the Story-Id tag is in the commit message, salsaflow will not
+  try to rewrite the commit message for you in case it is not there.
 
   In case the parent branch BRANCH is specified, all the commits between
   BRANCH and HEAD are selected to be posted for code review. Using git revision
@@ -90,19 +90,14 @@ func init() {
 }
 
 func run(cmd *gocli.Command, args []string) {
-	if len(args) > 1 {
-		cmd.Usage()
-		os.Exit(2)
-	}
-
 	app.InitOrDie()
 
 	defer prompt.RecoverCancel()
 
 	var err error
 	switch {
-	case len(args) == 1:
-		err = postRevision(args[0])
+	case len(args) != 0:
+		err = postRevisions(args...)
 	case flagParent != "":
 		err = postBranch(flagParent)
 	default:

@@ -5,7 +5,7 @@ Post review requests for the specified revisions.
 ## Usage ##
 
 ```
-salsaflow review post [-fixes=RRID] [-reviewer=REVIEWER] [-open] [REVISION]
+salsaflow review post [-fixes=RRID] [-reviewer=REVIEWER] [-open] [REVISION...]
 
 salsaflow review post -parent=BRANCH [-fixes=RRID] [-no_fetch]
                      [-no_rebase] [-no_merge] [-merge_no_ff]
@@ -21,8 +21,9 @@ specified in multiple ways:
 
 1. By using the `parent` flag, all revisions between `BRANCH` and the current
    branch (`HEAD`) are selected for being posted into the code review system.
-2. When not using the `parent` flag, you can specify `REVISION`. This selects
-   just a single commit to be posted.
+2. When not using the `parent` flag, you can specify one or more revisions
+   or revision ranges. SalsaFlow uses `git show` to get relevant commits,
+   so check the relevant docs to know what to expect.
 3. When not using the `parent` flag and not even specifying `REVISION`,
    the tip of the current branch (`HEAD`) is selected.
 
@@ -61,8 +62,6 @@ This command goes through the following steps:
 
 #### Revision Mode ####
 
-1. Make sure the selected commit is associated with a story by the `Story-Id`
-   tag. In case `REVISION` is given, fail in case the tag is not there. In case
-   it is `HEAD` that is chosen, ask the user to select the story to assign the
-   commit to. Amend the commit message.
-2. Post a review request for the given commit.
+1. Make sure the selected commits are associated with a story by the Story-Id
+   tag. Fail in case the tag is not there.
+2. Post the selected commits for code review.

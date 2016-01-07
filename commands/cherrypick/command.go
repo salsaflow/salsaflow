@@ -4,7 +4,6 @@ import (
 	// Stdlib
 	"fmt"
 	"os"
-	"strings"
 
 	// Internal
 	"github.com/salsaflow/salsaflow/app"
@@ -70,7 +69,7 @@ func runMain(args []string) (err error) {
 	// Get the commit hashes.
 	// We need to do this before we checkout the target branch,
 	// because relative refs like HEAD change by doing so.
-	hashes, err := parseRevisions(args)
+	hashes, err := git.RevisionsToCommitList(args...)
 	if err != nil {
 		return err
 	}
@@ -142,31 +141,6 @@ func runMain(args []string) (err error) {
 
 	log.Warn(fmt.Sprintf("Make sure to push branch '%v' to publish the changes", targetBranch))
 	return nil
-}
-
-func parseRevisions(args []string) ([]string, error) {
-	task := fmt.Sprintf("Parse git revision list: %v", args)
-
-	// Ask git to give us the revision list.
-	argList := make([]string, 2, 2+len(args))
-	argList[0] = "rev-list"
-	argList[1] = "--no-walk"
-	argList = append(argList, args...)
-	stdout, err := git.Run(argList...)
-	if err != nil {
-		return nil, errs.NewError(task, err)
-	}
-
-	// We need to reverse the list, though.
-	lines := strings.Split(stdout.String(), "\n")
-	lines = lines[:len(lines)-1]
-	hashes := make([]string, len(lines))
-	for i, line := range lines {
-		hashes[len(hashes)-i-1] = strings.TrimSpace(line)
-	}
-
-	// Return the hashes.
-	return hashes, nil
 }
 
 func ensureTargetBranchExists(branch, remote string) error {

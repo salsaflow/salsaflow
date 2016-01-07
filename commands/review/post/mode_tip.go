@@ -28,7 +28,7 @@ func postTip() (err error) {
 
 	// Get the commit to be posted
 	task := "Get the commit to be posted for code review"
-	commits, err := git.ShowCommit(currentBranch)
+	commits, err := git.ShowCommits(currentBranch)
 	if err != nil {
 		return errs.NewError(task, err)
 	}
@@ -85,7 +85,7 @@ func postTip() (err error) {
 
 	// In case the commit was changed, reload.
 	if changed {
-		commits, err = git.ShowCommit(currentBranch)
+		commits, err = git.ShowCommits(currentBranch)
 		if err != nil {
 			return err
 		}

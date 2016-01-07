@@ -24,16 +24,19 @@ func GrepCommitsCaseInsensitive(filter string, args ...string) ([]*Commit, error
 	return ParseCommits(stdout.Bytes())
 }
 
-// ShowCommit returns the commit object representing the given revision.
-func ShowCommit(revision string) ([]*Commit, error) {
-	args := []string{
-		"log",
-		"--source",
-		"--abbrev-commit",
-		"--pretty=fuller",
-		"--max-count=1",
-		revision,
-	}
+// ShowCommits returns the commit objects specified by the given revisions.
+//
+// Revision ranges can be used as well, the revision list is simply passed
+// to git show, so check the associated docs.
+func ShowCommits(revisions ...string) ([]*Commit, error) {
+	args := make([]string, 5, 5+len(revisions))
+	args[0] = "show"
+	args[1] = "--source"
+	args[2] = "--abbrev-commit"
+	args[3] = "--pretty=fuller"
+	args[4] = "--no-patch"
+	args = append(args, revisions...)
+
 	stdout, err := Run(args...)
 	if err != nil {
 		return nil, err
