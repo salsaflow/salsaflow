@@ -74,6 +74,9 @@ func postBranch(parentBranch string) (err error) {
 	// Rebase the current branch on top the parent branch.
 	if !flagNoRebase {
 		commits, err = rebase(currentBranch, parentBranch)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Ensure the Story-Id tag is there.
