@@ -52,19 +52,25 @@ func Install(version string, opts *InstallOptions) error {
 	}
 
 	// Get the release matching the chosen version string.
-	task = "Get the release metadata"
-	var (
-		release *github.RepositoryRelease
-		tagName = "v" + version
-	)
+	tagName := "v" + version
+	task = fmt.Sprintf("Search for the GitHub release associated with tag '%v'", tagName)
+
+	var release *github.RepositoryRelease
 	for _, r := range releases {
 		if *r.TagName == tagName {
 			release = &r
 			break
 		}
 	}
-	if release == nil {
+
+	// Make sure we got a valid release.
+	switch {
+	case release == nil:
 		return errs.NewError(task, fmt.Errorf("SalsaFlow version %v not found", version))
+	case *release.Draft:
+		return errs.NewError(task, fmt.Errorf("SalsaFlow version %v is a release draft", version))
+	case *release.Prerelease:
+		return errs.NewError(task, fmt.Errorf("SalsaFlow version %v is a pre-release", version))
 	}
 
 	// Prompt the user to confirm the the installation.
