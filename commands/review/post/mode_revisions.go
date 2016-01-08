@@ -9,6 +9,7 @@ import (
 	// Internal
 	"github.com/salsaflow/salsaflow/errs"
 	"github.com/salsaflow/salsaflow/git"
+	"github.com/salsaflow/salsaflow/modules"
 )
 
 func postRevisions(revisions ...string) (err error) {
@@ -46,12 +47,24 @@ func postRevisions(revisions ...string) (err error) {
 func ensureStoryIdTag(commits []*git.Commit) error {
 	task := "Make sure all commits contain the Story-Id tag"
 
+	storyIdTag := flagStoryIdTag
+	if storyIdTag != "" && storyIdTag != git.StoryIdUnassignedTagValue {
+		if err := checkStoryIdTag(storyIdTag); err != nil {
+			return errs.NewError(task, err)
+		}
+	}
+
 	var (
 		hint    = bytes.NewBufferString("\n")
 		missing bool
 	)
 	for _, commit := range commits {
 		if commit.StoryIdTag == "" {
+			if storyIdTag != "" {
+				commit.StoryIdTag = storyIdTag
+				continue
+			}
+
 			fmt.Fprintf(hint, "Commit %v is missing the Story-Id tag\n", commit.SHA)
 			missing = true
 		}
@@ -63,4 +76,14 @@ func ensureStoryIdTag(commits []*git.Commit) error {
 			task, errors.New("Story-Id tag missing"), hint.String())
 	}
 	return nil
+}
+
+func checkStoryIdTag(tag string) error {
+	tracker, err := modules.GetIssueTracker()
+	if err != nil {
+		return err
+	}
+
+	_, err = tracker.StoryTagToReadableStoryId(tag)
+	return err
 }

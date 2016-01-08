@@ -5,7 +5,8 @@ Post review requests for the specified revisions.
 ## Usage ##
 
 ```
-salsaflow review post [-fixes=RRID] [-reviewer=REVIEWER] [-open] [REVISION...]
+salsaflow review post [-fixes=RRID] [-reviewer=REVIEWER]
+                      [-story_id_tag=STORY_TAG] [-open] [REVISION...]
 
 salsaflow review post -parent=BRANCH [-fixes=RRID] [-no_fetch]
                      [-no_rebase] [-no_merge] [-merge_no_ff]
@@ -39,8 +40,9 @@ prompt you to select the story to assign the commit to and it will amend
 the commit message to insert the tag.
 
 This mechanism is never triggered when `REVISION` is specified explicitly.
-In general it is not possible to amend any commit in the git graph, so this
-option is simply disabled in this case.
+In case you really need to post a commit missing the tag in this case,
+you need to use `-story_id_tag`, which will set the `Story-Id` tag
+just for the code review module without amending the commit.
 
 ### Steps ###
 
@@ -63,5 +65,5 @@ This command goes through the following steps:
 #### Revision Mode ####
 
 1. Make sure the selected commits are associated with a story by the Story-Id
-   tag. Fail in case the tag is not there.
+   tag. Fail in case the tag is not there and no `-story_id_tag` is specified.
 2. Post the selected commits for code review.

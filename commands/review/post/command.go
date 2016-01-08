@@ -13,7 +13,8 @@ import (
 
 var Command = &gocli.Command{
 	UsageLine: `
-  post [-fixes=RRID] [-reviewer=REVIEWER] [-open] [REVISION...]
+  post [-fixes=RRID] [-reviewer=REVIEWER]
+       [-story_id_tag=STORY_TAG] [-open] [REVISION...]
 
   post [-fixes=RRID] [-no_fetch]
        [-no_rebase] [-no_merge] [-merge_no_ff]
@@ -50,16 +51,17 @@ var Command = &gocli.Command{
 }
 
 var (
-	flagAskOnce   bool
-	flagFixes     uint
-	flagMergeNoFF bool
-	flagNoFetch   bool
-	flagNoMerge   bool
-	flagNoRebase  bool
-	flagOpen      bool
-	flagParent    string
-	flagPick      bool
-	flagReviewer  string
+	flagAskOnce    bool
+	flagFixes      uint
+	flagMergeNoFF  bool
+	flagNoFetch    bool
+	flagNoMerge    bool
+	flagNoRebase   bool
+	flagOpen       bool
+	flagParent     string
+	flagPick       bool
+	flagReviewer   string
+	flagStoryIdTag string
 )
 
 func init() {
@@ -84,6 +86,8 @@ func init() {
 		"pick only some of the selected commits for review")
 	Command.Flags.StringVar(&flagReviewer, "reviewer", flagReviewer,
 		"reviewer to assign to the newly created review requests")
+	Command.Flags.StringVar(&flagStoryIdTag, "story_id_tag", flagStoryIdTag,
+		"Story-Id tag to use when posting commit missing the tag")
 
 	// Register global flags.
 	appflags.RegisterGlobalFlags(&Command.Flags)
