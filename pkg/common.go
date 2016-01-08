@@ -32,6 +32,33 @@ var (
 	ErrInstallationFailed = errors.New("failed to install SalsaFlow")
 )
 
+func listReleases(client *github.Client, owner, repo string) ([]github.RepositoryRelease, error) {
+	// Set PerPage to 100, which is the maximum.
+	listOpts := &github.ListOptions{
+		Page:    1,
+		PerPage: 100,
+	}
+
+	// Loop until all releases are downloaded.
+	var releases []github.RepositoryRelease
+	for {
+		// Fetch another page.
+		rs, _, err := client.Repositories.ListReleases(owner, repo, listOpts)
+		if err != nil {
+			return nil, err
+		}
+		releases = append(releases, rs...)
+
+		// In case the page is not full, this is the last page.
+		if len(rs) != 100 {
+			return releases, nil
+		}
+
+		// Increment the page number.
+		listOpts.Page += 1
+	}
+}
+
 // doInstall performs the common step that both install and upgrade need to do.
 //
 // Given a GitHub release, it downloads and unpacks the fitting artifacts

@@ -42,7 +42,7 @@ func Upgrade(opts *InstallOptions) (upgraded bool, err error) {
 	// Fetch the list of available GitHub releases.
 	task = fmt.Sprintf("Fetch GitHub releases for %v/%v", owner, repo)
 	log.Run(task)
-	releases, _, err := client.Repositories.ListReleases(owner, repo, nil)
+	releases, err := listReleases(client, owner, repo)
 	if err != nil {
 		return false, errs.NewError(task, err)
 	}
