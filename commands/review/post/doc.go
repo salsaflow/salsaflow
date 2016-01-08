@@ -39,6 +39,8 @@ In case you really need to post a commit missing the tag in this case,
 you need to use `-story_id_tag`, which will set the `Story-Id` tag
 just for the code review module without amending the commit.
 
+Use `-story_id_tag=unassigned` to post an unassigned commit for review.
+
 Steps
 
 For the parent mode, the command goes through the following steps:
