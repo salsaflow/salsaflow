@@ -12,8 +12,8 @@ See the command help page for more details in the flags and such.
 
 Description
 
-Post review requests for the specified revisions. The commits can be
-specified in multiple ways:
+Post review requests for selected commits.
+The commits can be specified in multiple ways:
 
   1. By using the `parent` flag, all commits between `BRANCH` and the current
      branch (`HEAD`) are selected for being posted into the code review system.
