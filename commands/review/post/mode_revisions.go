@@ -127,7 +127,7 @@ CommitLoop:
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
-			if strings.HasPrefix(line, remotePrefix) {
+			if strings.HasPrefix(strings.TrimSpace(line), remotePrefix) {
 				// The commit is contained in a remote branch, continue.
 				continue CommitLoop
 			}
