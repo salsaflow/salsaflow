@@ -15,7 +15,7 @@ import (
 // The list is passed to git rev-list --no-walk unchanges, so check the docs
 // to understand the exact behaviour of this function.
 func RevisionsToCommitList(revisions ...string) ([]string, error) {
-	task := fmt.Sprintf("Convert give revision list to a list of commits: %v", revisions)
+	task := fmt.Sprintf("Convert given revision list to a list of commits: %v", revisions)
 
 	// Ask git to give us the revision list.
 	argList := make([]string, 2, 2+len(revisions))
