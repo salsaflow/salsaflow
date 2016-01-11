@@ -486,10 +486,6 @@ func sendReviewRequests(ctxs []*common.ReviewContext, implemented bool) error {
 	// Only post a single commit in case -parent is not being used.
 	// By definition it must be only a single commit anyway.
 	if flagParent == "" {
-		if len(ctxs) != 1 {
-			panic(fmt.Sprintf("len(ctxs): expected 1, got %v", len(ctxs)))
-		}
-
 		task := "Post review request for commit " + ctxs[0].Commit.SHA
 		log.Run(task)
 		if err := tool.PostReviewRequests(ctxs, postOpts); err != nil {
