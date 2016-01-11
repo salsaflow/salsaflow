@@ -1,9 +1,6 @@
 package github
 
 import (
-	// Stdlib
-	"fmt"
-
 	// Internal
 	"github.com/salsaflow/salsaflow/modules/common"
 
@@ -122,7 +119,7 @@ func abstractState(issue *github.Issue, config *moduleConfig) common.StoryState 
 		}
 	}
 
-	panic(fmt.Errorf("issue #%v: unknown abstract state", *issue.Number))
+	return common.StoryStateInvalid
 }
 
 // filterIssues is just the regular filter function for *github.Issue type.
